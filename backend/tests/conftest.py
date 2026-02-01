@@ -5,10 +5,8 @@ Note: Environment variables for testing (DATABASE_TYPE, SQLITE_DATABASE_PATH, et
 are set via pytest-env in pyproject.toml [tool.pytest.ini_options].
 """
 
-import asyncio
 from collections.abc import AsyncGenerator
 
-import pytest
 import pytest_asyncio
 from app.core.database import Base, get_db
 from app.main import app
@@ -32,14 +30,6 @@ TestSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture

@@ -17,7 +17,9 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "Unified torrent search aggregator"
 
     # Database
-    DATABASE_TYPE: str = Field(default="postgresql", description="Database type (sqlite or postgresql)")
+    DATABASE_TYPE: str = Field(
+        default="postgresql", description="Database type (sqlite or postgresql)"
+    )
 
     # PostgreSQL settings
     POSTGRES_HOST: str = Field(default="localhost", description="PostgreSQL host")
@@ -27,7 +29,9 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = Field(default="searcharr", description="PostgreSQL database name")
 
     # SQLite settings (for local development/testing)
-    SQLITE_DATABASE_PATH: str = Field(default="./searcharr.db", description="SQLite database file path")
+    SQLITE_DATABASE_PATH: str = Field(
+        default="./searcharr.db", description="SQLite database file path"
+    )
 
     # Logging
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")

@@ -1,15 +1,10 @@
 #!/bin/sh
 set -e
 
-echo "Starting Python Web App Template..."
-
-# Check if required environment variables are set
-if [ -z "$SECRET_KEY" ]; then
-    echo "WARNING: SECRET_KEY not set, using default (not secure for production!)"
-fi
+echo "Starting Searcharr..."
 
 # Create necessary directories
-mkdir -p /app/logs /app/data
+mkdir -p /app/logs
 
 # Database initialization based on type
 if [ "$DATABASE_TYPE" = "postgresql" ]; then
