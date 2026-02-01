@@ -12,10 +12,10 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # Application
-    APP_NAME: str = Field(default="Python Web App Template", description="Application name")
+    APP_NAME: str = Field(default="Searcharr", description="Application name")
     APP_VERSION: str = Field(default="0.1.0", description="Application version")
     APP_DESCRIPTION: str = Field(
-        default="A template for Python web applications", description="Application description"
+        default="Unified torrent search aggregator", description="Application description"
     )
 
     # Environment
@@ -77,6 +77,22 @@ class Settings(BaseSettings):
 
     # Testing
     TESTING: bool = Field(default=False, description="Testing mode flag")
+
+    # Encryption
+    ENCRYPTION_KEY: str | None = Field(
+        default=None,
+        description="Fernet encryption key for credentials. Generate with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'",
+    )
+
+    # External API Timeouts (in seconds)
+    JACKETT_TIMEOUT: int = Field(default=30, description="Jackett API request timeout")
+    PROWLARR_TIMEOUT: int = Field(default=30, description="Prowlarr API request timeout")
+    QBITTORRENT_TIMEOUT: int = Field(default=10, description="qBittorrent API request timeout")
+
+    # Search Settings
+    SEARCH_CONCURRENT_LIMIT: int = Field(
+        default=10, description="Maximum concurrent search requests"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

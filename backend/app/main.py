@@ -15,6 +15,9 @@ from app.api.v1.router import api_router as v1_router
 from app.config import settings
 from app.core.database import Base, engine
 
+# Import models so they are registered with SQLAlchemy Base
+from app.models import DownloadClient, JackettInstance, ProwlarrInstance  # noqa: F401
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

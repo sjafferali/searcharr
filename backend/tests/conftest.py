@@ -10,6 +10,8 @@ import pytest_asyncio
 from app.config import settings
 from app.core.database import Base, get_db
 from app.main import app
+from app.models import ClientType, DownloadClient, JackettInstance, ProwlarrInstance
+from app.services import encrypt_credential
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -69,3 +71,52 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+# =============================================================================
+# Test Data Fixtures
+# =============================================================================
+
+
+@pytest_asyncio.fixture
+async def jackett_instance(db_session: AsyncSession) -> JackettInstance:
+    """Create a test Jackett instance."""
+    instance = JackettInstance(
+        name="Test Jackett",
+        url="http://localhost:9117",
+        api_key=encrypt_credential("test-api-key-123"),
+    )
+    db_session.add(instance)
+    await db_session.commit()
+    await db_session.refresh(instance)
+    return instance
+
+
+@pytest_asyncio.fixture
+async def prowlarr_instance(db_session: AsyncSession) -> ProwlarrInstance:
+    """Create a test Prowlarr instance."""
+    instance = ProwlarrInstance(
+        name="Test Prowlarr",
+        url="http://localhost:9696",
+        api_key=encrypt_credential("test-api-key-456"),
+    )
+    db_session.add(instance)
+    await db_session.commit()
+    await db_session.refresh(instance)
+    return instance
+
+
+@pytest_asyncio.fixture
+async def download_client(db_session: AsyncSession) -> DownloadClient:
+    """Create a test download client."""
+    client = DownloadClient(
+        name="Test qBittorrent",
+        client_type=ClientType.QBITTORRENT,
+        url="http://localhost:8080",
+        username=encrypt_credential("admin"),
+        password=encrypt_credential("password123"),
+    )
+    db_session.add(client)
+    await db_session.commit()
+    await db_session.refresh(client)
+    return client
