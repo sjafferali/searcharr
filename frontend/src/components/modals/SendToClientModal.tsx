@@ -1,4 +1,4 @@
-import { Download, HardDrive, ChevronRight } from 'lucide-react'
+import { Download, HardDrive, ChevronRight, AlertCircle } from 'lucide-react'
 import { Modal } from '../Modal'
 import { LoadingSpinner } from '../LoadingSpinner'
 import { StatusBadge } from '../StatusBadge'
@@ -17,6 +17,9 @@ export function SendToClientModal({ isOpen, onClose, result }: SendToClientModal
 
   const onlineClients = clients?.filter((c) => c.status === 'online') ?? []
   const offlineClients = clients?.filter((c) => c.status === 'offline') ?? []
+
+  // Check if the torrent can be sent (has either magnet link or torrent URL)
+  const canSendTorrent = result?.magnet_link || result?.torrent_url
 
   const handleSend = async (client: DownloadClientWithStatus) => {
     if (!result) return
@@ -61,8 +64,21 @@ export function SendToClientModal({ isOpen, onClose, result }: SendToClientModal
           </div>
         </div>
 
+        {/* Warning if torrent cannot be sent */}
+        {!canSendTorrent && (
+          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+            <div className="flex items-center gap-2 text-amber-400">
+              <AlertCircle className="h-5 w-5" />
+              <p className="text-sm font-medium">Cannot send to client</p>
+            </div>
+            <p className="mt-1 text-xs text-amber-400/80">
+              This torrent does not have a magnet link or torrent file URL available.
+            </p>
+          </div>
+        )}
+
         {/* Online Clients */}
-        {onlineClients.length > 0 ? (
+        {canSendTorrent && onlineClients.length > 0 ? (
           <>
             <h4 className="mb-3 text-sm font-medium text-slate-300">Select Download Client</h4>
             <div className="space-y-2">
@@ -91,15 +107,18 @@ export function SendToClientModal({ isOpen, onClose, result }: SendToClientModal
               ))}
             </div>
           </>
-        ) : (
+        ) : canSendTorrent ? (
           <div className="py-6 text-center text-slate-400">
             <HardDrive className="mx-auto mb-2 h-12 w-12 text-slate-600" />
             <p>No online download clients available</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Configure a download client in the Clients tab
+            </p>
           </div>
-        )}
+        ) : null}
 
         {/* Offline Clients */}
-        {offlineClients.length > 0 && (
+        {canSendTorrent && offlineClients.length > 0 && (
           <div className="mt-4 border-t border-slate-700/50 pt-4">
             <p className="mb-2 text-xs text-slate-500">Offline clients</p>
             {offlineClients.map((client) => (
