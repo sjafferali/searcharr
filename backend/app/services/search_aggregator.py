@@ -77,7 +77,7 @@ class SearchAggregator:
             return [], ["No instances configured"], 0
 
         # Create search tasks
-        tasks: list[asyncio.Task] = []
+        tasks: list[asyncio.Task[Any]] = []
         semaphore = asyncio.Semaphore(self.concurrent_limit)
 
         for instance in jackett_instances:
@@ -129,7 +129,9 @@ class SearchAggregator:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    async def _get_prowlarr_instances(self, instance_ids: list[int] | None) -> list[ProwlarrInstance]:
+    async def _get_prowlarr_instances(
+        self, instance_ids: list[int] | None
+    ) -> list[ProwlarrInstance]:
         """Get Prowlarr instances to search."""
         query = select(ProwlarrInstance)
         if instance_ids is not None:
@@ -284,6 +286,7 @@ class SearchAggregator:
         elif sort_by == SortBy.DATE:
             # Handle None dates by using a very old date for sorting
             from datetime import datetime
+
             min_date = datetime.min
             return sorted(
                 results,

@@ -144,7 +144,9 @@ class QBittorrentService:
             logger.exception(f"Error adding torrent via magnet: {e}")
             return False, f"Error: {str(e)}"
 
-    async def add_torrent_file(self, torrent_content: bytes, filename: str = "torrent.torrent") -> tuple[bool, str]:
+    async def add_torrent_file(
+        self, torrent_content: bytes, filename: str = "torrent.torrent"
+    ) -> tuple[bool, str]:
         """
         Add a torrent using a .torrent file.
 
@@ -207,7 +209,10 @@ class QBittorrentService:
                 try:
                     download_response = await client.get(torrent_url, follow_redirects=True)
                     if download_response.status_code != 200:
-                        return False, f"Failed to download torrent file: HTTP {download_response.status_code}"
+                        return (
+                            False,
+                            f"Failed to download torrent file: HTTP {download_response.status_code}",
+                        )
 
                     torrent_content = download_response.content
                 except Exception as e:
@@ -219,7 +224,9 @@ class QBittorrentService:
 
                 # Add the torrent file
                 url = self._get_api_url("torrents/add")
-                files = {"torrents": ("torrent.torrent", torrent_content, "application/x-bittorrent")}
+                files = {
+                    "torrents": ("torrent.torrent", torrent_content, "application/x-bittorrent")
+                }
 
                 response = await client.post(
                     url,

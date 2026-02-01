@@ -18,11 +18,13 @@ engine_options: dict[str, Any] = {
 
 # Only add connection pool settings for databases that support them (not SQLite)
 if settings.DATABASE_TYPE == "postgresql":
-    engine_options.update({
-        "pool_pre_ping": True,
-        "pool_size": 5,
-        "max_overflow": 10,
-    })
+    engine_options.update(
+        {
+            "pool_pre_ping": True,
+            "pool_size": 5,
+            "max_overflow": 10,
+        }
+    )
 
 # Create async engine
 engine = create_async_engine(

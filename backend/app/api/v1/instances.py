@@ -55,11 +55,12 @@ async def get_instance_status(
         api_key = decrypt_credential(instance.api_key)
 
         if instance_type == "jackett":
-            service = JackettService(instance.url, api_key)
+            jackett_service = JackettService(instance.url, api_key)
+            success, _, indexer_count = await jackett_service.test_connection()
         else:
-            service = ProwlarrService(instance.url, api_key)
+            prowlarr_service = ProwlarrService(instance.url, api_key)
+            success, _, indexer_count = await prowlarr_service.test_connection()
 
-        success, _, indexer_count = await service.test_connection()
         return "online" if success else "offline", indexer_count
     except Exception as e:
         logger.warning(f"Error checking status for {instance.name}: {e}")
@@ -92,7 +93,9 @@ async def list_jackett_instances(
     ]
 
 
-@router.post("/jackett", response_model=JackettInstanceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/jackett", response_model=JackettInstanceResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_jackett_instance(
     data: JackettInstanceCreate,
     db: AsyncSession = Depends(get_db),
@@ -250,7 +253,9 @@ async def list_prowlarr_instances(
     ]
 
 
-@router.post("/prowlarr", response_model=ProwlarrInstanceResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/prowlarr", response_model=ProwlarrInstanceResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_prowlarr_instance(
     data: ProwlarrInstanceCreate,
     db: AsyncSession = Depends(get_db),

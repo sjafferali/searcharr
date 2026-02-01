@@ -3,10 +3,8 @@ Tests for instance management endpoints.
 """
 
 import pytest
-from httpx import AsyncClient
-
 from app.models import JackettInstance, ProwlarrInstance
-
+from httpx import AsyncClient
 
 # =============================================================================
 # Jackett Instance Tests

@@ -42,4 +42,6 @@ class DownloadClient(BaseModel):
     password: Mapped[str] = mapped_column(Text, nullable=False)  # Encrypted
 
     def __repr__(self) -> str:
-        return f"<DownloadClient(id={self.id}, name='{self.name}', type='{self.client_type.value}')>"
+        return (
+            f"<DownloadClient(id={self.id}, name='{self.name}', type='{self.client_type.value}')>"
+        )

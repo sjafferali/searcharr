@@ -3,9 +3,8 @@ Tests for download client management endpoints.
 """
 
 import pytest
-from httpx import AsyncClient
-
 from app.models import DownloadClient
+from httpx import AsyncClient
 
 
 class TestDownloadClients:
@@ -19,9 +18,7 @@ class TestDownloadClients:
         assert response.json() == []
 
     @pytest.mark.asyncio
-    async def test_list_clients(
-        self, client: AsyncClient, download_client: DownloadClient
-    ):
+    async def test_list_clients(self, client: AsyncClient, download_client: DownloadClient):
         """Test listing download clients."""
         response = await client.get("/api/v1/clients")
         assert response.status_code == 200
@@ -88,9 +85,7 @@ class TestDownloadClients:
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_get_client(
-        self, client: AsyncClient, download_client: DownloadClient
-    ):
+    async def test_get_client(self, client: AsyncClient, download_client: DownloadClient):
         """Test getting a specific download client."""
         response = await client.get(f"/api/v1/clients/{download_client.id}")
         assert response.status_code == 200
@@ -105,9 +100,7 @@ class TestDownloadClients:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_update_client(
-        self, client: AsyncClient, download_client: DownloadClient
-    ):
+    async def test_update_client(self, client: AsyncClient, download_client: DownloadClient):
         """Test updating a download client."""
         response = await client.put(
             f"/api/v1/clients/{download_client.id}",
@@ -140,9 +133,7 @@ class TestDownloadClients:
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_delete_client(
-        self, client: AsyncClient, download_client: DownloadClient
-    ):
+    async def test_delete_client(self, client: AsyncClient, download_client: DownloadClient):
         """Test deleting a download client."""
         response = await client.delete(f"/api/v1/clients/{download_client.id}")
         assert response.status_code == 204

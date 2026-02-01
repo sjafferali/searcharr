@@ -40,7 +40,9 @@ class EncryptionService:
                 logger.info("Encryption service initialized with ENCRYPTION_KEY")
                 return
             except (ValueError, TypeError) as e:
-                logger.warning(f"Invalid ENCRYPTION_KEY format: {e}. Falling back to SECRET_KEY derivation.")
+                logger.warning(
+                    f"Invalid ENCRYPTION_KEY format: {e}. Falling back to SECRET_KEY derivation."
+                )
 
         # Fallback: derive a Fernet-compatible key from SECRET_KEY
         secret = settings.SECRET_KEY.encode()
@@ -95,7 +97,7 @@ class EncryptionService:
             decrypted = self._fernet.decrypt(ciphertext.encode())
             return decrypted.decode()
         except InvalidToken as e:
-            logger.error(f"Failed to decrypt data: invalid token")
+            logger.error("Failed to decrypt data: invalid token")
             raise ValueError("Failed to decrypt data: invalid or corrupted ciphertext") from e
 
     def is_encrypted(self, value: str) -> bool:

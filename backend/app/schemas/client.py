@@ -27,7 +27,9 @@ class DownloadClientCreate(DownloadClientBase):
 class DownloadClientUpdate(BaseSchema):
     """Schema for updating a download client. All fields are optional."""
 
-    name: str | None = Field(None, min_length=1, max_length=255, description="Display name for the client")
+    name: str | None = Field(
+        None, min_length=1, max_length=255, description="Display name for the client"
+    )
     client_type: ClientType | None = Field(None, description="Type of download client")
     url: str | None = Field(None, description="Client web interface URL")
     username: str | None = Field(None, min_length=1, description="Username for authentication")

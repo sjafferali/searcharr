@@ -193,7 +193,6 @@ class JackettService:
     def _parse_item(self, item: Any, instance_name: str) -> SearchResult | None:
         """Parse a single item from the Torznab response."""
         import hashlib
-        import xml.etree.ElementTree as ET
 
         # Torznab namespace for extended attributes
         torznab_ns = {"torznab": "http://torznab.com/schemas/2015/feed"}

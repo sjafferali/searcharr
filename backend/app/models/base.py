@@ -26,7 +26,7 @@ class TimestampMixin:
     )
 
 
-class BaseModel(Base, TimestampMixin):
+class BaseModel(Base, TimestampMixin):  # type: ignore[misc]
     """Base model class with id and timestamp fields."""
 
     __abstract__ = True

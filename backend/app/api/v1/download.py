@@ -79,4 +79,4 @@ async def send_to_client(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to add torrent: {str(e)}",
-        )
+        ) from e

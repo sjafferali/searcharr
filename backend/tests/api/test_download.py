@@ -3,9 +3,8 @@ Tests for download endpoints.
 """
 
 import pytest
-from httpx import AsyncClient
-
 from app.models import DownloadClient
+from httpx import AsyncClient
 
 
 class TestDownload:
@@ -37,9 +36,7 @@ class TestDownload:
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_download_with_magnet(
-        self, client: AsyncClient, download_client: DownloadClient
-    ):
+    async def test_download_with_magnet(self, client: AsyncClient, download_client: DownloadClient):
         """Test sending magnet link to client."""
         response = await client.post(
             "/api/v1/download",

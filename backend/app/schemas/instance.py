@@ -2,10 +2,9 @@
 Pydantic schemas for Jackett and Prowlarr instance management.
 """
 
-from pydantic import Field, HttpUrl
+from pydantic import Field
 
 from app.schemas.base import BaseSchema, TimestampSchema
-
 
 # =============================================================================
 # Jackett Instance Schemas
@@ -15,7 +14,9 @@ from app.schemas.base import BaseSchema, TimestampSchema
 class JackettInstanceBase(BaseSchema):
     """Base schema for Jackett instance data."""
 
-    name: str = Field(..., min_length=1, max_length=255, description="Display name for the instance")
+    name: str = Field(
+        ..., min_length=1, max_length=255, description="Display name for the instance"
+    )
     url: str = Field(..., description="Jackett server URL (e.g., http://192.168.1.100:9117)")
     api_key: str = Field(..., min_length=1, description="Jackett API key")
 
@@ -29,7 +30,9 @@ class JackettInstanceCreate(JackettInstanceBase):
 class JackettInstanceUpdate(BaseSchema):
     """Schema for updating a Jackett instance. All fields are optional."""
 
-    name: str | None = Field(None, min_length=1, max_length=255, description="Display name for the instance")
+    name: str | None = Field(
+        None, min_length=1, max_length=255, description="Display name for the instance"
+    )
     url: str | None = Field(None, description="Jackett server URL")
     api_key: str | None = Field(None, min_length=1, description="Jackett API key")
 
@@ -63,7 +66,9 @@ class JackettInstanceWithStatus(JackettInstanceResponse):
 class ProwlarrInstanceBase(BaseSchema):
     """Base schema for Prowlarr instance data."""
 
-    name: str = Field(..., min_length=1, max_length=255, description="Display name for the instance")
+    name: str = Field(
+        ..., min_length=1, max_length=255, description="Display name for the instance"
+    )
     url: str = Field(..., description="Prowlarr server URL (e.g., http://192.168.1.100:9696)")
     api_key: str = Field(..., min_length=1, description="Prowlarr API key")
 
@@ -77,7 +82,9 @@ class ProwlarrInstanceCreate(ProwlarrInstanceBase):
 class ProwlarrInstanceUpdate(BaseSchema):
     """Schema for updating a Prowlarr instance. All fields are optional."""
 
-    name: str | None = Field(None, min_length=1, max_length=255, description="Display name for the instance")
+    name: str | None = Field(
+        None, min_length=1, max_length=255, description="Display name for the instance"
+    )
     url: str | None = Field(None, description="Prowlarr server URL")
     api_key: str | None = Field(None, min_length=1, description="Prowlarr API key")
 

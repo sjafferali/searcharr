@@ -3,9 +3,7 @@ Tests for encryption service.
 """
 
 import pytest
-
 from app.services.encryption import (
-    EncryptionService,
     decrypt_credential,
     encrypt_credential,
     encryption_service,

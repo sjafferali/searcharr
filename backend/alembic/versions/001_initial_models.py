@@ -45,9 +45,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_jackett_instances_name"), "jackett_instances", ["name"], unique=False
-    )
+    op.create_index(op.f("ix_jackett_instances_name"), "jackett_instances", ["name"], unique=False)
 
     # Create prowlarr_instances table
     op.create_table(
@@ -101,9 +99,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_download_clients_name"), "download_clients", ["name"], unique=False
-    )
+    op.create_index(op.f("ix_download_clients_name"), "download_clients", ["name"], unique=False)
 
 
 def downgrade() -> None:

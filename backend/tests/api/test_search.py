@@ -3,9 +3,8 @@ Tests for search endpoints.
 """
 
 import pytest
-from httpx import AsyncClient
-
 from app.models import JackettInstance, ProwlarrInstance
+from httpx import AsyncClient
 
 
 class TestSearch:
