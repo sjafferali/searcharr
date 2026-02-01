@@ -37,6 +37,7 @@ export function EditClientModal({ isOpen, onClose, client }: EditClientModalProp
         client_type: client.client_type,
         username: '',
         password: '',
+        category: client.category ?? '',
       })
     }
   }, [client, reset])
@@ -52,6 +53,10 @@ export function EditClientModal({ isOpen, onClose, client }: EditClientModalProp
       updateData.client_type = data.client_type
     if (data.username) updateData.username = data.username
     if (data.password) updateData.password = data.password
+    // Handle category: allow setting to empty string (to clear) or new value
+    const newCategory = data.category || null
+    const currentCategory = client.category || null
+    if (newCategory !== currentCategory) updateData.category = newCategory
 
     // Skip if no changes
     if (Object.keys(updateData).length === 0) {
@@ -164,6 +169,21 @@ export function EditClientModal({ isOpen, onClose, client }: EditClientModalProp
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-300">
+            Category <span className="text-xs text-slate-500">(optional)</span>
+          </label>
+          <input
+            type="text"
+            placeholder="e.g., Movies, TV Shows"
+            {...register('category')}
+            className="input"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            All torrents sent to this client will be assigned this category
+          </p>
         </div>
       </form>
     </Modal>

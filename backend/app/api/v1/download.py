@@ -52,10 +52,14 @@ async def send_to_client(
 
         if data.magnet_link:
             # Add via magnet link
-            success, message = await service.add_torrent_magnet(data.magnet_link)
+            success, message = await service.add_torrent_magnet(
+                data.magnet_link, category=client.category
+            )
         elif data.torrent_url:
             # Add via torrent URL
-            success, message = await service.add_torrent_url(data.torrent_url)
+            success, message = await service.add_torrent_url(
+                data.torrent_url, category=client.category
+            )
         else:
             # This shouldn't happen due to schema validation, but handle it anyway
             raise HTTPException(

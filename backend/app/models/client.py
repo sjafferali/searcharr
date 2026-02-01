@@ -40,6 +40,9 @@ class DownloadClient(BaseModel):
     url: Mapped[str] = mapped_column(String(500), nullable=False)
     username: Mapped[str] = mapped_column(Text, nullable=False)  # Encrypted
     password: Mapped[str] = mapped_column(Text, nullable=False)  # Encrypted
+    category: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, default=None
+    )  # Category for torrents added via this client
 
     def __repr__(self) -> str:
         return (

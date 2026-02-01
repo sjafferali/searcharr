@@ -13,6 +13,7 @@ import {
   FileDown,
   Download,
   Bookmark,
+  ExternalLink,
 } from 'lucide-react'
 import { LoadingSpinner, SendToClientModal } from '../components'
 import { cn, formatDate } from '../utils'
@@ -375,9 +376,22 @@ export function SearchPage() {
                             />
                           </button>
                           <div>
-                            <p className="line-clamp-1 text-sm font-medium text-slate-200 transition-colors group-hover:text-cyan-300">
-                              {result.title}
-                            </p>
+                            {result.info_url ? (
+                              <a
+                                href={result.info_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group/link inline-flex items-center gap-1.5 text-sm font-medium text-slate-200 transition-colors hover:text-cyan-300"
+                                title="View on indexer website"
+                              >
+                                <span className="line-clamp-1">{result.title}</span>
+                                <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 opacity-0 transition-opacity group-hover/link:opacity-100" />
+                              </a>
+                            ) : (
+                              <p className="line-clamp-1 text-sm font-medium text-slate-200">
+                                {result.title}
+                              </p>
+                            )}
                             <div className="mt-1 flex items-center gap-2">
                               <span className="rounded bg-slate-700/50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
                                 {result.category}

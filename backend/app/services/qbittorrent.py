@@ -105,12 +105,15 @@ class QBittorrentService:
             logger.exception("Error testing qBittorrent connection")
             return False, f"Connection error: {str(e)}"
 
-    async def add_torrent_magnet(self, magnet_link: str) -> tuple[bool, str]:
+    async def add_torrent_magnet(
+        self, magnet_link: str, category: str | None = None
+    ) -> tuple[bool, str]:
         """
         Add a torrent using a magnet link.
 
         Args:
             magnet_link: The magnet URI to add
+            category: Optional category to assign to the torrent
 
         Returns:
             Tuple of (success, message)
@@ -122,9 +125,12 @@ class QBittorrentService:
                     return False, "Authentication failed"
 
                 url = self._get_api_url("torrents/add")
+                data: dict[str, str] = {"urls": magnet_link}
+                if category:
+                    data["category"] = category
                 response = await client.post(
                     url,
-                    data={"urls": magnet_link},
+                    data=data,
                     cookies={"SID": self._session_cookie} if self._session_cookie else None,
                 )
 
@@ -146,7 +152,10 @@ class QBittorrentService:
             return False, f"Error: {str(e)}"
 
     async def add_torrent_file(
-        self, torrent_content: bytes, filename: str = "torrent.torrent"
+        self,
+        torrent_content: bytes,
+        filename: str = "torrent.torrent",
+        category: str | None = None,
     ) -> tuple[bool, str]:
         """
         Add a torrent using a .torrent file.
@@ -154,6 +163,7 @@ class QBittorrentService:
         Args:
             torrent_content: The content of the .torrent file
             filename: The filename for the upload
+            category: Optional category to assign to the torrent
 
         Returns:
             Tuple of (success, message)
@@ -168,10 +178,14 @@ class QBittorrentService:
 
                 # Create multipart form data
                 files = {"torrents": (filename, torrent_content, "application/x-bittorrent")}
+                data: dict[str, str] = {}
+                if category:
+                    data["category"] = category
 
                 response = await client.post(
                     url,
                     files=files,
+                    data=data if data else None,
                     cookies={"SID": self._session_cookie} if self._session_cookie else None,
                 )
 
@@ -191,7 +205,9 @@ class QBittorrentService:
             logger.exception(f"Error adding torrent file: {e}")
             return False, f"Error: {str(e)}"
 
-    async def add_torrent_url(self, torrent_url: str) -> tuple[bool, str]:
+    async def add_torrent_url(
+        self, torrent_url: str, category: str | None = None
+    ) -> tuple[bool, str]:
         """
         Add a torrent by downloading from a URL.
 
@@ -200,6 +216,7 @@ class QBittorrentService:
 
         Args:
             torrent_url: URL to the .torrent file
+            category: Optional category to assign to the torrent
 
         Returns:
             Tuple of (success, message)
@@ -228,10 +245,14 @@ class QBittorrentService:
                 files = {
                     "torrents": ("torrent.torrent", torrent_content, "application/x-bittorrent")
                 }
+                data: dict[str, str] = {}
+                if category:
+                    data["category"] = category
 
                 response = await client.post(
                     url,
                     files=files,
+                    data=data if data else None,
                     cookies={"SID": self._session_cookie} if self._session_cookie else None,
                 )
 

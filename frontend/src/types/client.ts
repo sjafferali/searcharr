@@ -7,6 +7,7 @@ export interface DownloadClient {
   name: string
   client_type: ClientType
   url: string
+  category: string | null
   created_at: string
   updated_at: string
 }
@@ -21,6 +22,7 @@ export interface CreateDownloadClient {
   url: string
   username: string
   password: string
+  category?: string | null
 }
 
 export interface UpdateDownloadClient {
@@ -29,6 +31,7 @@ export interface UpdateDownloadClient {
   url?: string
   username?: string
   password?: string
+  category?: string | null
 }
 
 export interface DownloadRequest {

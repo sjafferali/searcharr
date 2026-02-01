@@ -16,6 +16,11 @@ class DownloadClientBase(BaseSchema):
     url: str = Field(..., description="Client web interface URL (e.g., http://192.168.1.100:8080)")
     username: str = Field(..., min_length=1, description="Username for authentication")
     password: str = Field(..., min_length=1, description="Password for authentication")
+    category: str | None = Field(
+        None,
+        max_length=255,
+        description="Category to assign to torrents added via this client",
+    )
 
 
 class DownloadClientCreate(DownloadClientBase):
@@ -34,6 +39,11 @@ class DownloadClientUpdate(BaseSchema):
     url: str | None = Field(None, description="Client web interface URL")
     username: str | None = Field(None, min_length=1, description="Username for authentication")
     password: str | None = Field(None, min_length=1, description="Password for authentication")
+    category: str | None = Field(
+        None,
+        max_length=255,
+        description="Category to assign to torrents added via this client",
+    )
 
 
 class DownloadClientResponse(TimestampSchema):
@@ -43,6 +53,7 @@ class DownloadClientResponse(TimestampSchema):
     name: str
     client_type: ClientType
     url: str
+    category: str | None = None
     # Note: username and password are NOT returned for security
 
 

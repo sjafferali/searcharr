@@ -146,6 +146,21 @@ export function AddClientModal({ isOpen, onClose }: AddClientModalProps) {
             <p className="mt-1 text-xs text-red-400">{errors.password.message}</p>
           )}
         </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-300">
+            Category <span className="text-xs text-slate-500">(optional)</span>
+          </label>
+          <input
+            type="text"
+            placeholder="e.g., Movies, TV Shows"
+            {...register('category')}
+            className="input"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            All torrents sent to this client will be assigned this category
+          </p>
+        </div>
       </form>
     </Modal>
   )
