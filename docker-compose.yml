@@ -1,49 +1,32 @@
-version: '3.8'
-
 services:
-  webapp:
-    # Replace with your Docker image name
-    image: your-username/your-app-name:latest
-    container_name: webapp
+  searcharr:
+    image: searcharr:latest
+    container_name: searcharr
     ports:
       - "8080:8080"
     environment:
-      # Database settings
       - DATABASE_TYPE=postgresql
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
-      - POSTGRES_USER=webapp_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change_me_in_production}
-      - POSTGRES_DB=webapp_db
-
-      # Application settings
-      - ENVIRONMENT=${ENVIRONMENT:-production}
-      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
-      - WORKERS=${WORKERS:-2}
-
-      # CORS settings
-      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:8080"]}
+      - POSTGRES_USER=searcharr
+      - POSTGRES_PASSWORD=searcharr
+      - POSTGRES_DB=searcharr
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-    volumes:
-      - webapp_logs:/app/logs
-      - webapp_data:/app/data
 
   postgres:
     image: postgres:15-alpine
-    container_name: webapp_postgres
+    container_name: searcharr_postgres
     environment:
-      - POSTGRES_USER=webapp_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change_me_in_production}
-      - POSTGRES_DB=webapp_db
+      - POSTGRES_USER=searcharr
+      - POSTGRES_PASSWORD=searcharr
+      - POSTGRES_DB=searcharr
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U webapp_user -d webapp_db"]
+      test: ["CMD-SHELL", "pg_isready -U searcharr -d searcharr"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -51,5 +34,3 @@ services:
 
 volumes:
   postgres_data:
-  webapp_logs:
-  webapp_data:

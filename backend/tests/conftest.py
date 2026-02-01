@@ -1,5 +1,8 @@
 """
 Pytest configuration and fixtures.
+
+Note: Environment variables for testing (DATABASE_TYPE, SQLITE_DATABASE_PATH, etc.)
+are set via pytest-env in pyproject.toml [tool.pytest.ini_options].
 """
 
 import asyncio
@@ -7,18 +10,12 @@ from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from app.config import settings
 from app.core.database import Base, get_db
 from app.main import app
 from app.models import ClientType, DownloadClient, JackettInstance, ProwlarrInstance
 from app.services import encrypt_credential
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
-# Override settings for testing
-settings.TESTING = True
-settings.DATABASE_TYPE = "sqlite"
-settings.SQLITE_DATABASE_PATH = ":memory:"
 
 # Create test engine
 test_engine = create_async_engine(

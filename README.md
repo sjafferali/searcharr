@@ -1,165 +1,179 @@
-# Python Web App Template
+# Searcharr
 
-A production-ready template for building modern web applications with Python (FastAPI) backend and React (Vite) frontend, all containerized with Docker.
+A unified torrent search aggregator that consolidates search results from multiple indexer management tools (Jackett and Prowlarr) into a single interface. Search across all configured indexers simultaneously and send selected torrents directly to your preferred download clients.
 
 ## Features
 
-### Backend (Python/FastAPI)
-- **FastAPI** framework with async support
-- **SQLAlchemy** ORM with PostgreSQL and SQLite support
-- **Alembic** database migrations (auto-run on startup)
-- **Poetry** for dependency management
-- **JWT authentication** ready to implement
-- **Pydantic** for data validation
-- **Structured logging** with structlog
-- **Health check endpoints**
-- **CORS configuration**
-- **Rate limiting** support
-- **Environment-based configuration**
+### Unified Search
+- Single search bar queries all configured Jackett and Prowlarr instances
+- Category filtering (Movies, TV, Music, Software, Games, Books, Anime, Other)
+- Real-time search with loading state indicators
+- Results aggregated from all sources with source attribution
 
-### Frontend (React/Vite)
-- **React 18** with TypeScript
-- **Vite** for fast development and building
-- **React Query** for server state management
-- **React Router** for navigation
-- **Tailwind CSS** for styling
-- **Axios** for API calls
-- **React Hook Form** for forms
-- **Hot Module Replacement** for development
-- **ESLint** and **Prettier** configured
+### Advanced Filtering & Sorting
+- Filter by minimum seeders
+- Filter by maximum file size
+- Sort by Seeders, Size, Date, or Name (ascending/descending)
+- Select which instances to include in search
 
-### DevOps & CI/CD
-- **Single Docker image** containing both frontend and backend
-- **GitHub Actions** CI/CD pipeline
-- **Automated tests** on every commit
-- **Docker Hub** integration
-- **Local CI script** that mirrors GitHub Actions
-- **Auto-fixing** for common linting issues
-- **Multi-stage Docker builds** for optimized images
-- **nginx** reverse proxy included
-- **Supervisor** for process management
+### Search Results
+Each result displays:
+- Title with category badge and indexer source
+- Source instance name
+- File size
+- Seeders/Leechers count
+- Upload date
+- Quick actions (Bookmark, Copy Magnet, Download .torrent, Send to Client)
 
-## Quick Start
+### Instance Management
+Configure and manage multiple Jackett and Prowlarr instances:
+- Connection status monitoring (online/offline)
+- Indexer count display
+- Test connection functionality
 
-### Prerequisites
-- Docker and Docker Compose
-- Python 3.11+ (for local development)
-- Node.js 20+ (for local development)
-- Poetry (for Python dependency management)
+### Download Client Integration
+Send torrents directly to your download clients:
+- **Supported**: qBittorrent
+- Client status monitoring
 
-### Using Docker Compose (Recommended)
+## Quick Start with Docker Compose
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/your-app-name.git
-cd your-app-name
+git clone https://github.com/yourusername/searcharr.git
+cd searcharr
 ```
 
-2. Copy the environment file:
+2. Build the Docker image:
 ```bash
-cp .env.example .env
-# Edit .env with your configuration
+docker build -t searcharr:latest .
 ```
 
-3. Build and run with Docker Compose:
+3. Start the application:
 ```bash
-docker-compose up --build
+docker-compose up -d
 ```
 
 The application will be available at:
-- Full application: http://localhost:8080
-- API documentation: http://localhost:8080/api/docs
-- API health check: http://localhost:8080/api/health
+- **Web UI**: http://localhost:8080
+- **API Documentation**: http://localhost:8080/api/docs
+- **Health Check**: http://localhost:8080/api/health
 
-### Local Development
+## Docker Compose Example
 
-#### Backend Setup
+```yaml
+services:
+  searcharr:
+    image: searcharr:latest
+    container_name: searcharr
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_TYPE=postgresql
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=searcharr
+      - POSTGRES_PASSWORD=searcharr
+      - POSTGRES_DB=searcharr
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
 
-1. Install Poetry:
-```bash
-curl -sSL https://install.python-poetry.org | python3 -
+  postgres:
+    image: postgres:15-alpine
+    container_name: searcharr_postgres
+    environment:
+      - POSTGRES_USER=searcharr
+      - POSTGRES_PASSWORD=searcharr
+      - POSTGRES_DB=searcharr
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U searcharr -d searcharr"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
 ```
 
-2. Install backend dependencies:
+## Environment Variables
+
+All environment variables are optional and have sensible defaults.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_TYPE` | `postgresql` | Database type (`sqlite` or `postgresql`) |
+| `POSTGRES_HOST` | `localhost` | PostgreSQL server host |
+| `POSTGRES_PORT` | `5432` | PostgreSQL server port |
+| `POSTGRES_USER` | `searcharr` | PostgreSQL username |
+| `POSTGRES_PASSWORD` | `searcharr` | PostgreSQL password |
+| `POSTGRES_DB` | `searcharr` | PostgreSQL database name |
+| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+
+For local development with SQLite:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_TYPE` | `sqlite` | Set to `sqlite` for local file-based database |
+| `SQLITE_DATABASE_PATH` | `./searcharr.db` | SQLite database file path |
+
+## Local Development
+
+### Prerequisites
+- Python 3.11+
+- Node.js 20+
+- Poetry
+
+### Backend Setup
+
 ```bash
+# Install dependencies
 poetry install
+
+# Start the backend (uses SQLite by default)
+DATABASE_TYPE=sqlite poetry run uvicorn backend.app.main:app --reload --port 8000
 ```
 
-3. Run database migrations:
-```bash
-cd backend
-alembic upgrade head
-```
+### Frontend Setup
 
-4. Start the backend:
-```bash
-poetry run uvicorn backend.app.main:app --reload --port 8000
-```
-
-#### Frontend Setup
-
-1. Install frontend dependencies:
 ```bash
 cd frontend
 npm install
-```
-
-2. Start the frontend development server:
-```bash
 npm run dev
 ```
 
 The frontend will be available at http://localhost:5173
 
-### Development with Docker Compose
+## API Endpoints
 
-For development with hot-reloading:
+### Health
+- `GET /api/health` - Basic health check
+- `GET /api/health/ready` - Readiness check with database connectivity
 
-```bash
-docker-compose -f docker-compose.dev.yml up
-```
+### Instances (v1)
+- `GET /api/v1/instances` - List all instances
+- `POST /api/v1/instances/jackett` - Add Jackett instance
+- `POST /api/v1/instances/prowlarr` - Add Prowlarr instance
+- `PUT /api/v1/instances/{type}/{id}` - Update instance
+- `DELETE /api/v1/instances/{type}/{id}` - Delete instance
+- `POST /api/v1/instances/{type}/{id}/test` - Test instance connection
 
-This will:
-- Run the backend with auto-reload at http://localhost:8000
-- Run the frontend with HMR at http://localhost:5173
-- Start PostgreSQL database
-- Start Adminer at http://localhost:8081 for database management
+### Clients (v1)
+- `GET /api/v1/clients` - List all download clients
+- `POST /api/v1/clients` - Add download client
+- `PUT /api/v1/clients/{id}` - Update client
+- `DELETE /api/v1/clients/{id}` - Delete client
+- `POST /api/v1/clients/{id}/test` - Test client connection
 
-## Running Tests
+### Search (v1)
+- `POST /api/v1/search` - Search across all configured instances
 
-### Local CI Checks
-
-Run all CI checks locally (tests, linting, type checking):
-
-```bash
-./scripts/run_ci_checks.sh
-```
-
-Options:
-- `--skip-tests`: Skip running tests
-- `--skip-lint`: Skip linting checks
-- `--include-docker`: Include Docker build test
-- `--no-auto-fix`: Disable automatic fixes
-- `--frontend-only`: Run only frontend checks
-- `--backend-only`: Run only backend checks
-- `--postgres`: Use PostgreSQL for tests (requires Docker)
-
-### Backend Tests
-
-```bash
-poetry run pytest
-# With coverage
-poetry run pytest --cov=backend/app --cov-report=html
-```
-
-### Frontend Tests
-
-```bash
-cd frontend
-npm run type-check
-npm run lint
-npm run build
-```
+### Download (v1)
+- `POST /api/v1/download` - Send torrent to download client
 
 ## Project Structure
 
@@ -167,156 +181,26 @@ npm run build
 .
 ├── backend/
 │   ├── app/
-│   │   ├── api/          # API endpoints
-│   │   ├── core/         # Core functionality (database, security)
-│   │   ├── models/       # SQLAlchemy models
-│   │   ├── services/     # Business logic
-│   │   ├── utils/        # Utility functions
-│   │   ├── config.py     # Configuration management
-│   │   └── main.py       # FastAPI application
-│   ├── tests/            # Backend tests
-│   └── alembic/          # Database migrations
+│   │   ├── api/           # API endpoints
+│   │   ├── core/          # Database configuration
+│   │   ├── models/        # SQLAlchemy models
+│   │   ├── schemas/       # Pydantic schemas
+│   │   ├── services/      # Business logic (Jackett, Prowlarr, qBittorrent)
+│   │   ├── config.py      # Configuration
+│   │   └── main.py        # FastAPI application
+│   └── tests/             # Backend tests
 ├── frontend/
 │   ├── src/
-│   │   ├── components/   # React components
-│   │   ├── pages/        # Page components
-│   │   ├── services/     # API services
-│   │   ├── hooks/        # Custom hooks
-│   │   ├── utils/        # Utility functions
-│   │   ├── App.tsx       # Main application component
-│   │   └── main.tsx      # Application entry point
-│   └── public/           # Static assets
-├── deployment/
-│   ├── nginx/            # nginx configuration
-│   ├── supervisor/       # Supervisor configuration
-│   └── scripts/          # Deployment scripts
-├── scripts/
-│   └── run_ci_checks.sh  # Local CI script
-├── .github/
-│   └── workflows/        # GitHub Actions workflows
-├── docker-compose.yml     # Production Docker Compose
-├── docker-compose.dev.yml # Development Docker Compose
+│   │   ├── components/    # React components
+│   │   ├── pages/         # Page components
+│   │   └── services/      # API services
+│   └── public/            # Static assets
+├── deployment/            # nginx, supervisor configs
+├── docker-compose.yml     # Docker Compose configuration
 ├── Dockerfile             # Multi-stage Dockerfile
-├── pyproject.toml         # Python dependencies and configuration
-└── README.md              # This file
+└── pyproject.toml         # Python dependencies
 ```
-
-## GitHub Actions Setup
-
-To enable CI/CD with GitHub Actions:
-
-1. **Set up repository variables** in GitHub Settings → Secrets and variables → Actions:
-   - `DOCKER_IMAGE_NAME`: Your Docker Hub image name (e.g., `yourusername/your-app-name`)
-
-2. **Set up secrets**:
-   - `DOCKERHUB_USERNAME`: Your Docker Hub username
-   - `DOCKERHUB_TOKEN`: Your Docker Hub access token
-   - `CODECOV_TOKEN` (optional): For coverage reports
-   - `WEBHOOK_URL` (optional): For deployment notifications
-   - `WEBHOOK_SECRET` (optional): Webhook secret
-
-The CI/CD pipeline will:
-- Run all tests on every push
-- Check code quality with linters
-- Build Docker images on main branch
-- Push to Docker Hub with proper tags
-- Support semantic versioning with git tags
-
-## Configuration
-
-### Environment Variables
-
-Key environment variables (see `.env.example` for all options):
-
-- `DATABASE_TYPE`: `sqlite` or `postgresql`
-- `SECRET_KEY`: Secret key for JWT tokens (generate a secure one for production)
-- `POSTGRES_*`: PostgreSQL connection settings
-- `CORS_ORIGINS`: Allowed CORS origins
-- `RATE_LIMIT_*`: Rate limiting configuration
-
-### Database
-
-The template supports both PostgreSQL and SQLite:
-- PostgreSQL for production
-- SQLite for development/testing
-
-Migrations run automatically on container startup.
-
-### Adding New Features
-
-#### Backend Endpoint
-1. Create a new router in `backend/app/api/v1/endpoints/`
-2. Add the router to `backend/app/api/v1/router.py`
-3. Create models in `backend/app/models/`
-4. Create services in `backend/app/services/`
-5. Add tests in `backend/tests/`
-
-#### Frontend Page
-1. Create components in `frontend/src/components/`
-2. Create pages in `frontend/src/pages/`
-3. Add routes to your router configuration
-4. Create API services in `frontend/src/services/`
-
-## Production Deployment
-
-### Using Docker
-
-Build the production image:
-
-```bash
-docker build -t your-app-name:latest .
-```
-
-Run in production:
-
-```bash
-docker run -d \
-  -p 8080:8080 \
-  --env-file .env \
-  --name your-app-name \
-  your-app-name:latest
-```
-
-### Using Docker Compose
-
-1. Update the image name in `docker-compose.yml`
-2. Set production environment variables
-3. Run:
-
-```bash
-docker-compose up -d
-```
-
-### Health Checks
-
-The application provides health check endpoints:
-- `/api/health`: Basic health check
-- `/api/health/ready`: Readiness check (includes database connectivity)
-
-## Security Considerations
-
-- Always use strong `SECRET_KEY` in production
-- Enable HTTPS in production (configure nginx)
-- Keep dependencies updated
-- Use environment variables for sensitive data
-- Enable rate limiting
-- Configure CORS properly
-- Use PostgreSQL in production (not SQLite)
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting: `./scripts/run_ci_checks.sh`
-5. Commit your changes
-6. Push to your fork
-7. Create a pull request
 
 ## License
 
-MIT License - feel free to use this template for your projects!
-
-## Support
-
-For issues and questions, please open an issue on GitHub.
+MIT License - See [LICENSE](LICENSE) for details.

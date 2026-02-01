@@ -21,7 +21,6 @@ async def health_check() -> dict[str, str]:
     """
     return {
         "status": "healthy",
-        "environment": settings.ENVIRONMENT,
         "version": settings.APP_VERSION,
     }
 
@@ -40,7 +39,6 @@ async def readiness_check(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
         return {
             "status": "ready",
             "database": "connected",
-            "environment": settings.ENVIRONMENT,
             "version": settings.APP_VERSION,
         }
     except Exception as e:
@@ -48,6 +46,5 @@ async def readiness_check(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
             "status": "not_ready",
             "database": "disconnected",
             "error": str(e),
-            "environment": settings.ENVIRONMENT,
             "version": settings.APP_VERSION,
         }

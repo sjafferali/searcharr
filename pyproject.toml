@@ -136,6 +136,11 @@ markers = [
     "integration: marks integration tests",
     "e2e: marks end-to-end tests",
 ]
+env = [
+    "DATABASE_TYPE=sqlite",
+    "SQLITE_DATABASE_PATH=:memory:",
+    "TESTING=true",
+]
 
 [tool.coverage.run]
 source = ["backend/app"]

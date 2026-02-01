@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from app.api.health import router as health_router
 from app.api.v1.router import api_router as v1_router
 from app.config import settings
-from app.core.database import Base, engine
+from app.core.database import Base, get_engine
 
 # Import models so they are registered with SQLAlchemy Base
 from app.models import DownloadClient, JackettInstance, ProwlarrInstance  # noqa: F401
@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting up application...")
 
     # Create database tables
+    engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -50,16 +51,16 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description=settings.APP_DESCRIPTION,
-    docs_url="/api/docs" if not settings.PRODUCTION else None,
-    redoc_url="/api/redoc" if not settings.PRODUCTION else None,
-    openapi_url="/api/openapi.json" if not settings.PRODUCTION else None,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
     lifespan=lifespan,
 )
 
-# Configure CORS
+# Configure CORS - allow all origins for simplicity
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

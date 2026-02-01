@@ -10,9 +10,10 @@ from urllib.parse import urljoin
 
 import httpx
 
-from app.config import settings
-
 logger = logging.getLogger(__name__)
+
+# Default timeout for qBittorrent API requests (seconds)
+QBITTORRENT_TIMEOUT = 10
 
 
 class QBittorrentService:
@@ -30,7 +31,7 @@ class QBittorrentService:
         self.base_url = base_url.rstrip("/")
         self.username = username
         self.password = password
-        self.timeout = settings.QBITTORRENT_TIMEOUT
+        self.timeout = QBITTORRENT_TIMEOUT
         self._session_cookie: str | None = None
 
     def _get_api_url(self, endpoint: str) -> str:

@@ -13,10 +13,12 @@ from urllib.parse import urljoin
 
 import httpx
 
-from app.config import settings
 from app.schemas.search import CATEGORY_MAPPINGS, SearchCategory, SearchResult
 
 logger = logging.getLogger(__name__)
+
+# Default timeout for Prowlarr API requests (seconds)
+PROWLARR_TIMEOUT = 30
 
 
 class ProwlarrService:
@@ -32,7 +34,7 @@ class ProwlarrService:
         """
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
-        self.timeout = settings.PROWLARR_TIMEOUT
+        self.timeout = PROWLARR_TIMEOUT
 
     def _get_headers(self) -> dict[str, str]:
         """Get headers for API requests."""

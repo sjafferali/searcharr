@@ -13,7 +13,6 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.config import settings
 from app.models import JackettInstance, ProwlarrInstance
 from app.schemas.search import SearchCategory, SearchResult, SortBy, SortOrder
 from app.services.encryption import decrypt_credential
@@ -21,6 +20,9 @@ from app.services.jackett import JackettService
 from app.services.prowlarr import ProwlarrService
 
 logger = logging.getLogger(__name__)
+
+# Maximum concurrent search requests
+SEARCH_CONCURRENT_LIMIT = 10
 
 
 class SearchAggregator:
@@ -38,7 +40,7 @@ class SearchAggregator:
             db: Database session for fetching instance configurations
         """
         self.db = db
-        self.concurrent_limit = settings.SEARCH_CONCURRENT_LIMIT
+        self.concurrent_limit = SEARCH_CONCURRENT_LIMIT
 
     async def search(
         self,

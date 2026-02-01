@@ -12,10 +12,12 @@ from urllib.parse import urljoin
 
 import httpx
 
-from app.config import settings
 from app.schemas.search import CATEGORY_MAPPINGS, SearchCategory, SearchResult
 
 logger = logging.getLogger(__name__)
+
+# Default timeout for Jackett API requests (seconds)
+JACKETT_TIMEOUT = 30
 
 
 class JackettService:
@@ -31,7 +33,7 @@ class JackettService:
         """
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
-        self.timeout = settings.JACKETT_TIMEOUT
+        self.timeout = JACKETT_TIMEOUT
 
     def _get_api_url(self, endpoint: str) -> str:
         """Build the full API URL for an endpoint."""

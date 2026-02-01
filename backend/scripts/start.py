@@ -3,17 +3,15 @@ Start the application server.
 """
 
 import uvicorn
-from app.config import settings
 
 
 def main():
     """Start the FastAPI application."""
     uvicorn.run(
         "app.main:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=settings.DEBUG,
-        workers=settings.WORKERS if not settings.DEBUG else 1,
+        host="0.0.0.0",
+        port=8000,
+        workers=1,
     )
 
 
