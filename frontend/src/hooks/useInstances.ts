@@ -8,17 +8,21 @@ import {
 } from '../types'
 import toast from 'react-hot-toast'
 
-// Query keys
+// Query keys - using base array to avoid temporal dead zone issues
+const instancesBase = ['instances'] as const
+const jackettBase = [...instancesBase, 'jackett'] as const
+const prowlarrBase = [...instancesBase, 'prowlarr'] as const
+
 export const instanceKeys = {
-  all: ['instances'] as const,
-  status: () => [...instanceKeys.all, 'status'] as const,
+  all: instancesBase,
+  status: () => [...instancesBase, 'status'] as const,
   jackett: {
-    all: [...instanceKeys.all, 'jackett'] as const,
-    detail: (id: number) => [...instanceKeys.jackett.all, id] as const,
+    all: jackettBase,
+    detail: (id: number) => [...jackettBase, id] as const,
   },
   prowlarr: {
-    all: [...instanceKeys.all, 'prowlarr'] as const,
-    detail: (id: number) => [...instanceKeys.prowlarr.all, id] as const,
+    all: prowlarrBase,
+    detail: (id: number) => [...prowlarrBase, id] as const,
   },
 }
 
