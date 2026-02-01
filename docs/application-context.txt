@@ -1,0 +1,277 @@
+================================================================================
+                         SEARCHARR - APPLICATION CONTEXT
+                           Unified Torrent Search Aggregator
+================================================================================
+
+1. OVERVIEW
+--------------------------------------------------------------------------------
+
+Searcharr is a unified torrent search aggregator that consolidates search
+results from multiple indexer management tools (Jackett and Prowlarr) into a
+single interface. It enables users to search across all configured indexers
+simultaneously and send selected torrents directly to their preferred download
+clients.
+
+Purpose: Simplify the torrent discovery workflow by providing a centralized
+search interface that queries multiple sources and integrates with popular
+torrent download clients.
+
+Target Users: Users who manage multiple Jackett/Prowlarr instances and want a
+unified interface to search and manage torrent downloads.
+
+
+2. CORE FEATURES
+--------------------------------------------------------------------------------
+
+2.1 UNIFIED SEARCH
+------------------
+- Single search bar queries all configured Jackett and Prowlarr instances
+- Category filtering with predefined categories:
+  * All, Movies, TV, Music, Software, Games, Books, Anime, Other
+- Real-time search with loading state indicators
+- Results aggregated from all sources with source attribution
+
+2.2 ADVANCED FILTERING & SORTING
+--------------------------------
+- Filter by minimum seeders (numeric threshold)
+- Filter by maximum file size (e.g., "10GB")
+- Sort options: Seeders, Size, Date, Name
+- Sort order: Ascending or Descending
+- Source selection: Choose which instances to include in search
+- Collapsible filter panel for cleaner UI when not needed
+
+2.3 SEARCH RESULTS
+------------------
+Results are displayed in a data table with the following columns:
+- Title: Torrent name with category badge and indexer source
+- Source: Which Jackett/Prowlarr instance found the result
+- Size: File size (e.g., "4.7 GB")
+- S/L: Seeders and Leechers count with visual distinction
+- Date: Upload/publish date
+- Actions: Quick action buttons
+
+Per-result actions:
+- Bookmark: Save results for later reference (persists in UI state)
+- Copy Magnet: Copy magnet link to clipboard
+- Download .torrent: Download the torrent file directly
+- Send to Client: Open modal to select download client
+
+
+3. INSTANCE MANAGEMENT
+--------------------------------------------------------------------------------
+
+3.1 JACKETT INSTANCES
+---------------------
+Configuration fields:
+- Display Name: User-friendly identifier
+- URL: Server address (e.g., http://192.168.1.100:9117)
+- API Key: Authentication key for Jackett API
+
+Instance card displays:
+- Name and connection status (online/offline)
+- Server URL
+- API key (masked)
+- Number of configured indexers
+- Action buttons: Test, Edit, Delete
+
+3.2 PROWLARR INSTANCES
+----------------------
+Configuration fields:
+- Display Name: User-friendly identifier
+- URL: Server address (e.g., http://192.168.1.100:9696)
+- API Key: Authentication key for Prowlarr API
+
+Instance card displays:
+- Name and connection status (online/offline)
+- Server URL
+- API key (masked)
+- Number of configured indexers
+- Action buttons: Test, Edit, Delete
+
+Visual distinction: Prowlarr uses cyan/blue color scheme while Jackett uses
+amber/orange to differentiate at a glance.
+
+
+4. DOWNLOAD CLIENT MANAGEMENT
+--------------------------------------------------------------------------------
+
+4.1 SUPPORTED CLIENTS
+---------------------
+- qBittorrent
+
+Note: Additional clients (Transmission, Deluge, rTorrent, Aria2) may be added
+in future releases.
+
+4.2 CLIENT CONFIGURATION
+------------------------
+Configuration fields:
+- Display Name: User-friendly identifier
+- Client Type: Dropdown selection from supported clients
+- URL: Client web interface address
+- Username: Authentication username
+- Password: Authentication password (with show/hide toggle)
+
+Client card displays:
+- Name and connection status
+- Server URL
+- Client type
+- Action buttons: Test, Edit, Delete
+
+4.3 DOWNLOAD WORKFLOW
+---------------------
+When sending a torrent to a client:
+1. Click "Send" button on a search result
+2. Modal opens showing torrent details (title, size, seeders, source)
+3. Select from available online download clients
+4. Confirmation with loading state during transmission
+5. Offline clients are shown but disabled
+
+
+5. USER INTERFACE
+--------------------------------------------------------------------------------
+
+5.1 NAVIGATION
+--------------
+Three main tabs accessible from the header:
+- Search: Primary search interface
+- Instances: Manage Jackett and Prowlarr connections
+- Clients: Manage download client connections
+
+5.2 HEADER COMPONENTS
+---------------------
+- Application branding: "Searcharr" logo with tagline
+- Navigation tabs with active state indication
+- Quick stats: Number of online sources displayed
+
+5.3 VISUAL DESIGN
+-----------------
+- Dark theme with slate background (#0f172a base)
+- Accent colors:
+  * Cyan/Blue: Primary actions, Prowlarr instances
+  * Amber/Orange: Jackett instances
+  * Violet/Purple: Download clients
+  * Emerald/Green: Online status, seeders, success states
+  * Red: Offline status, leechers, delete actions
+- Monospace font: JetBrains Mono for technical/code elements
+- Ambient background effects with gradient blurs
+- Subtle grid pattern overlay
+- Glass-morphism effects with backdrop blur
+
+5.4 STATUS INDICATORS
+---------------------
+- Online: Green badge with animated pulse
+- Offline: Red badge without animation
+- Loading: Spinning loader icon
+- Success: Check mark icons
+- Error: Alert/warning icons
+
+5.5 RESPONSIVE DESIGN
+---------------------
+- Grid layouts adapt to screen size
+- Instance cards: 1 column (mobile), 2 columns (tablet), 3 columns (desktop)
+- Collapsible filter panel to save space
+- Scrollable results table with fixed headers
+
+
+6. DATA MODELS
+--------------------------------------------------------------------------------
+
+6.1 INSTANCE (JACKETT/PROWLARR)
+-------------------------------
+{
+  id: number,
+  name: string,
+  url: string,
+  apiKey: string,
+  status: "online" | "offline",
+  indexers: number  // count of configured indexers
+}
+
+6.2 DOWNLOAD CLIENT
+-------------------
+{
+  id: number,
+  name: string,
+  type: "qbittorrent",  // additional types may be added in future
+  url: string,
+  username: string,  // stored securely
+  password: string,  // stored securely
+  status: "online" | "offline"
+}
+
+6.3 SEARCH RESULT
+-----------------
+{
+  id: number,
+  title: string,
+  source: string,      // instance name that found this result
+  indexer: string,     // specific indexer within the instance
+  size: string,        // formatted file size
+  seeders: number,
+  leechers: number,
+  date: string,        // ISO date or formatted string
+  category: string,
+  bookmarked: boolean
+}
+
+6.4 CATEGORIES
+--------------
+Predefined list: All, Movies, TV, Music, Software, Games, Books, Anime, Other
+
+
+7. TECHNICAL CONSIDERATIONS
+--------------------------------------------------------------------------------
+
+7.1 API INTEGRATIONS
+--------------------
+- Jackett API: For searching configured indexers
+- Prowlarr API: For searching configured indexers
+- qBittorrent Web API: For sending torrents
+
+7.2 SECURITY
+------------
+- API keys stored securely (not exposed in UI beyond masked display)
+- Passwords for download clients stored securely
+- Show/hide toggle for sensitive fields
+- HTTPS recommended for all connections
+
+7.3 STATE MANAGEMENT
+--------------------
+- Active tab state
+- Search query and results
+- Filter/sort preferences
+- Selected instances for search
+- Bookmark status per result
+- Modal open/close states
+- Loading states for async operations
+
+7.4 ERROR HANDLING
+------------------
+- Connection test functionality for all instances/clients
+- Visual feedback for online/offline status
+- Disabled states for unavailable options (offline clients)
+- Loading states during network operations
+
+
+8. FUTURE CONSIDERATIONS
+--------------------------------------------------------------------------------
+
+Potential enhancements based on the UI structure:
+- Persistent storage for bookmarked results
+- Search history
+- Scheduled/automated searches
+- Notifications for new results matching saved searches
+- Download progress tracking
+- Statistics dashboard
+- User preferences/settings page
+- Multiple user support
+- Import/export configuration
+- Health check/monitoring for all instances
+- Batch operations (send multiple torrents)
+- Custom category definitions
+- Indexer-specific filtering
+
+
+================================================================================
+                              END OF DOCUMENT
+================================================================================
