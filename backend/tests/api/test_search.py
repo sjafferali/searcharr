@@ -82,8 +82,9 @@ class TestSearch:
         jackett_instance: JackettInstance,
         prowlarr_instance: ProwlarrInstance,
     ):
-        """Test search with specific instance IDs."""
-        # Filter to only the Jackett instance
+        """Test search with specific instance IDs (non-exclusive mode)."""
+        # Filter to only the Jackett instance, without exclusive_filter
+        # prowlarr_ids=None means "search all prowlarr", so 2 sources queried
         response = await client.get(
             "/api/v1/search",
             params={
@@ -93,10 +94,55 @@ class TestSearch:
         )
         assert response.status_code == 200
         data = response.json()
-        # Both instances exist, but only specified Jackett should be in jackett search
-        # prowlarr_ids=None means "search all prowlarr", so 2 sources queried
+        # Without exclusive_filter, unspecified instance types still search all
         assert data["sources_queried"] == 2
         assert data["query"] == "ubuntu"
+
+    @pytest.mark.asyncio
+    async def test_search_with_exclusive_filter(
+        self,
+        client: AsyncClient,
+        jackett_instance: JackettInstance,
+        prowlarr_instance: ProwlarrInstance,
+    ):
+        """Test search with exclusive_filter - only searches specified instances."""
+        # Filter to only the Jackett instance with exclusive_filter=true
+        # This should NOT search any Prowlarr instances
+        response = await client.get(
+            "/api/v1/search",
+            params={
+                "q": "ubuntu",
+                "jackett_ids": [jackett_instance.id],
+                "exclusive_filter": "true",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # With exclusive_filter, only the specified Jackett instance is searched
+        assert data["sources_queried"] == 1
+        assert data["query"] == "ubuntu"
+
+    @pytest.mark.asyncio
+    async def test_search_exclusive_filter_no_instances(
+        self,
+        client: AsyncClient,
+        jackett_instance: JackettInstance,
+        prowlarr_instance: ProwlarrInstance,
+    ):
+        """Test search with exclusive_filter and no instances specified."""
+        # exclusive_filter=true with no instance IDs means search nothing
+        response = await client.get(
+            "/api/v1/search",
+            params={
+                "q": "ubuntu",
+                "exclusive_filter": "true",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # No instances searched
+        assert data["sources_queried"] == 0
+        assert "No instances configured" in data["errors"]
 
     @pytest.mark.asyncio
     async def test_search_invalid_category(self, client: AsyncClient):

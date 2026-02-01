@@ -29,6 +29,10 @@ async def search(
         list[int] | None,
         Query(description="List of Prowlarr instance IDs to search (omit for all)"),
     ] = None,
+    exclusive_filter: Annotated[
+        bool,
+        Query(description="If true, only search specified instances (empty means none, not all)"),
+    ] = False,
     min_seeders: Annotated[
         int,
         Query(ge=0, description="Minimum number of seeders"),
@@ -66,6 +70,7 @@ async def search(
         category=category,
         jackett_ids=jackett_ids,
         prowlarr_ids=prowlarr_ids,
+        exclusive_filter=exclusive_filter,
         min_seeders=min_seeders,
         max_size=max_size,
         sort_by=sort_by,

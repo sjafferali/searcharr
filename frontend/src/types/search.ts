@@ -44,6 +44,7 @@ export interface SearchParams {
   category?: SearchCategory
   jackett_ids?: number[]
   prowlarr_ids?: number[]
+  exclusive_filter?: boolean
   min_seeders?: number
   max_size?: string
   sort_by?: SortBy

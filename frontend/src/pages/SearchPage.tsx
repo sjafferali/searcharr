@@ -86,12 +86,18 @@ export function SearchPage() {
     }
 
     try {
+      // When any instance is explicitly selected, use exclusive mode
+      // This ensures we only search the selected instances, not all of the unselected type
+      const hasAnySelection =
+        filters.selectedJackettIds.length > 0 || filters.selectedProwlarrIds.length > 0
+
       const response = await searchMutation.mutateAsync({
         q: query,
         category: filters.category !== 'All' ? filters.category : undefined,
         jackett_ids: filters.selectedJackettIds.length > 0 ? filters.selectedJackettIds : undefined,
         prowlarr_ids:
           filters.selectedProwlarrIds.length > 0 ? filters.selectedProwlarrIds : undefined,
+        exclusive_filter: hasAnySelection,
         min_seeders: filters.minSeeders > 0 ? filters.minSeeders : undefined,
         max_size: filters.maxSize || undefined,
         sort_by: filters.sortBy,

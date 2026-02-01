@@ -48,6 +48,7 @@ class SearchAggregator:
         category: SearchCategory = SearchCategory.ALL,
         jackett_ids: list[int] | None = None,
         prowlarr_ids: list[int] | None = None,
+        exclusive_filter: bool = False,
         min_seeders: int = 0,
         max_size: str | None = None,
         sort_by: SortBy = SortBy.SEEDERS,
@@ -61,6 +62,7 @@ class SearchAggregator:
             category: Category to filter by
             jackett_ids: List of Jackett instance IDs to search (None = all)
             prowlarr_ids: List of Prowlarr instance IDs to search (None = all)
+            exclusive_filter: If True, None means "search none" instead of "search all"
             min_seeders: Minimum number of seeders
             max_size: Maximum size filter (e.g., "10GB", "500MB")
             sort_by: Field to sort by
@@ -69,6 +71,14 @@ class SearchAggregator:
         Returns:
             Tuple of (results, errors, sources_queried)
         """
+        # In exclusive mode, treat None as "search none" (empty list)
+        # This is used when user explicitly selects specific instances
+        if exclusive_filter:
+            if jackett_ids is None:
+                jackett_ids = []
+            if prowlarr_ids is None:
+                prowlarr_ids = []
+
         # Get instances to search
         jackett_instances = await self._get_jackett_instances(jackett_ids)
         prowlarr_instances = await self._get_prowlarr_instances(prowlarr_ids)

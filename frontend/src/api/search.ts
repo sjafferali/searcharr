@@ -20,6 +20,10 @@ export const searchApi = {
       params.prowlarr_ids.forEach((id) => queryParams.append('prowlarr_ids', id.toString()))
     }
 
+    if (params.exclusive_filter) {
+      queryParams.append('exclusive_filter', 'true')
+    }
+
     if (params.min_seeders !== undefined && params.min_seeders > 0) {
       queryParams.append('min_seeders', params.min_seeders.toString())
     }
