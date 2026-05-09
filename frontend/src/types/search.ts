@@ -28,6 +28,21 @@ export interface SearchResult {
   magnet_link: string | null
   torrent_url: string | null
   info_url: string | null
+  freeleech: boolean
+  download_volume_factor: number | null
+}
+
+export interface IndexerInfo {
+  id: string
+  name: string
+  type: string | null
+  enabled: boolean
+}
+
+export interface IndexersResponse {
+  instance_id: number
+  instance_type: SourceType
+  indexers: IndexerInfo[]
 }
 
 export interface SearchResponse {
@@ -44,6 +59,8 @@ export interface SearchParams {
   category?: SearchCategory
   jackett_ids?: number[]
   prowlarr_ids?: number[]
+  jackett_indexers?: string[]
+  prowlarr_indexers?: string[]
   exclusive_filter?: boolean
   min_seeders?: number
   max_size?: string

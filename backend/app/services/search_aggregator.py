@@ -48,6 +48,8 @@ class SearchAggregator:
         category: SearchCategory = SearchCategory.ALL,
         jackett_ids: list[int] | None = None,
         prowlarr_ids: list[int] | None = None,
+        jackett_indexer_filters: dict[int, list[str]] | None = None,
+        prowlarr_indexer_filters: dict[int, list[str]] | None = None,
         exclusive_filter: bool = False,
         min_seeders: int = 0,
         max_size: str | None = None,
@@ -62,6 +64,12 @@ class SearchAggregator:
             category: Category to filter by
             jackett_ids: List of Jackett instance IDs to search (None = all)
             prowlarr_ids: List of Prowlarr instance IDs to search (None = all)
+            jackett_indexer_filters: Optional mapping of Jackett instance_id -> list of
+                indexer slugs. When an instance ID has an entry, only the listed indexers
+                are queried for that instance.
+            prowlarr_indexer_filters: Optional mapping of Prowlarr instance_id -> list of
+                indexer IDs. When an instance ID has an entry, only the listed indexers
+                are queried for that instance.
             exclusive_filter: If True, None means "search none" instead of "search all"
             min_seeders: Minimum number of seeders
             max_size: Maximum size filter (e.g., "10GB", "500MB")
@@ -88,19 +96,28 @@ class SearchAggregator:
         if sources_queried == 0:
             return [], ["No instances configured"], 0
 
+        jackett_filters = jackett_indexer_filters or {}
+        prowlarr_filters = prowlarr_indexer_filters or {}
+
         # Create search tasks
         tasks: list[asyncio.Task[Any]] = []
         semaphore = asyncio.Semaphore(self.concurrent_limit)
 
         for instance in jackett_instances:
+            indexer_subset = jackett_filters.get(instance.id)
             task = asyncio.create_task(
-                self._search_jackett_with_semaphore(semaphore, instance, query, category)
+                self._search_jackett_with_semaphore(
+                    semaphore, instance, query, category, indexer_subset
+                )
             )
             tasks.append(task)
 
         for instance in prowlarr_instances:
+            indexer_subset = prowlarr_filters.get(instance.id)
             task = asyncio.create_task(
-                self._search_prowlarr_with_semaphore(semaphore, instance, query, category)
+                self._search_prowlarr_with_semaphore(
+                    semaphore, instance, query, category, indexer_subset
+                )
             )
             tasks.append(task)
 
@@ -158,22 +175,24 @@ class SearchAggregator:
         instance: JackettInstance,
         query: str,
         category: SearchCategory,
+        indexer_ids: list[str] | None,
     ) -> tuple[list[SearchResult], str | None]:
         """Search a Jackett instance with concurrency control."""
         async with semaphore:
-            return await self._search_jackett(instance, query, category)
+            return await self._search_jackett(instance, query, category, indexer_ids)
 
     async def _search_jackett(
         self,
         instance: JackettInstance,
         query: str,
         category: SearchCategory,
+        indexer_ids: list[str] | None,
     ) -> tuple[list[SearchResult], str | None]:
         """Search a single Jackett instance."""
         try:
             api_key = decrypt_credential(instance.api_key)
             service = JackettService(instance.url, api_key)
-            results = await service.search(query, category, instance.name)
+            results = await service.search(query, category, instance.name, indexer_ids=indexer_ids)
             return results, None
         except Exception as e:
             logger.exception(f"Error searching Jackett instance {instance.name}")
@@ -185,22 +204,24 @@ class SearchAggregator:
         instance: ProwlarrInstance,
         query: str,
         category: SearchCategory,
+        indexer_ids: list[str] | None,
     ) -> tuple[list[SearchResult], str | None]:
         """Search a Prowlarr instance with concurrency control."""
         async with semaphore:
-            return await self._search_prowlarr(instance, query, category)
+            return await self._search_prowlarr(instance, query, category, indexer_ids)
 
     async def _search_prowlarr(
         self,
         instance: ProwlarrInstance,
         query: str,
         category: SearchCategory,
+        indexer_ids: list[str] | None,
     ) -> tuple[list[SearchResult], str | None]:
         """Search a single Prowlarr instance."""
         try:
             api_key = decrypt_credential(instance.api_key)
             service = ProwlarrService(instance.url, api_key)
-            results = await service.search(query, category, instance.name)
+            results = await service.search(query, category, instance.name, indexer_ids=indexer_ids)
             return results, None
         except Exception as e:
             logger.exception(f"Error searching Prowlarr instance {instance.name}")

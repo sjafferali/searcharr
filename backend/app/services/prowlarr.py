@@ -13,7 +13,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from app.schemas.search import CATEGORY_MAPPINGS, SearchCategory, SearchResult
+from app.schemas.search import CATEGORY_MAPPINGS, IndexerInfo, SearchCategory, SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -104,19 +104,61 @@ class ProwlarrService:
         except Exception:
             return None
 
+    async def get_indexers(self) -> list[IndexerInfo]:
+        """
+        Get the list of indexers configured on this Prowlarr instance.
+
+        Returns:
+            List of IndexerInfo objects.
+        """
+        indexers: list[IndexerInfo] = []
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                url = self._get_api_url("indexer")
+                response = await client.get(url, headers=self._get_headers())
+                if response.status_code != 200:
+                    logger.warning(f"Prowlarr get_indexers failed: HTTP {response.status_code}")
+                    return indexers
+
+                payload = response.json()
+                for entry in payload:
+                    if not isinstance(entry, dict):
+                        continue
+                    indexer_id = entry.get("id")
+                    name = entry.get("name")
+                    if indexer_id is None or not name:
+                        continue
+                    privacy = entry.get("privacy") or entry.get("protocol")
+                    indexers.append(
+                        IndexerInfo(
+                            id=str(indexer_id),
+                            name=str(name),
+                            type=str(privacy) if privacy else None,
+                            enabled=bool(entry.get("enable", True)),
+                        )
+                    )
+        except httpx.TimeoutException:
+            logger.warning("Prowlarr get_indexers request timed out")
+        except Exception:
+            logger.exception("Error fetching Prowlarr indexers")
+
+        return sorted(indexers, key=lambda i: i.name.lower())
+
     async def search(
         self,
         query: str,
         category: SearchCategory = SearchCategory.ALL,
         instance_name: str = "Prowlarr",
+        indexer_ids: list[str] | None = None,
     ) -> list[SearchResult]:
         """
-        Search for torrents across all configured indexers.
+        Search for torrents across all configured indexers, or a specific subset.
 
         Args:
             query: The search query
             category: Category to filter by
             instance_name: Name of this instance for result attribution
+            indexer_ids: Optional list of Prowlarr indexer IDs to limit the search to.
 
         Returns:
             List of SearchResult objects
@@ -135,6 +177,10 @@ class ProwlarrService:
                 category_ids = CATEGORY_MAPPINGS.get(category)
                 if category_ids:
                     params["categories"] = category_ids
+
+                # Limit search to specific indexers when requested
+                if indexer_ids:
+                    params["indexerIds"] = [int(idx) for idx in indexer_ids if str(idx).isdigit()]
 
                 response = await client.get(
                     url,
@@ -228,6 +274,17 @@ class ProwlarrService:
         # Get info URL
         info_url = item.get("infoUrl") or item.get("guid")
 
+        # Freeleech detection via Prowlarr's downloadVolumeFactor field.
+        # 0.0 = freeleech, 0.5 = half-leech, 1.0 = normal.
+        download_volume_factor: float | None = None
+        raw_factor = item.get("downloadVolumeFactor")
+        if raw_factor is not None:
+            try:
+                download_volume_factor = float(raw_factor)
+            except (TypeError, ValueError):
+                download_volume_factor = None
+        freeleech = download_volume_factor is not None and download_volume_factor == 0.0
+
         # Generate unique ID
         guid = item.get("guid", "")
         unique_str = f"{instance_name}:{indexer}:{guid}:{title}"
@@ -248,6 +305,8 @@ class ProwlarrService:
             magnet_link=magnet_link,
             torrent_url=torrent_url,
             info_url=info_url,
+            freeleech=freeleech,
+            download_volume_factor=download_volume_factor,
         )
 
     @staticmethod

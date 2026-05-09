@@ -35,6 +35,26 @@ export function useInstancesStatus() {
   })
 }
 
+// Get the list of indexers for a specific Jackett instance
+export function useJackettIndexers(instanceId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: [...jackettBase, instanceId, 'indexers'] as const,
+    queryFn: () => jackettApi.indexers(instanceId as number),
+    enabled: enabled && instanceId !== null,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
+// Get the list of indexers for a specific Prowlarr instance
+export function useProwlarrIndexers(instanceId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: [...prowlarrBase, instanceId, 'indexers'] as const,
+    queryFn: () => prowlarrApi.indexers(instanceId as number),
+    enabled: enabled && instanceId !== null,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 // Jackett hooks
 export function useJackettInstances() {
   return useQuery({

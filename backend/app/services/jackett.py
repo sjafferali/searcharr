@@ -5,6 +5,7 @@ Jackett is a proxy server that translates queries from apps into
 tracker-site-specific HTTP queries, fetching results, and parsing them.
 """
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any
@@ -12,7 +13,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from app.schemas.search import CATEGORY_MAPPINGS, SearchCategory, SearchResult
+from app.schemas.search import CATEGORY_MAPPINGS, IndexerInfo, SearchCategory, SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -99,35 +100,102 @@ class JackettService:
         except Exception:
             return None
 
+    async def get_indexers(self) -> list[IndexerInfo]:
+        """
+        Get the list of configured indexers on this Jackett instance.
+
+        Returns:
+            List of IndexerInfo objects for indexers that have been configured.
+        """
+        indexers: list[IndexerInfo] = []
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                url = urljoin(self.base_url, "/api/v2.0/indexers")
+                response = await client.get(url, params={"apikey": self.api_key})
+
+                if response.status_code != 200:
+                    logger.warning(f"Jackett get_indexers failed: HTTP {response.status_code}")
+                    return indexers
+
+                payload = response.json()
+                for entry in payload:
+                    if not isinstance(entry, dict):
+                        continue
+                    if not entry.get("configured", False):
+                        continue
+                    indexer_id = entry.get("id")
+                    name = entry.get("name")
+                    if not indexer_id or not name:
+                        continue
+                    indexers.append(
+                        IndexerInfo(
+                            id=str(indexer_id),
+                            name=str(name),
+                            type=entry.get("type"),
+                            enabled=True,
+                        )
+                    )
+        except httpx.TimeoutException:
+            logger.warning("Jackett get_indexers request timed out")
+        except Exception:
+            logger.exception("Error fetching Jackett indexers")
+
+        return sorted(indexers, key=lambda i: i.name.lower())
+
     async def search(
         self,
         query: str,
         category: SearchCategory = SearchCategory.ALL,
         instance_name: str = "Jackett",
+        indexer_ids: list[str] | None = None,
     ) -> list[SearchResult]:
         """
-        Search for torrents across all configured indexers.
+        Search for torrents across all configured indexers, or a specific subset.
 
         Args:
             query: The search query
             category: Category to filter by
             instance_name: Name of this instance for result attribution
+            indexer_ids: Optional list of Jackett indexer site IDs to limit the search to.
+                         When None or empty, searches all configured indexers ("all").
 
         Returns:
             List of SearchResult objects
         """
-        results: list[SearchResult] = []
+        # When specific indexers are selected, fan out one request per indexer.
+        # Jackett's torznab endpoint accepts a single indexer slug per call.
+        if indexer_ids:
+            tasks = [
+                self._search_single_indexer(idx, query, category, instance_name)
+                for idx in indexer_ids
+            ]
+            grouped = await asyncio.gather(*tasks, return_exceptions=True)
+            aggregated: list[SearchResult] = []
+            for group in grouped:
+                if isinstance(group, list):
+                    aggregated.extend(group)
+            return aggregated
 
+        return await self._search_single_indexer("all", query, category, instance_name)
+
+    async def _search_single_indexer(
+        self,
+        indexer_slug: str,
+        query: str,
+        category: SearchCategory,
+        instance_name: str,
+    ) -> list[SearchResult]:
+        """Run a search against a single Jackett indexer (or 'all')."""
+        results: list[SearchResult] = []
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                url = self._get_api_url("indexers/all/results/torznab/api")
+                url = self._get_api_url(f"indexers/{indexer_slug}/results/torznab/api")
                 params: dict[str, Any] = {
                     "apikey": self.api_key,
                     "t": "search",
                     "q": query,
                 }
 
-                # Add category filter if not "All"
                 category_ids = CATEGORY_MAPPINGS.get(category)
                 if category_ids:
                     params["cat"] = ",".join(str(c) for c in category_ids)
@@ -135,20 +203,20 @@ class JackettService:
                 response = await client.get(url, params=params)
 
                 if response.status_code != 200:
-                    logger.warning(f"Jackett search failed: HTTP {response.status_code}")
+                    logger.warning(
+                        f"Jackett search failed for indexer '{indexer_slug}': "
+                        f"HTTP {response.status_code}"
+                    )
                     return results
 
-                # Parse XML response (Torznab format)
                 results = self._parse_torznab_response(
                     response.text,
                     instance_name=instance_name,
                 )
-
         except httpx.TimeoutException:
-            logger.warning(f"Jackett search timed out for query: {query}")
+            logger.warning(f"Jackett search timed out for indexer '{indexer_slug}', query: {query}")
         except Exception as e:
-            logger.exception(f"Error searching Jackett: {e}")
-
+            logger.exception(f"Error searching Jackett indexer '{indexer_slug}': {e}")
         return results
 
     def _parse_torznab_response(
@@ -215,16 +283,30 @@ class JackettService:
                     size = int(attr.get("value", 0))
                     break
 
-        # Get seeders/leechers
+        # Get seeders/leechers and freeleech indicator
         seeders = 0
         leechers = 0
+        download_volume_factor: float | None = None
         for attr in item.findall("torznab:attr", torznab_ns):
             name = attr.get("name")
             value = attr.get("value", "0")
             if name == "seeders":
-                seeders = int(value)
+                try:
+                    seeders = int(value)
+                except (TypeError, ValueError):
+                    seeders = 0
             elif name == "peers":
-                leechers = max(0, int(value) - seeders)
+                try:
+                    leechers = max(0, int(value) - seeders)
+                except (TypeError, ValueError):
+                    leechers = 0
+            elif name == "downloadvolumefactor":
+                try:
+                    download_volume_factor = float(value)
+                except (TypeError, ValueError):
+                    download_volume_factor = None
+
+        freeleech = download_volume_factor is not None and download_volume_factor == 0.0
 
         # Get date
         pub_date = None
@@ -289,6 +371,8 @@ class JackettService:
             magnet_link=magnet_link,
             torrent_url=torrent_url,
             info_url=info_url,
+            freeleech=freeleech,
+            download_volume_factor=download_volume_factor,
         )
 
     @staticmethod

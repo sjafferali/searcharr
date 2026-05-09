@@ -71,6 +71,34 @@ class SearchResult(BaseSchema):
     magnet_link: str | None = Field(None, description="Magnet URI if available")
     torrent_url: str | None = Field(None, description="Direct .torrent download URL if available")
     info_url: str | None = Field(None, description="Link to torrent info page")
+    freeleech: bool = Field(
+        False,
+        description="True when the indexer reports this release as freeleech (no download counted)",
+    )
+    download_volume_factor: float | None = Field(
+        None,
+        description="Raw download volume factor (0 = freeleech, 0.5 = half-leech, 1 = normal)",
+    )
+
+
+class IndexerInfo(BaseSchema):
+    """A single indexer configured on a Jackett or Prowlarr instance."""
+
+    id: str = Field(..., description="Indexer identifier within the instance")
+    name: str = Field(..., description="Display name of the indexer")
+    type: str | None = Field(
+        None,
+        description="Indexer privacy type (public, private, semi-private)",
+    )
+    enabled: bool = Field(True, description="Whether the indexer is enabled on the instance")
+
+
+class IndexersResponse(BaseSchema):
+    """List of indexers available on a single instance."""
+
+    instance_id: int = Field(..., description="ID of the instance these indexers belong to")
+    instance_type: str = Field(..., description="jackett or prowlarr")
+    indexers: list[IndexerInfo] = Field(..., description="Indexers configured on the instance")
 
 
 class SearchResponse(BaseSchema):

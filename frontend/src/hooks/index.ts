@@ -5,11 +5,13 @@ export {
   useUpdateJackett,
   useDeleteJackett,
   useTestJackett,
+  useJackettIndexers,
   useProwlarrInstances,
   useCreateProwlarr,
   useUpdateProwlarr,
   useDeleteProwlarr,
   useTestProwlarr,
+  useProwlarrIndexers,
   instanceKeys,
 } from './useInstances'
 

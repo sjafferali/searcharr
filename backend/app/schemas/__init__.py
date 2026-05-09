@@ -31,6 +31,8 @@ from app.schemas.instance import (
 from app.schemas.search import (
     CATEGORY_MAPPINGS,
     CategoriesResponse,
+    IndexerInfo,
+    IndexersResponse,
     SearchCategory,
     SearchResponse,
     SearchResult,
@@ -67,6 +69,8 @@ __all__ = [
     "SearchResult",
     "SearchResponse",
     "CategoriesResponse",
+    "IndexerInfo",
+    "IndexersResponse",
     # Download
     "DownloadRequest",
     "DownloadResponse",

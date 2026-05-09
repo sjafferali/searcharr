@@ -234,3 +234,48 @@ class TestInstanceStatus:
         # Instances will be offline since servers aren't running
         assert data["jackett"][0]["status"] == "offline"
         assert data["prowlarr"][0]["status"] == "offline"
+
+
+# =============================================================================
+# Indexer Listing Tests
+# =============================================================================
+
+
+class TestIndexerListing:
+    """Tests for the per-instance indexer listing endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_list_jackett_indexers_unknown_instance(self, client: AsyncClient):
+        """Returns 404 when instance does not exist."""
+        response = await client.get("/api/v1/instances/jackett/9999/indexers")
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_list_jackett_indexers_offline(
+        self, client: AsyncClient, jackett_instance: JackettInstance
+    ):
+        """Returns 200 with empty list when underlying server is unreachable."""
+        response = await client.get(f"/api/v1/instances/jackett/{jackett_instance.id}/indexers")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["instance_id"] == jackett_instance.id
+        assert data["instance_type"] == "jackett"
+        assert isinstance(data["indexers"], list)
+
+    @pytest.mark.asyncio
+    async def test_list_prowlarr_indexers_unknown_instance(self, client: AsyncClient):
+        """Returns 404 when instance does not exist."""
+        response = await client.get("/api/v1/instances/prowlarr/9999/indexers")
+        assert response.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_list_prowlarr_indexers_offline(
+        self, client: AsyncClient, prowlarr_instance: ProwlarrInstance
+    ):
+        """Returns 200 with empty list when underlying server is unreachable."""
+        response = await client.get(f"/api/v1/instances/prowlarr/{prowlarr_instance.id}/indexers")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["instance_id"] == prowlarr_instance.id
+        assert data["instance_type"] == "prowlarr"
+        assert isinstance(data["indexers"], list)

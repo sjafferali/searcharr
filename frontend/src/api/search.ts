@@ -20,6 +20,14 @@ export const searchApi = {
       params.prowlarr_ids.forEach((id) => queryParams.append('prowlarr_ids', id.toString()))
     }
 
+    if (params.jackett_indexers && params.jackett_indexers.length > 0) {
+      params.jackett_indexers.forEach((value) => queryParams.append('jackett_indexers', value))
+    }
+
+    if (params.prowlarr_indexers && params.prowlarr_indexers.length > 0) {
+      params.prowlarr_indexers.forEach((value) => queryParams.append('prowlarr_indexers', value))
+    }
+
     if (params.exclusive_filter) {
       queryParams.append('exclusive_filter', 'true')
     }

@@ -9,6 +9,10 @@ interface SearchFilters {
   sortOrder: SortOrder
   selectedJackettIds: number[]
   selectedProwlarrIds: number[]
+  // Per-instance indexer restrictions, keyed by instance id.
+  // Missing or empty entry => search all of that instance's indexers.
+  jackettIndexerSelections: Record<number, string[]>
+  prowlarrIndexerSelections: Record<number, string[]>
 }
 
 interface SearchState {
@@ -27,6 +31,12 @@ interface SearchState {
   setSelectedProwlarrIds: (ids: number[]) => void
   toggleJackettId: (id: number) => void
   toggleProwlarrId: (id: number) => void
+  setJackettIndexerSelection: (instanceId: number, indexerIds: string[]) => void
+  setProwlarrIndexerSelection: (instanceId: number, indexerIds: string[]) => void
+  toggleJackettIndexer: (instanceId: number, indexerId: string) => void
+  toggleProwlarrIndexer: (instanceId: number, indexerId: string) => void
+  clearJackettIndexerSelection: (instanceId: number) => void
+  clearProwlarrIndexerSelection: (instanceId: number) => void
   resetFilters: () => void
 
   // Results
@@ -55,6 +65,8 @@ const defaultFilters: SearchFilters = {
   sortOrder: 'desc',
   selectedJackettIds: [],
   selectedProwlarrIds: [],
+  jackettIndexerSelections: {},
+  prowlarrIndexerSelections: {},
 }
 
 export const useSearchStore = create<SearchState>((set, get) => ({
@@ -77,13 +89,98 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     set((state) => {
       const ids = state.filters.selectedJackettIds
       const newIds = ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]
-      return { filters: { ...state.filters, selectedJackettIds: newIds } }
+      // Drop indexer selections for instances that are being deselected
+      const indexerSelections = { ...state.filters.jackettIndexerSelections }
+      if (!newIds.includes(id)) {
+        delete indexerSelections[id]
+      }
+      return {
+        filters: {
+          ...state.filters,
+          selectedJackettIds: newIds,
+          jackettIndexerSelections: indexerSelections,
+        },
+      }
     }),
   toggleProwlarrId: (id) =>
     set((state) => {
       const ids = state.filters.selectedProwlarrIds
       const newIds = ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]
-      return { filters: { ...state.filters, selectedProwlarrIds: newIds } }
+      const indexerSelections = { ...state.filters.prowlarrIndexerSelections }
+      if (!newIds.includes(id)) {
+        delete indexerSelections[id]
+      }
+      return {
+        filters: {
+          ...state.filters,
+          selectedProwlarrIds: newIds,
+          prowlarrIndexerSelections: indexerSelections,
+        },
+      }
+    }),
+  setJackettIndexerSelection: (instanceId, indexerIds) =>
+    set((state) => ({
+      filters: {
+        ...state.filters,
+        jackettIndexerSelections: {
+          ...state.filters.jackettIndexerSelections,
+          [instanceId]: indexerIds,
+        },
+      },
+    })),
+  setProwlarrIndexerSelection: (instanceId, indexerIds) =>
+    set((state) => ({
+      filters: {
+        ...state.filters,
+        prowlarrIndexerSelections: {
+          ...state.filters.prowlarrIndexerSelections,
+          [instanceId]: indexerIds,
+        },
+      },
+    })),
+  toggleJackettIndexer: (instanceId, indexerId) =>
+    set((state) => {
+      const current = state.filters.jackettIndexerSelections[instanceId] ?? []
+      const next = current.includes(indexerId)
+        ? current.filter((i) => i !== indexerId)
+        : [...current, indexerId]
+      return {
+        filters: {
+          ...state.filters,
+          jackettIndexerSelections: {
+            ...state.filters.jackettIndexerSelections,
+            [instanceId]: next,
+          },
+        },
+      }
+    }),
+  toggleProwlarrIndexer: (instanceId, indexerId) =>
+    set((state) => {
+      const current = state.filters.prowlarrIndexerSelections[instanceId] ?? []
+      const next = current.includes(indexerId)
+        ? current.filter((i) => i !== indexerId)
+        : [...current, indexerId]
+      return {
+        filters: {
+          ...state.filters,
+          prowlarrIndexerSelections: {
+            ...state.filters.prowlarrIndexerSelections,
+            [instanceId]: next,
+          },
+        },
+      }
+    }),
+  clearJackettIndexerSelection: (instanceId) =>
+    set((state) => {
+      const next = { ...state.filters.jackettIndexerSelections }
+      delete next[instanceId]
+      return { filters: { ...state.filters, jackettIndexerSelections: next } }
+    }),
+  clearProwlarrIndexerSelection: (instanceId) =>
+    set((state) => {
+      const next = { ...state.filters.prowlarrIndexerSelections }
+      delete next[instanceId]
+      return { filters: { ...state.filters, prowlarrIndexerSelections: next } }
     }),
   resetFilters: () => set({ filters: { ...defaultFilters } }),
 

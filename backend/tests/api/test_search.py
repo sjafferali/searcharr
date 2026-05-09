@@ -145,6 +145,47 @@ class TestSearch:
         assert "No instances configured" in data["errors"]
 
     @pytest.mark.asyncio
+    async def test_search_with_indexer_filter(
+        self,
+        client: AsyncClient,
+        jackett_instance: JackettInstance,
+        prowlarr_instance: ProwlarrInstance,
+    ):
+        """Test that search accepts per-instance indexer filters."""
+        response = await client.get(
+            "/api/v1/search",
+            params={
+                "q": "ubuntu",
+                "jackett_ids": [jackett_instance.id],
+                "prowlarr_ids": [prowlarr_instance.id],
+                "jackett_indexers": [f"{jackett_instance.id}:1337x"],
+                "prowlarr_indexers": [f"{prowlarr_instance.id}:42"],
+                "exclusive_filter": "true",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["sources_queried"] == 2
+
+    @pytest.mark.asyncio
+    async def test_search_indexer_filter_ignores_malformed(
+        self,
+        client: AsyncClient,
+        jackett_instance: JackettInstance,
+    ):
+        """Malformed indexer filter strings should be ignored, not raise."""
+        response = await client.get(
+            "/api/v1/search",
+            params={
+                "q": "ubuntu",
+                "jackett_ids": [jackett_instance.id],
+                "jackett_indexers": ["bogus", "not-a-pair", ":missing-instance"],
+                "exclusive_filter": "true",
+            },
+        )
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
     async def test_search_invalid_category(self, client: AsyncClient):
         """Test search with invalid category."""
         response = await client.get(

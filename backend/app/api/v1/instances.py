@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.models import JackettInstance, ProwlarrInstance
 from app.schemas import (
     AllInstancesStatus,
+    IndexersResponse,
     JackettInstanceCreate,
     JackettInstanceResponse,
     JackettInstanceUpdate,
@@ -196,6 +197,29 @@ async def delete_jackett_instance(
     await db.commit()
 
 
+@router.get("/jackett/{instance_id}/indexers", response_model=IndexersResponse)
+async def list_jackett_indexers(
+    instance_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> IndexersResponse:
+    """List the indexers configured on a Jackett instance."""
+    result = await db.execute(select(JackettInstance).where(JackettInstance.id == instance_id))
+    instance = result.scalar_one_or_none()
+
+    if not instance:
+        raise HTTPException(status_code=404, detail="Jackett instance not found")
+
+    api_key = decrypt_credential(instance.api_key)
+    service = JackettService(instance.url, api_key)
+    indexers = await service.get_indexers()
+
+    return IndexersResponse(
+        instance_id=instance.id,
+        instance_type="jackett",
+        indexers=indexers,
+    )
+
+
 @router.post("/jackett/{instance_id}/test", response_model=TestConnectionResponse)
 async def test_jackett_instance(
     instance_id: int,
@@ -354,6 +378,29 @@ async def delete_prowlarr_instance(
 
     await db.delete(instance)
     await db.commit()
+
+
+@router.get("/prowlarr/{instance_id}/indexers", response_model=IndexersResponse)
+async def list_prowlarr_indexers(
+    instance_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> IndexersResponse:
+    """List the indexers configured on a Prowlarr instance."""
+    result = await db.execute(select(ProwlarrInstance).where(ProwlarrInstance.id == instance_id))
+    instance = result.scalar_one_or_none()
+
+    if not instance:
+        raise HTTPException(status_code=404, detail="Prowlarr instance not found")
+
+    api_key = decrypt_credential(instance.api_key)
+    service = ProwlarrService(instance.url, api_key)
+    indexers = await service.get_indexers()
+
+    return IndexersResponse(
+        instance_id=instance.id,
+        instance_type="prowlarr",
+        indexers=indexers,
+    )
 
 
 @router.post("/prowlarr/{instance_id}/test", response_model=TestConnectionResponse)

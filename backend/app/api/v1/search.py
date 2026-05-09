@@ -17,6 +17,32 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/search", tags=["search"])
 
 
+def _parse_indexer_filters(values: list[str] | None) -> dict[int, list[str]]:
+    """
+    Parse indexer filter strings into a mapping of instance_id -> indexer IDs.
+
+    Each value should look like ``"<instance_id>:<indexer_id>"``. Multiple values for
+    the same instance_id accumulate into the same list.
+    """
+    grouped: dict[int, list[str]] = {}
+    if not values:
+        return grouped
+
+    for raw in values:
+        if not raw:
+            continue
+        if ":" not in raw:
+            continue
+        instance_part, indexer_part = raw.split(":", 1)
+        instance_part = instance_part.strip()
+        indexer_part = indexer_part.strip()
+        if not instance_part.isdigit() or not indexer_part:
+            continue
+        instance_id = int(instance_part)
+        grouped.setdefault(instance_id, []).append(indexer_part)
+    return grouped
+
+
 @router.get("", response_model=SearchResponse)
 async def search(
     q: Annotated[str, Query(min_length=1, max_length=500, description="Search query")],
@@ -28,6 +54,26 @@ async def search(
     prowlarr_ids: Annotated[
         list[int] | None,
         Query(description="List of Prowlarr instance IDs to search (omit for all)"),
+    ] = None,
+    jackett_indexers: Annotated[
+        list[str] | None,
+        Query(
+            description=(
+                "Restrict Jackett indexers per-instance. Each value is "
+                "'<instance_id>:<indexer_slug>'. When provided for an instance, only "
+                "the listed indexers are searched on that instance."
+            )
+        ),
+    ] = None,
+    prowlarr_indexers: Annotated[
+        list[str] | None,
+        Query(
+            description=(
+                "Restrict Prowlarr indexers per-instance. Each value is "
+                "'<instance_id>:<indexer_id>'. When provided for an instance, only "
+                "the listed indexers are searched on that instance."
+            )
+        ),
     ] = None,
     exclusive_filter: Annotated[
         bool,
@@ -56,6 +102,8 @@ async def search(
     - **category**: Filter by category (default: All)
     - **jackett_ids**: List of Jackett instance IDs to include (default: all)
     - **prowlarr_ids**: List of Prowlarr instance IDs to include (default: all)
+    - **jackett_indexers**: Optional per-instance indexer restrictions
+    - **prowlarr_indexers**: Optional per-instance indexer restrictions
     - **min_seeders**: Minimum number of seeders (default: 0)
     - **max_size**: Maximum file size filter (e.g., "10GB")
     - **sort_by**: Field to sort by (default: seeders)
@@ -65,11 +113,16 @@ async def search(
     """
     aggregator = SearchAggregator(db)
 
+    jackett_indexer_filters = _parse_indexer_filters(jackett_indexers)
+    prowlarr_indexer_filters = _parse_indexer_filters(prowlarr_indexers)
+
     results, errors, sources_queried = await aggregator.search(
         query=q,
         category=category,
         jackett_ids=jackett_ids,
         prowlarr_ids=prowlarr_ids,
+        jackett_indexer_filters=jackett_indexer_filters,
+        prowlarr_indexer_filters=prowlarr_indexer_filters,
         exclusive_filter=exclusive_filter,
         min_seeders=min_seeders,
         max_size=max_size,

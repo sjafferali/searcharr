@@ -7,6 +7,7 @@ import {
   CreateProwlarrInstance,
   UpdateProwlarrInstance,
   AllInstancesStatus,
+  IndexersResponse,
   TestConnectionResponse,
 } from '../types'
 
@@ -40,6 +41,11 @@ export const jackettApi = {
     const response = await api.post<TestConnectionResponse>(`/instances/jackett/${id}/test`)
     return response.data
   },
+
+  indexers: async (id: number): Promise<IndexersResponse> => {
+    const response = await api.get<IndexersResponse>(`/instances/jackett/${id}/indexers`)
+    return response.data
+  },
 }
 
 // Prowlarr Instance API
@@ -70,6 +76,11 @@ export const prowlarrApi = {
 
   test: async (id: number): Promise<TestConnectionResponse> => {
     const response = await api.post<TestConnectionResponse>(`/instances/prowlarr/${id}/test`)
+    return response.data
+  },
+
+  indexers: async (id: number): Promise<IndexersResponse> => {
+    const response = await api.get<IndexersResponse>(`/instances/prowlarr/${id}/indexers`)
     return response.data
   },
 }

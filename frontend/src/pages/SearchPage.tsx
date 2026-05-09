@@ -14,8 +14,9 @@ import {
   Download,
   Bookmark,
   ExternalLink,
+  Sparkles,
 } from 'lucide-react'
-import { LoadingSpinner, SendToClientModal } from '../components'
+import { IndexerPicker, LoadingSpinner, SendToClientModal } from '../components'
 import { cn, formatDate } from '../utils'
 import { useInstancesStatus, useSearch } from '../hooks'
 import { useSearchStore } from '../stores'
@@ -61,6 +62,12 @@ export function SearchPage() {
     setSortOrder,
     toggleJackettId,
     toggleProwlarrId,
+    toggleJackettIndexer,
+    toggleProwlarrIndexer,
+    setJackettIndexerSelection,
+    setProwlarrIndexerSelection,
+    clearJackettIndexerSelection,
+    clearProwlarrIndexerSelection,
     results,
     setResults,
     totalResults,
@@ -92,12 +99,34 @@ export function SearchPage() {
       const hasAnySelection =
         filters.selectedJackettIds.length > 0 || filters.selectedProwlarrIds.length > 0
 
+      // Build per-instance indexer filter params: "<instance_id>:<indexer_id>"
+      const jackettIndexerParams: string[] = []
+      for (const instanceId of filters.selectedJackettIds) {
+        const subset = filters.jackettIndexerSelections[instanceId]
+        if (subset && subset.length > 0) {
+          for (const indexerId of subset) {
+            jackettIndexerParams.push(`${instanceId}:${indexerId}`)
+          }
+        }
+      }
+      const prowlarrIndexerParams: string[] = []
+      for (const instanceId of filters.selectedProwlarrIds) {
+        const subset = filters.prowlarrIndexerSelections[instanceId]
+        if (subset && subset.length > 0) {
+          for (const indexerId of subset) {
+            prowlarrIndexerParams.push(`${instanceId}:${indexerId}`)
+          }
+        }
+      }
+
       const response = await searchMutation.mutateAsync({
         q: query,
         category: filters.category !== 'All' ? filters.category : undefined,
         jackett_ids: filters.selectedJackettIds.length > 0 ? filters.selectedJackettIds : undefined,
         prowlarr_ids:
           filters.selectedProwlarrIds.length > 0 ? filters.selectedProwlarrIds : undefined,
+        jackett_indexers: jackettIndexerParams.length > 0 ? jackettIndexerParams : undefined,
+        prowlarr_indexers: prowlarrIndexerParams.length > 0 ? prowlarrIndexerParams : undefined,
         exclusive_filter: hasAnySelection,
         min_seeders: filters.minSeeders > 0 ? filters.minSeeders : undefined,
         max_size: filters.maxSize || undefined,
@@ -216,9 +245,17 @@ export function SearchPage() {
           <div className="space-y-4 border-t border-slate-800/50 px-4 pb-4">
             {/* Source Selection */}
             <div className="pt-4">
-              <p className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">
-                Search Sources
-              </p>
+              <div className="mb-3 flex items-baseline justify-between gap-3">
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                  Search Sources
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  {filters.selectedJackettIds.length === 0 &&
+                  filters.selectedProwlarrIds.length === 0
+                    ? 'Searches every configured instance'
+                    : 'Searches only the selected instances'}
+                </p>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {allInstances.map((instance) => {
                   const isSelected =
@@ -259,6 +296,48 @@ export function SearchPage() {
                   <p className="text-sm text-slate-500">No instances configured</p>
                 )}
               </div>
+
+              {/* Per-instance indexer pickers, shown only for selected instances */}
+              {(filters.selectedJackettIds.length > 0 ||
+                filters.selectedProwlarrIds.length > 0) && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                    Refine indexers (optional)
+                  </p>
+                  {filters.selectedJackettIds.map((id) => {
+                    const inst = jackettInstances.find((i) => i.id === id)
+                    if (!inst) return null
+                    return (
+                      <IndexerPicker
+                        key={`jackett-${id}`}
+                        instanceId={id}
+                        instanceName={inst.name}
+                        type="jackett"
+                        selectedIds={filters.jackettIndexerSelections[id] ?? []}
+                        onToggle={(indexerId) => toggleJackettIndexer(id, indexerId)}
+                        onSetSelection={(ids) => setJackettIndexerSelection(id, ids)}
+                        onClearSelection={() => clearJackettIndexerSelection(id)}
+                      />
+                    )
+                  })}
+                  {filters.selectedProwlarrIds.map((id) => {
+                    const inst = prowlarrInstances.find((i) => i.id === id)
+                    if (!inst) return null
+                    return (
+                      <IndexerPicker
+                        key={`prowlarr-${id}`}
+                        instanceId={id}
+                        instanceName={inst.name}
+                        type="prowlarr"
+                        selectedIds={filters.prowlarrIndexerSelections[id] ?? []}
+                        onToggle={(indexerId) => toggleProwlarrIndexer(id, indexerId)}
+                        onSetSelection={(ids) => setProwlarrIndexerSelection(id, ids)}
+                        onClearSelection={() => clearProwlarrIndexerSelection(id)}
+                      />
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Filter Options */}
@@ -376,22 +455,48 @@ export function SearchPage() {
                             />
                           </button>
                           <div>
-                            {result.info_url ? (
-                              <a
-                                href={result.info_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="group/link inline-flex items-center gap-1.5 text-sm font-medium text-slate-200 transition-colors hover:text-cyan-300"
-                                title="View on indexer website"
-                              >
-                                <span className="line-clamp-1">{result.title}</span>
-                                <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 opacity-0 transition-opacity group-hover/link:opacity-100" />
-                              </a>
-                            ) : (
-                              <p className="line-clamp-1 text-sm font-medium text-slate-200">
-                                {result.title}
-                              </p>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {result.info_url ? (
+                                <a
+                                  href={result.info_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group/link inline-flex items-center gap-1.5 text-sm font-medium text-slate-200 transition-colors hover:text-cyan-300"
+                                  title="View on indexer website"
+                                >
+                                  <span className="line-clamp-1">{result.title}</span>
+                                  <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 opacity-0 transition-opacity group-hover/link:opacity-100" />
+                                </a>
+                              ) : (
+                                <p className="line-clamp-1 text-sm font-medium text-slate-200">
+                                  {result.title}
+                                </p>
+                              )}
+                              {result.freeleech && (
+                                <span
+                                  className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-emerald-400/40 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                                  title="Freeleech — download does not count against ratio"
+                                >
+                                  <Sparkles className="h-3 w-3" />
+                                  Freeleech
+                                </span>
+                              )}
+                              {!result.freeleech &&
+                                result.download_volume_factor !== null &&
+                                result.download_volume_factor !== undefined &&
+                                result.download_volume_factor > 0 &&
+                                result.download_volume_factor < 1 && (
+                                  <span
+                                    className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-teal-400/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-300"
+                                    title={`Download counts at ${Math.round(
+                                      result.download_volume_factor * 100,
+                                    )}% of size`}
+                                  >
+                                    <Sparkles className="h-3 w-3" />
+                                    {Math.round(result.download_volume_factor * 100)}% leech
+                                  </span>
+                                )}
+                            </div>
                             <div className="mt-1 flex items-center gap-2">
                               <span className="rounded bg-slate-700/50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
                                 {result.category}
