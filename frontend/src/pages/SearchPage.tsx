@@ -476,21 +476,24 @@ export function SearchPage() {
                               )}
                             />
                           </button>
-                          <div>
-                            <div className="flex items-center gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
                               {result.info_url ? (
                                 <a
                                   href={result.info_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="group/link inline-flex items-center gap-1.5 text-sm font-medium text-slate-200 transition-colors hover:text-cyan-300"
-                                  title="View on indexer website"
+                                  className="group/link inline-flex items-start gap-1.5 break-words text-sm font-medium leading-snug text-slate-200 transition-colors hover:text-cyan-300"
+                                  title={result.title}
                                 >
-                                  <span className="line-clamp-1">{result.title}</span>
-                                  <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 opacity-0 transition-opacity group-hover/link:opacity-100" />
+                                  <span className="break-words">{result.title}</span>
+                                  <ExternalLink className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 opacity-0 transition-opacity group-hover/link:opacity-100" />
                                 </a>
                               ) : (
-                                <p className="line-clamp-1 text-sm font-medium text-slate-200">
+                                <p
+                                  className="break-words text-sm font-medium leading-snug text-slate-200"
+                                  title={result.title}
+                                >
                                   {result.title}
                                 </p>
                               )}
