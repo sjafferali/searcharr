@@ -19,6 +19,9 @@ import {
   Clock,
   HardDrive,
   Inbox,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { EmptyState, LoadingSpinner, ConfirmDialog } from '../components'
@@ -40,6 +43,37 @@ const ACTION_LABELS: Record<HistoryAction, string> = {
   sent_to_client: 'Sent to client',
   downloaded_torrent: 'Downloaded .torrent',
 }
+
+type SortableColumn = {
+  key: HistorySortBy
+  label: string
+  pillLabel?: string
+  align?: 'left' | 'center' | 'right'
+  defaultOrder?: SortOrder
+}
+
+const titleColumn: SortableColumn = {
+  key: 'title',
+  label: 'Title',
+  align: 'left',
+  defaultOrder: 'asc',
+}
+const sizeColumn: SortableColumn = {
+  key: 'size_bytes',
+  label: 'Size',
+  pillLabel: 'Size',
+  align: 'left',
+  defaultOrder: 'desc',
+}
+const whenColumn: SortableColumn = {
+  key: 'occurred_at',
+  label: 'When',
+  pillLabel: 'Date',
+  align: 'left',
+  defaultOrder: 'desc',
+}
+
+const sortableColumns: SortableColumn[] = [titleColumn, sizeColumn, whenColumn]
 
 interface FilterState {
   q: string
@@ -237,6 +271,30 @@ export function HistoryPage() {
       [key]: value,
       // Any filter change resets to page 1, except explicit page changes.
       page: key === 'page' || key === 'limit' ? prev.page : 1,
+    }))
+  }
+
+  const handleSortClick = (column: SortableColumn) => {
+    setFilters((prev) => {
+      const isActive = prev.sort_by === column.key
+      return {
+        ...prev,
+        sort_by: column.key,
+        sort_order: isActive
+          ? prev.sort_order === 'asc'
+            ? 'desc'
+            : 'asc'
+          : (column.defaultOrder ?? 'desc'),
+        page: 1,
+      }
+    })
+  }
+
+  const toggleSortOrder = () => {
+    setFilters((prev) => ({
+      ...prev,
+      sort_order: prev.sort_order === 'asc' ? 'desc' : 'asc',
+      page: 1,
     }))
   }
 
@@ -459,30 +517,6 @@ export function HistoryPage() {
                   className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
                 />
               </div>
-              <div>
-                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                  Sort
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    value={filters.sort_by}
-                    onChange={(e) => updateFilter('sort_by', e.target.value as HistorySortBy)}
-                    className="flex-1 cursor-pointer rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                  >
-                    <option value="occurred_at">Date</option>
-                    <option value="title">Title</option>
-                    <option value="size_bytes">Size</option>
-                  </select>
-                  <select
-                    value={filters.sort_order}
-                    onChange={(e) => updateFilter('sort_order', e.target.value as SortOrder)}
-                    className="cursor-pointer rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                  >
-                    <option value="desc">↓</option>
-                    <option value="asc">↑</option>
-                  </select>
-                </div>
-              </div>
             </div>
 
             {hasActiveFilters && (
@@ -498,6 +532,21 @@ export function HistoryPage() {
           </div>
         )}
       </div>
+
+      {/* Sort control */}
+      {!isLoading && !isError && entries.length > 0 && (
+        <div className="flex justify-end">
+          <SortControl
+            sortBy={filters.sort_by}
+            sortOrder={filters.sort_order}
+            onSelectSort={(key) => {
+              const col = sortableColumns.find((c) => c.key === key)
+              if (col) handleSortClick(col)
+            }}
+            onToggleOrder={toggleSortOrder}
+          />
+        </div>
+      )}
 
       {/* Table */}
       {isLoading ? (
@@ -524,9 +573,12 @@ export function HistoryPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-800/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    Title
-                  </th>
+                  <SortableTh
+                    column={titleColumn}
+                    activeSortBy={filters.sort_by}
+                    activeSortOrder={filters.sort_order}
+                    onClick={handleSortClick}
+                  />
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
                     Action
                   </th>
@@ -536,12 +588,18 @@ export function HistoryPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
                     Indexer
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    Size
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    When
-                  </th>
+                  <SortableTh
+                    column={sizeColumn}
+                    activeSortBy={filters.sort_by}
+                    activeSortOrder={filters.sort_order}
+                    onClick={handleSortClick}
+                  />
+                  <SortableTh
+                    column={whenColumn}
+                    activeSortBy={filters.sort_by}
+                    activeSortOrder={filters.sort_order}
+                    onClick={handleSortClick}
+                  />
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
                     Actions
                   </th>
@@ -693,6 +751,100 @@ export function HistoryPage() {
         confirmLabel="Delete"
         isLoading={deleteEntry.isPending}
       />
+    </div>
+  )
+}
+
+interface SortableThProps {
+  column: SortableColumn
+  activeSortBy: HistorySortBy
+  activeSortOrder: SortOrder
+  onClick: (column: SortableColumn) => void
+}
+
+function SortableTh({ column, activeSortBy, activeSortOrder, onClick }: SortableThProps) {
+  const isActive = activeSortBy === column.key
+  const align = column.align ?? 'left'
+  const justify =
+    align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'
+  const textAlign =
+    align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+
+  return (
+    <th
+      scope="col"
+      aria-sort={isActive ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className={cn('px-4 py-3 text-xs font-medium uppercase tracking-wider', textAlign)}
+    >
+      <button
+        type="button"
+        onClick={() => onClick(column)}
+        className={cn(
+          'group inline-flex items-center gap-1.5 rounded transition-colors',
+          justify,
+          isActive ? 'text-cyan-300' : 'text-slate-400 hover:text-slate-200',
+        )}
+        title={`Sort by ${column.label.toLowerCase()}`}
+      >
+        <span>{column.label}</span>
+        {isActive ? (
+          activeSortOrder === 'asc' ? (
+            <ArrowUp className="h-3.5 w-3.5" />
+          ) : (
+            <ArrowDown className="h-3.5 w-3.5" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-60" />
+        )}
+      </button>
+    </th>
+  )
+}
+
+interface SortControlProps {
+  sortBy: HistorySortBy
+  sortOrder: SortOrder
+  onSelectSort: (key: HistorySortBy) => void
+  onToggleOrder: () => void
+}
+
+function SortControl({ sortBy, sortOrder, onSelectSort, onToggleOrder }: SortControlProps) {
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-slate-800/50 bg-slate-900/50 p-1 text-xs">
+      <span className="px-2 text-slate-500">Sort</span>
+      {sortableColumns.map((col) => {
+        const isActive = sortBy === col.key
+        return (
+          <button
+            key={col.key}
+            type="button"
+            onClick={() => onSelectSort(col.key)}
+            className={cn(
+              'rounded-md px-2.5 py-1 font-medium transition-colors',
+              isActive
+                ? 'bg-cyan-500/20 text-cyan-300'
+                : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200',
+            )}
+          >
+            {col.pillLabel ?? col.label}
+          </button>
+        )
+      })}
+      <button
+        type="button"
+        onClick={onToggleOrder}
+        className="ml-1 flex items-center gap-1 rounded-md border border-slate-700/50 bg-slate-800/40 px-2 py-1 text-slate-300 transition-colors hover:bg-slate-800/80"
+        title={
+          sortOrder === 'asc' ? 'Ascending — click to reverse' : 'Descending — click to reverse'
+        }
+      >
+        {sortOrder === 'asc' ? (
+          <ArrowUp className="h-3.5 w-3.5" />
+        ) : (
+          <ArrowDown className="h-3.5 w-3.5" />
+        )}
+        <span className="hidden sm:inline">{sortOrder === 'asc' ? 'Asc' : 'Desc'}</span>
+      </button>
     </div>
   )
 }

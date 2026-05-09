@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import {
   Search,
   Filter,
@@ -15,6 +15,10 @@ import {
   Bookmark,
   ExternalLink,
   Sparkles,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  AlertTriangle,
 } from 'lucide-react'
 import { DownloadedBadge, IndexerPicker, LoadingSpinner, SendToClientModal } from '../components'
 import { cn, formatAge } from '../utils'
@@ -42,17 +46,37 @@ const categories: SearchCategory[] = [
   'Other',
 ]
 
-const sortOptions: { value: SortBy; label: string }[] = [
-  { value: 'seeders', label: 'Seeders' },
-  { value: 'size', label: 'Size' },
-  { value: 'date', label: 'Date' },
-  { value: 'name', label: 'Name' },
-]
+type SortableColumn = {
+  key: SortBy
+  label: string
+  align?: 'left' | 'center' | 'right'
+  defaultOrder?: SortOrder
+}
 
-const sortOrders: { value: SortOrder; label: string }[] = [
-  { value: 'desc', label: 'Descending' },
-  { value: 'asc', label: 'Ascending' },
-]
+const titleColumn: SortableColumn = {
+  key: 'name',
+  label: 'Title',
+  align: 'left',
+  defaultOrder: 'asc',
+}
+const sizeColumn: SortableColumn = {
+  key: 'size',
+  label: 'Size',
+  align: 'left',
+  defaultOrder: 'desc',
+}
+const seedersColumn: SortableColumn = {
+  key: 'seeders',
+  label: 'S/L',
+  align: 'center',
+  defaultOrder: 'desc',
+}
+const dateColumn: SortableColumn = {
+  key: 'date',
+  label: 'Age',
+  align: 'left',
+  defaultOrder: 'desc',
+}
 
 export function SearchPage() {
   const { data: instancesStatus } = useInstancesStatus()
@@ -123,7 +147,43 @@ export function SearchPage() {
     [defaultClient, instancesStatus, sendToClient, query],
   )
 
-  const { matchesByResultId } = useHistoryLookup(results)
+  const handleSortClick = useCallback(
+    (column: SortableColumn) => {
+      if (filters.sortBy === column.key) {
+        setSortOrder(filters.sortOrder === 'asc' ? 'desc' : 'asc')
+      } else {
+        setSortBy(column.key)
+        setSortOrder(column.defaultOrder ?? 'desc')
+      }
+    },
+    [filters.sortBy, filters.sortOrder, setSortBy, setSortOrder],
+  )
+
+  const sortedResults = useMemo(() => {
+    const copy = [...results]
+    const reverse = filters.sortOrder === 'desc'
+    const dir = reverse ? -1 : 1
+    copy.sort((a, b) => {
+      switch (filters.sortBy) {
+        case 'seeders':
+          return (a.seeders - b.seeders) * dir
+        case 'size':
+          return (a.size - b.size) * dir
+        case 'name':
+          return a.title.localeCompare(b.title) * dir
+        case 'date': {
+          const aTime = a.date ? new Date(a.date).getTime() : -Infinity
+          const bTime = b.date ? new Date(b.date).getTime() : -Infinity
+          return (aTime - bTime) * dir
+        }
+        default:
+          return 0
+      }
+    })
+    return copy
+  }, [results, filters.sortBy, filters.sortOrder])
+
+  const { matchesByResultId } = useHistoryLookup(sortedResults)
 
   const jackettInstances = instancesStatus?.jackett ?? []
   const prowlarrInstances = instancesStatus?.prowlarr ?? []
@@ -404,7 +464,7 @@ export function SearchPage() {
             </div>
 
             {/* Filter Options */}
-            <div className="grid grid-cols-4 gap-4 border-t border-slate-800/50 pt-4">
+            <div className="grid grid-cols-1 gap-4 border-t border-slate-800/50 pt-4 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block text-xs font-medium text-slate-400">Min Seeders</label>
                 <input
@@ -426,34 +486,6 @@ export function SearchPage() {
                   className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
                 />
               </div>
-              <div>
-                <label className="mb-2 block text-xs font-medium text-slate-400">Sort By</label>
-                <select
-                  value={filters.sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortBy)}
-                  className="w-full cursor-pointer rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                >
-                  {sortOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-2 block text-xs font-medium text-slate-400">Order</label>
-                <select
-                  value={filters.sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                  className="w-full cursor-pointer rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                >
-                  {sortOrders.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
           </div>
         )}
@@ -461,195 +493,239 @@ export function SearchPage() {
 
       {/* Results */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-slate-400">{totalResults} results found</p>
+          {results.length > 0 && (
+            <SortControl
+              sortBy={filters.sortBy}
+              sortOrder={filters.sortOrder}
+              onSelectSort={(key) => {
+                const col = sortableColumns.find((c) => c.key === key)
+                if (col) handleSortClick(col)
+              }}
+              onToggleOrder={() => setSortOrder(filters.sortOrder === 'asc' ? 'desc' : 'asc')}
+            />
+          )}
         </div>
 
         {/* Results Table */}
-        {results.length > 0 ? (
+        {sortedResults.length > 0 ? (
           <div className="overflow-hidden rounded-xl border border-slate-800/50 bg-slate-900/50">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-800/50">
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                      Title
-                    </th>
+                    <SortableTh
+                      column={titleColumn}
+                      activeSortBy={filters.sortBy}
+                      activeSortOrder={filters.sortOrder}
+                      onClick={handleSortClick}
+                    />
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
                       Source
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                      Size
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-slate-400">
-                      S/L
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                      Age
-                    </th>
+                    <SortableTh
+                      column={sizeColumn}
+                      activeSortBy={filters.sortBy}
+                      activeSortOrder={filters.sortOrder}
+                      onClick={handleSortClick}
+                    />
+                    <SortableTh
+                      column={seedersColumn}
+                      activeSortBy={filters.sortBy}
+                      activeSortOrder={filters.sortOrder}
+                      onClick={handleSortClick}
+                    />
+                    <SortableTh
+                      column={dateColumn}
+                      activeSortBy={filters.sortBy}
+                      activeSortOrder={filters.sortOrder}
+                      onClick={handleSortClick}
+                    />
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/30">
-                  {results.map((result, idx) => (
-                    <tr
-                      key={result.id}
-                      className="group animate-fade-in transition-colors hover:bg-slate-800/30"
-                      style={{ animationDelay: `${idx * 50}ms` }}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-start gap-3">
-                          <button
-                            onClick={() => toggleBookmark(result.id)}
-                            className={cn(
-                              'mt-0.5 rounded p-1 transition-colors',
-                              bookmarkedIds.has(result.id)
-                                ? 'text-amber-400'
-                                : 'text-slate-600 hover:text-slate-400',
-                            )}
-                          >
-                            <Bookmark
+                  {sortedResults.map((result, idx) => {
+                    const isDead = result.seeders === 0
+                    return (
+                      <tr
+                        key={result.id}
+                        className={cn(
+                          'group animate-fade-in transition-all hover:bg-slate-800/30',
+                          isDead && 'opacity-60 hover:opacity-100',
+                        )}
+                        style={{ animationDelay: `${idx * 50}ms` }}
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-start gap-3">
+                            <button
+                              onClick={() => toggleBookmark(result.id)}
                               className={cn(
-                                'h-4 w-4',
-                                bookmarkedIds.has(result.id) && 'fill-current',
+                                'mt-0.5 rounded p-1 transition-colors',
+                                bookmarkedIds.has(result.id)
+                                  ? 'text-amber-400'
+                                  : 'text-slate-600 hover:text-slate-400',
                               )}
-                            />
-                          </button>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
-                              {result.info_url ? (
-                                <a
-                                  href={result.info_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="group/link inline-flex items-start gap-1.5 break-words text-sm font-medium leading-snug text-slate-200 transition-colors hover:text-cyan-300"
-                                  title={result.title}
-                                >
-                                  <span className="break-words">{result.title}</span>
-                                  <ExternalLink className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 opacity-0 transition-opacity group-hover/link:opacity-100" />
-                                </a>
-                              ) : (
-                                <p
-                                  className="break-words text-sm font-medium leading-snug text-slate-200"
-                                  title={result.title}
-                                >
-                                  {result.title}
-                                </p>
-                              )}
-                              {matchesByResultId[result.id] && (
-                                <DownloadedBadge match={matchesByResultId[result.id]} />
-                              )}
-                              {result.freeleech && (
-                                <span
-                                  className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-emerald-400/40 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
-                                  title="Freeleech — download does not count against ratio"
-                                >
-                                  <Sparkles className="h-3 w-3" />
-                                  Freeleech
-                                </span>
-                              )}
-                              {!result.freeleech &&
-                                result.download_volume_factor !== null &&
-                                result.download_volume_factor !== undefined &&
-                                result.download_volume_factor > 0 &&
-                                result.download_volume_factor < 1 && (
-                                  <span
-                                    className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-teal-400/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-300"
-                                    title={`Download counts at ${Math.round(
-                                      result.download_volume_factor * 100,
-                                    )}% of size`}
+                            >
+                              <Bookmark
+                                className={cn(
+                                  'h-4 w-4',
+                                  bookmarkedIds.has(result.id) && 'fill-current',
+                                )}
+                              />
+                            </button>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
+                                {result.info_url ? (
+                                  <a
+                                    href={result.info_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group/link inline-flex items-start gap-1.5 break-words text-sm font-medium leading-snug text-slate-200 transition-colors hover:text-cyan-300"
+                                    title={result.title}
                                   >
-                                    <Sparkles className="h-3 w-3" />
-                                    {Math.round(result.download_volume_factor * 100)}% leech
+                                    <span className="break-words">{result.title}</span>
+                                    <ExternalLink className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 opacity-0 transition-opacity group-hover/link:opacity-100" />
+                                  </a>
+                                ) : (
+                                  <p
+                                    className="break-words text-sm font-medium leading-snug text-slate-200"
+                                    title={result.title}
+                                  >
+                                    {result.title}
+                                  </p>
+                                )}
+                                {matchesByResultId[result.id] && (
+                                  <DownloadedBadge match={matchesByResultId[result.id]} />
+                                )}
+                                {isDead && (
+                                  <span
+                                    className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-rose-400/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-300"
+                                    title="No seeders — this torrent is unlikely to download"
+                                  >
+                                    <AlertTriangle className="h-3 w-3" />
+                                    Dead
                                   </span>
                                 )}
-                            </div>
-                            <div className="mt-1 flex items-center gap-2">
-                              <span className="rounded bg-slate-700/50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                                {result.category}
-                              </span>
-                              <span className="text-[10px] text-slate-500">{result.indexer}</span>
+                                {result.freeleech && (
+                                  <span
+                                    className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-emerald-400/40 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                                    title="Freeleech — download does not count against ratio"
+                                  >
+                                    <Sparkles className="h-3 w-3" />
+                                    Freeleech
+                                  </span>
+                                )}
+                                {!result.freeleech &&
+                                  result.download_volume_factor !== null &&
+                                  result.download_volume_factor !== undefined &&
+                                  result.download_volume_factor > 0 &&
+                                  result.download_volume_factor < 1 && (
+                                    <span
+                                      className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-teal-400/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-300"
+                                      title={`Download counts at ${Math.round(
+                                        result.download_volume_factor * 100,
+                                      )}% of size`}
+                                    >
+                                      <Sparkles className="h-3 w-3" />
+                                      {Math.round(result.download_volume_factor * 100)}% leech
+                                    </span>
+                                  )}
+                              </div>
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="rounded bg-slate-700/50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                                  {result.category}
+                                </span>
+                                <span className="text-[10px] text-slate-500">{result.indexer}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium',
-                            result.source_type === 'jackett'
-                              ? 'border border-amber-500/20 bg-amber-500/10 text-amber-400'
-                              : 'border border-cyan-500/20 bg-cyan-500/10 text-cyan-400',
-                          )}
-                        >
-                          {result.source_type === 'jackett' ? (
-                            <Zap className="h-3 w-3" />
-                          ) : (
-                            <Database className="h-3 w-3" />
-                          )}
-                          {result.source}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-sm text-slate-300">
-                        {result.size_formatted}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center gap-2 text-xs">
-                          <span className="flex items-center gap-1 font-medium text-emerald-400">
-                            <Users className="h-3 w-3" />
-                            {result.seeders.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium',
+                              result.source_type === 'jackett'
+                                ? 'border border-amber-500/20 bg-amber-500/10 text-amber-400'
+                                : 'border border-cyan-500/20 bg-cyan-500/10 text-cyan-400',
+                            )}
+                          >
+                            {result.source_type === 'jackett' ? (
+                              <Zap className="h-3 w-3" />
+                            ) : (
+                              <Database className="h-3 w-3" />
+                            )}
+                            {result.source}
                           </span>
-                          <span className="text-slate-600">/</span>
-                          <span className="text-red-400">{result.leechers}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-400">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5" />
-                          {formatAge(result.date)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => copyMagnet(result)}
-                            disabled={!result.magnet_link}
-                            className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="Copy Magnet"
-                          >
-                            <Magnet className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => downloadTorrent(result)}
-                            disabled={!result.torrent_url}
-                            className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="Download .torrent"
-                          >
-                            <FileDown className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={(e) => handleSendClick(result, e)}
-                            disabled={
-                              (!result.magnet_link && !result.torrent_url) || sendToClient.isPending
-                            }
-                            className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-3 py-2 text-xs font-medium text-emerald-400 transition-all hover:from-emerald-500/30 hover:to-green-500/30 disabled:cursor-not-allowed disabled:opacity-50"
-                            title={
-                              !result.magnet_link && !result.torrent_url
-                                ? 'No magnet link or torrent file available'
-                                : defaultClient
-                                  ? `Send to ${defaultClient.name} (Shift+click to choose a different client)`
-                                  : 'Send to download client'
-                            }
-                          >
-                            <Download className="h-4 w-4" />
-                            Send
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-sm text-slate-300">
+                          {result.size_formatted}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2 text-xs">
+                            <span
+                              className={cn(
+                                'flex items-center gap-1 font-medium',
+                                isDead ? 'text-rose-400' : 'text-emerald-400',
+                              )}
+                            >
+                              <Users className="h-3 w-3" />
+                              {result.seeders.toLocaleString()}
+                            </span>
+                            <span className="text-slate-600">/</span>
+                            <span className="text-red-400">{result.leechers}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-400">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-3.5 w-3.5" />
+                            {formatAge(result.date)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => copyMagnet(result)}
+                              disabled={!result.magnet_link}
+                              className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Copy Magnet"
+                            >
+                              <Magnet className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => downloadTorrent(result)}
+                              disabled={!result.torrent_url}
+                              className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Download .torrent"
+                            >
+                              <FileDown className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => handleSendClick(result, e)}
+                              disabled={
+                                (!result.magnet_link && !result.torrent_url) ||
+                                sendToClient.isPending
+                              }
+                              className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-3 py-2 text-xs font-medium text-emerald-400 transition-all hover:from-emerald-500/30 hover:to-green-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                              title={
+                                !result.magnet_link && !result.torrent_url
+                                  ? 'No magnet link or torrent file available'
+                                  : defaultClient
+                                    ? `Send to ${defaultClient.name} (Shift+click to choose a different client)`
+                                    : 'Send to download client'
+                              }
+                            >
+                              <Download className="h-4 w-4" />
+                              Send
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -672,6 +748,102 @@ export function SearchPage() {
         result={sendResult}
         searchQuery={query}
       />
+    </div>
+  )
+}
+
+const sortableColumns: SortableColumn[] = [titleColumn, sizeColumn, seedersColumn, dateColumn]
+
+interface SortableThProps {
+  column: SortableColumn
+  activeSortBy: SortBy
+  activeSortOrder: SortOrder
+  onClick: (column: SortableColumn) => void
+}
+
+function SortableTh({ column, activeSortBy, activeSortOrder, onClick }: SortableThProps) {
+  const isActive = activeSortBy === column.key
+  const align = column.align ?? 'left'
+  const justify =
+    align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'
+  const textAlign =
+    align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+
+  return (
+    <th
+      scope="col"
+      aria-sort={isActive ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className={cn('px-4 py-3 text-xs font-medium uppercase tracking-wider', textAlign)}
+    >
+      <button
+        type="button"
+        onClick={() => onClick(column)}
+        className={cn(
+          'group inline-flex items-center gap-1.5 rounded transition-colors',
+          justify,
+          isActive ? 'text-cyan-300' : 'text-slate-400 hover:text-slate-200',
+        )}
+        title={`Sort by ${column.label.toLowerCase()}`}
+      >
+        <span>{column.label}</span>
+        {isActive ? (
+          activeSortOrder === 'asc' ? (
+            <ArrowUp className="h-3.5 w-3.5" />
+          ) : (
+            <ArrowDown className="h-3.5 w-3.5" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-60" />
+        )}
+      </button>
+    </th>
+  )
+}
+
+interface SortControlProps {
+  sortBy: SortBy
+  sortOrder: SortOrder
+  onSelectSort: (key: SortBy) => void
+  onToggleOrder: () => void
+}
+
+function SortControl({ sortBy, sortOrder, onSelectSort, onToggleOrder }: SortControlProps) {
+  return (
+    <div className="flex items-center gap-1 rounded-lg border border-slate-800/50 bg-slate-900/50 p-1 text-xs">
+      <span className="px-2 text-slate-500">Sort</span>
+      {sortableColumns.map((col) => {
+        const isActive = sortBy === col.key
+        return (
+          <button
+            key={col.key}
+            type="button"
+            onClick={() => onSelectSort(col.key)}
+            className={cn(
+              'rounded-md px-2.5 py-1 font-medium transition-colors',
+              isActive
+                ? 'bg-cyan-500/20 text-cyan-300'
+                : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200',
+            )}
+          >
+            {col.label === 'S/L' ? 'Seeders' : col.label === 'Age' ? 'Date' : col.label}
+          </button>
+        )
+      })}
+      <button
+        type="button"
+        onClick={onToggleOrder}
+        className="ml-1 flex items-center gap-1 rounded-md border border-slate-700/50 bg-slate-800/40 px-2 py-1 text-slate-300 transition-colors hover:bg-slate-800/80"
+        title={
+          sortOrder === 'asc' ? 'Ascending — click to reverse' : 'Descending — click to reverse'
+        }
+      >
+        {sortOrder === 'asc' ? (
+          <ArrowUp className="h-3.5 w-3.5" />
+        ) : (
+          <ArrowDown className="h-3.5 w-3.5" />
+        )}
+        <span className="hidden sm:inline">{sortOrder === 'asc' ? 'Asc' : 'Desc'}</span>
+      </button>
     </div>
   )
 }
