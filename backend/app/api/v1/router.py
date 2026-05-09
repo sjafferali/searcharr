@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from app.api.v1.clients import router as clients_router
 from app.api.v1.download import router as download_router
+from app.api.v1.history import router as history_router
 from app.api.v1.instances import router as instances_router
 from app.api.v1.search import router as search_router
 
@@ -19,6 +20,7 @@ api_router.include_router(instances_router)
 api_router.include_router(clients_router)
 api_router.include_router(search_router)
 api_router.include_router(download_router)
+api_router.include_router(history_router)
 
 
 @api_router.get("/")

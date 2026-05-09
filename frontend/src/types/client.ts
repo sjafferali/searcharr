@@ -38,6 +38,14 @@ export interface DownloadRequest {
   client_id: number
   magnet_link?: string
   torrent_url?: string
+  title: string
+  size_bytes?: number | null
+  info_url?: string | null
+  source_type: 'jackett' | 'prowlarr'
+  source_instance_id?: number | null
+  source_instance_name: string
+  indexer: string
+  search_query?: string | null
 }
 
 export interface DownloadResponse {

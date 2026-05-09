@@ -17,6 +17,19 @@ from app.schemas.client import (
     DownloadClientWithStatus,
 )
 from app.schemas.download import DownloadRequest, DownloadResponse
+from app.schemas.history import (
+    HistoryAction,
+    HistoryEntryCreate,
+    HistoryEntryResponse,
+    HistoryListResponse,
+    HistoryLookupItem,
+    HistoryLookupRequest,
+    HistoryLookupResponse,
+    HistoryMatch,
+    HistoryMatchEntry,
+    HistorySortBy,
+    HistoryStatus,
+)
 from app.schemas.instance import (
     AllInstancesStatus,
     JackettInstanceCreate,
@@ -74,4 +87,16 @@ __all__ = [
     # Download
     "DownloadRequest",
     "DownloadResponse",
+    # History
+    "HistoryAction",
+    "HistoryStatus",
+    "HistorySortBy",
+    "HistoryEntryCreate",
+    "HistoryEntryResponse",
+    "HistoryListResponse",
+    "HistoryLookupItem",
+    "HistoryLookupRequest",
+    "HistoryLookupResponse",
+    "HistoryMatch",
+    "HistoryMatchEntry",
 ]

@@ -28,3 +28,11 @@ export {
 export { useCategories, useSearch, searchKeys } from './useSearch'
 
 export { useSendToClient } from './useDownload'
+
+export {
+  useHistory,
+  useDeleteHistoryEntry,
+  useLogHistory,
+  useHistoryLookup,
+  historyKeys,
+} from './useHistory'

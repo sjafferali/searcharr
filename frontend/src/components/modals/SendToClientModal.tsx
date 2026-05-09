@@ -3,16 +3,23 @@ import { Modal } from '../Modal'
 import { LoadingSpinner } from '../LoadingSpinner'
 import { StatusBadge } from '../StatusBadge'
 import { SearchResult, DownloadClientWithStatus } from '../../types'
-import { useClientsStatus, useSendToClient } from '../../hooks'
+import { useClientsStatus, useInstancesStatus, useSendToClient } from '../../hooks'
 
 interface SendToClientModalProps {
   isOpen: boolean
   onClose: () => void
   result: SearchResult | null
+  searchQuery?: string
 }
 
-export function SendToClientModal({ isOpen, onClose, result }: SendToClientModalProps) {
+export function SendToClientModal({
+  isOpen,
+  onClose,
+  result,
+  searchQuery,
+}: SendToClientModalProps) {
   const { data: clients } = useClientsStatus()
+  const { data: instancesStatus } = useInstancesStatus()
   const sendToClient = useSendToClient()
 
   const onlineClients = clients?.filter((c) => c.status === 'online') ?? []
@@ -24,11 +31,25 @@ export function SendToClientModal({ isOpen, onClose, result }: SendToClientModal
   const handleSend = async (client: DownloadClientWithStatus) => {
     if (!result) return
 
+    const instances =
+      result.source_type === 'jackett'
+        ? (instancesStatus?.jackett ?? [])
+        : (instancesStatus?.prowlarr ?? [])
+    const sourceInstance = instances.find((i) => i.name === result.source)
+
     try {
       await sendToClient.mutateAsync({
         client_id: client.id,
         magnet_link: result.magnet_link ?? undefined,
         torrent_url: result.torrent_url ?? undefined,
+        title: result.title,
+        size_bytes: result.size,
+        info_url: result.info_url,
+        source_type: result.source_type,
+        source_instance_id: sourceInstance?.id ?? null,
+        source_instance_name: result.source,
+        indexer: result.indexer,
+        search_query: searchQuery?.trim() || null,
       })
       onClose()
     } catch {

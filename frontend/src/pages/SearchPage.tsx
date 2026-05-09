@@ -16,9 +16,9 @@ import {
   ExternalLink,
   Sparkles,
 } from 'lucide-react'
-import { IndexerPicker, LoadingSpinner, SendToClientModal } from '../components'
+import { DownloadedBadge, IndexerPicker, LoadingSpinner, SendToClientModal } from '../components'
 import { cn, formatDate } from '../utils'
-import { useInstancesStatus, useSearch } from '../hooks'
+import { useHistoryLookup, useInstancesStatus, useLogHistory, useSearch } from '../hooks'
 import { useSearchStore } from '../stores'
 import { SearchResult, SearchCategory, SortBy, SortOrder } from '../types'
 import toast from 'react-hot-toast'
@@ -50,6 +50,8 @@ const sortOrders: { value: SortOrder; label: string }[] = [
 export function SearchPage() {
   const { data: instancesStatus } = useInstancesStatus()
   const searchMutation = useSearch()
+  const logHistory = useLogHistory()
+  // results comes from the store; the hook reads it below.
 
   const {
     query,
@@ -79,6 +81,8 @@ export function SearchPage() {
   } = useSearchStore()
 
   const [sendResult, setSendResult] = useState<SearchResult | null>(null)
+
+  const { matchesByResultId } = useHistoryLookup(results)
 
   const jackettInstances = instancesStatus?.jackett ?? []
   const prowlarrInstances = instancesStatus?.prowlarr ?? []
@@ -170,6 +174,24 @@ export function SearchPage() {
       toast.error('No torrent file available')
       return
     }
+
+    const sourceInstance =
+      result.source_type === 'jackett'
+        ? jackettInstances.find((i) => i.name === result.source)
+        : prowlarrInstances.find((i) => i.name === result.source)
+
+    logHistory.mutate({
+      title: result.title,
+      size_bytes: result.size,
+      info_url: result.info_url,
+      torrent_url: result.torrent_url,
+      magnet_link: result.magnet_link,
+      source_type: result.source_type,
+      source_instance_id: sourceInstance?.id ?? null,
+      source_instance_name: result.source,
+      indexer: result.indexer,
+      search_query: query.trim() || null,
+    })
 
     window.open(result.torrent_url, '_blank')
   }
@@ -472,6 +494,9 @@ export function SearchPage() {
                                   {result.title}
                                 </p>
                               )}
+                              {matchesByResultId[result.id] && (
+                                <DownloadedBadge match={matchesByResultId[result.id]} />
+                              )}
                               {result.freeleech && (
                                 <span
                                   className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-emerald-400/40 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
@@ -597,6 +622,7 @@ export function SearchPage() {
         isOpen={!!sendResult}
         onClose={() => setSendResult(null)}
         result={sendResult}
+        searchQuery={query}
       />
     </div>
   )

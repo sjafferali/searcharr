@@ -28,6 +28,42 @@ export function formatDate(dateString: string | null): string {
 }
 
 /**
+ * Format a date as a relative time string (e.g. "3 minutes ago", "yesterday").
+ */
+export function formatRelative(dateString: string | null | undefined): string {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  const diffMs = date.getTime() - Date.now()
+  const diffSec = Math.round(diffMs / 1000)
+  const absSec = Math.abs(diffSec)
+
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+
+  if (absSec < 60) return rtf.format(diffSec, 'second')
+  if (absSec < 3600) return rtf.format(Math.round(diffSec / 60), 'minute')
+  if (absSec < 86400) return rtf.format(Math.round(diffSec / 3600), 'hour')
+  if (absSec < 604800) return rtf.format(Math.round(diffSec / 86400), 'day')
+  if (absSec < 2629800) return rtf.format(Math.round(diffSec / 604800), 'week')
+  if (absSec < 31557600) return rtf.format(Math.round(diffSec / 2629800), 'month')
+  return rtf.format(Math.round(diffSec / 31557600), 'year')
+}
+
+/**
+ * Format a date as an absolute timestamp (e.g. "May 9, 2026, 3:42 PM").
+ */
+export function formatDateTime(dateString: string | null | undefined): string {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+/**
  * Mask sensitive strings (API keys, passwords)
  */
 export function maskString(str: string, visibleChars = 4): string {

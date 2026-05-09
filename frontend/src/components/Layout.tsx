@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Search, Server, HardDrive, Magnet } from 'lucide-react'
+import { Search, Server, HardDrive, Magnet, History } from 'lucide-react'
 import { cn } from '../utils'
 import { useInstancesStatus } from '../hooks'
 
@@ -10,6 +10,7 @@ interface LayoutProps {
 
 const navItems = [
   { id: 'search', path: '/', label: 'Search', icon: Search },
+  { id: 'history', path: '/history', label: 'History', icon: History },
   { id: 'instances', path: '/instances', label: 'Instances', icon: Server },
   { id: 'clients', path: '/clients', label: 'Clients', icon: HardDrive },
 ]
