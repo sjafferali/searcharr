@@ -1,2 +1,9 @@
 export { cn } from './cn'
-export { formatBytes, formatDate, formatDateTime, formatRelative, maskString } from './format'
+export {
+  formatAge,
+  formatBytes,
+  formatDate,
+  formatDateTime,
+  formatRelative,
+  maskString,
+} from './format'

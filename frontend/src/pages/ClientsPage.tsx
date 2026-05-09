@@ -97,6 +97,7 @@ export function ClientsPage() {
               name={client.name}
               url={client.url}
               status={client.status}
+              isDefault={client.is_default}
               isTesting={testingIds.has(client.id)}
               onTest={() => handleTest(client.id)}
               onEdit={() => setEditClient(client)}

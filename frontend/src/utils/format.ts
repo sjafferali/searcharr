@@ -28,6 +28,18 @@ export function formatDate(dateString: string | null): string {
 }
 
 /**
+ * Format a date as an age in whole days (e.g. "500 Days").
+ */
+export function formatAge(dateString: string | null | undefined): string {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return '-'
+  const diffMs = Date.now() - date.getTime()
+  const days = Math.max(0, Math.floor(diffMs / 86400000))
+  return `${days} ${days === 1 ? 'Day' : 'Days'}`
+}
+
+/**
  * Format a date as a relative time string (e.g. "3 minutes ago", "yesterday").
  */
 export function formatRelative(dateString: string | null | undefined): string {

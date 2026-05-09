@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form'
-import { Settings, Eye, EyeOff } from 'lucide-react'
+import { Settings, Eye, EyeOff, Star } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Modal } from '../Modal'
 import { LoadingSpinner } from '../LoadingSpinner'
@@ -38,6 +38,7 @@ export function EditClientModal({ isOpen, onClose, client }: EditClientModalProp
         username: '',
         password: '',
         category: client.category ?? '',
+        is_default: client.is_default,
       })
     }
   }, [client, reset])
@@ -57,6 +58,9 @@ export function EditClientModal({ isOpen, onClose, client }: EditClientModalProp
     const newCategory = data.category || null
     const currentCategory = client.category || null
     if (newCategory !== currentCategory) updateData.category = newCategory
+    if (typeof data.is_default === 'boolean' && data.is_default !== client.is_default) {
+      updateData.is_default = data.is_default
+    }
 
     // Skip if no changes
     if (Object.keys(updateData).length === 0) {
@@ -185,6 +189,24 @@ export function EditClientModal({ isOpen, onClose, client }: EditClientModalProp
             All torrents sent to this client will be assigned this category
           </p>
         </div>
+
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-700/50 bg-slate-800/40 p-3 transition-colors hover:border-amber-500/30 hover:bg-slate-800/60">
+          <input
+            type="checkbox"
+            {...register('is_default')}
+            className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-900 text-amber-500 focus:ring-2 focus:ring-amber-500/40 focus:ring-offset-0"
+          />
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5 text-sm font-medium text-slate-200">
+              <Star className="h-4 w-4 text-amber-400" />
+              Default client
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Torrents will send straight here, skipping the picker. Only one client can be the
+              default; enabling this will unset any other.
+            </p>
+          </div>
+        </label>
       </form>
     </Modal>
   )

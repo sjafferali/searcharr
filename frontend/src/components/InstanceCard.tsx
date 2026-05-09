@@ -1,4 +1,14 @@
-import { Zap, Database, HardDrive, Server, Eye, RefreshCw, Settings, Trash2 } from 'lucide-react'
+import {
+  Zap,
+  Database,
+  HardDrive,
+  Server,
+  Eye,
+  RefreshCw,
+  Settings,
+  Trash2,
+  Star,
+} from 'lucide-react'
 import { StatusBadge } from './StatusBadge'
 import { LoadingSpinner } from './LoadingSpinner'
 import { cn } from '../utils'
@@ -22,6 +32,7 @@ interface InstanceCardProps extends BaseCardProps {
 
 interface ClientCardProps extends BaseCardProps {
   clientType: ClientType
+  isDefault?: boolean
 }
 
 export function InstanceCard({
@@ -108,17 +119,39 @@ export function ClientCard({
   onEdit,
   onDelete,
   isTesting,
+  isDefault,
 }: ClientCardProps) {
   return (
-    <div className="card group relative">
+    <div
+      className={cn(
+        'card group relative',
+        isDefault && 'border-amber-500/30 ring-1 ring-amber-500/20',
+      )}
+    >
       {/* Top gradient line on hover */}
-      <div className="absolute left-0 top-0 h-0.5 w-full bg-gradient-to-r from-transparent via-violet-500/50 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+      <div
+        className={cn(
+          'absolute left-0 top-0 h-0.5 w-full bg-gradient-to-r from-transparent to-transparent transition-opacity',
+          isDefault
+            ? 'via-amber-500/50 opacity-100'
+            : 'via-violet-500/50 opacity-0 group-hover:opacity-100',
+        )}
+      />
 
       {/* Header */}
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <HardDrive className="h-5 w-5 text-violet-400" />
-          <h4 className="font-semibold text-slate-200">{name}</h4>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <HardDrive className="h-5 w-5 shrink-0 text-violet-400" />
+          <h4 className="truncate font-semibold text-slate-200">{name}</h4>
+          {isDefault && (
+            <span
+              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-400"
+              title="Torrents send here automatically when no client is picked"
+            >
+              <Star className="h-3 w-3 fill-amber-400" />
+              Default
+            </span>
+          )}
         </div>
         <StatusBadge status={status} />
       </div>

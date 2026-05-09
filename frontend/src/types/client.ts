@@ -8,6 +8,7 @@ export interface DownloadClient {
   client_type: ClientType
   url: string
   category: string | null
+  is_default: boolean
   created_at: string
   updated_at: string
 }
@@ -23,6 +24,7 @@ export interface CreateDownloadClient {
   username: string
   password: string
   category?: string | null
+  is_default?: boolean
 }
 
 export interface UpdateDownloadClient {
@@ -32,6 +34,7 @@ export interface UpdateDownloadClient {
   username?: string
   password?: string
   category?: string | null
+  is_default?: boolean
 }
 
 export interface DownloadRequest {

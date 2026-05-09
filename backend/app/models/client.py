@@ -4,7 +4,7 @@ Database models for download clients.
 
 import enum
 
-from sqlalchemy import Enum, String, Text
+from sqlalchemy import Boolean, Enum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import BaseModel
@@ -43,6 +43,9 @@ class DownloadClient(BaseModel):
     category: Mapped[str | None] = mapped_column(
         String(255), nullable=True, default=None
     )  # Category for torrents added via this client
+    is_default: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
 
     def __repr__(self) -> str:
         return (

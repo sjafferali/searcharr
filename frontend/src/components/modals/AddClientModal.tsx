@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form'
-import { Plus, Eye, EyeOff } from 'lucide-react'
+import { Plus, Eye, EyeOff, Star } from 'lucide-react'
 import { useState } from 'react'
 import { Modal } from '../Modal'
 import { LoadingSpinner } from '../LoadingSpinner'
@@ -26,6 +26,7 @@ export function AddClientModal({ isOpen, onClose }: AddClientModalProps) {
   } = useForm<CreateDownloadClient>({
     defaultValues: {
       client_type: 'qbittorrent',
+      is_default: false,
     },
   })
 
@@ -161,6 +162,24 @@ export function AddClientModal({ isOpen, onClose }: AddClientModalProps) {
             All torrents sent to this client will be assigned this category
           </p>
         </div>
+
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-700/50 bg-slate-800/40 p-3 transition-colors hover:border-amber-500/30 hover:bg-slate-800/60">
+          <input
+            type="checkbox"
+            {...register('is_default')}
+            className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-600 bg-slate-900 text-amber-500 focus:ring-2 focus:ring-amber-500/40 focus:ring-offset-0"
+          />
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5 text-sm font-medium text-slate-200">
+              <Star className="h-4 w-4 text-amber-400" />
+              Set as default client
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Torrents will send straight here, skipping the picker. Only one client can be the
+              default; setting this will unset any other.
+            </p>
+          </div>
+        </label>
       </form>
     </Modal>
   )

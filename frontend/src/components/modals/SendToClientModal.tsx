@@ -1,4 +1,5 @@
-import { Download, HardDrive, ChevronRight, AlertCircle } from 'lucide-react'
+import { Download, HardDrive, ChevronRight, AlertCircle, Star } from 'lucide-react'
+import { cn } from '../../utils'
 import { Modal } from '../Modal'
 import { LoadingSpinner } from '../LoadingSpinner'
 import { StatusBadge } from '../StatusBadge'
@@ -108,21 +109,53 @@ export function SendToClientModal({
                   key={client.id}
                   onClick={() => handleSend(client)}
                   disabled={sendToClient.isPending}
-                  className="group flex w-full items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/50 p-3 transition-all hover:border-cyan-500/30 hover:bg-slate-800 disabled:opacity-50"
+                  className={cn(
+                    'group flex w-full items-center justify-between rounded-lg border p-3 transition-all disabled:opacity-50',
+                    client.is_default
+                      ? 'border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50 hover:bg-amber-500/10'
+                      : 'border-slate-700/50 bg-slate-800/50 hover:border-cyan-500/30 hover:bg-slate-800',
+                  )}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-violet-500/30 bg-gradient-to-br from-violet-500/20 to-purple-500/20">
-                      <HardDrive className="h-5 w-5 text-violet-400" />
+                    <div
+                      className={cn(
+                        'flex h-10 w-10 items-center justify-center rounded-lg border bg-gradient-to-br',
+                        client.is_default
+                          ? 'border-amber-500/30 from-amber-500/20 to-orange-500/20'
+                          : 'border-violet-500/30 from-violet-500/20 to-purple-500/20',
+                      )}
+                    >
+                      <HardDrive
+                        className={cn(
+                          'h-5 w-5',
+                          client.is_default ? 'text-amber-400' : 'text-violet-400',
+                        )}
+                      />
                     </div>
                     <div className="text-left">
-                      <p className="font-medium text-slate-200">{client.name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-slate-200">{client.name}</p>
+                        {client.is_default && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-400">
+                            <Star className="h-2.5 w-2.5 fill-amber-400" />
+                            Default
+                          </span>
+                        )}
+                      </div>
                       <p className="font-mono text-xs text-slate-400">{client.url}</p>
                     </div>
                   </div>
                   {sendToClient.isPending ? (
                     <LoadingSpinner size="sm" />
                   ) : (
-                    <ChevronRight className="h-5 w-5 text-slate-500 transition-colors group-hover:text-cyan-400" />
+                    <ChevronRight
+                      className={cn(
+                        'h-5 w-5 text-slate-500 transition-colors',
+                        client.is_default
+                          ? 'group-hover:text-amber-400'
+                          : 'group-hover:text-cyan-400',
+                      )}
+                    />
                   )}
                 </button>
               ))}

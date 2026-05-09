@@ -21,6 +21,10 @@ class DownloadClientBase(BaseSchema):
         max_length=255,
         description="Category to assign to torrents added via this client",
     )
+    is_default: bool = Field(
+        False,
+        description="Whether this client is the default download destination",
+    )
 
 
 class DownloadClientCreate(DownloadClientBase):
@@ -44,6 +48,10 @@ class DownloadClientUpdate(BaseSchema):
         max_length=255,
         description="Category to assign to torrents added via this client",
     )
+    is_default: bool | None = Field(
+        None,
+        description="Whether this client is the default download destination",
+    )
 
 
 class DownloadClientResponse(TimestampSchema):
@@ -54,6 +62,7 @@ class DownloadClientResponse(TimestampSchema):
     client_type: ClientType
     url: str
     category: str | None = None
+    is_default: bool = False
     # Note: username and password are NOT returned for security
 
 

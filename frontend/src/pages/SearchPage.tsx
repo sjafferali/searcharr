@@ -17,8 +17,15 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { DownloadedBadge, IndexerPicker, LoadingSpinner, SendToClientModal } from '../components'
-import { cn, formatDate } from '../utils'
-import { useHistoryLookup, useInstancesStatus, useLogHistory, useSearch } from '../hooks'
+import { cn, formatAge } from '../utils'
+import {
+  useClientsStatus,
+  useHistoryLookup,
+  useInstancesStatus,
+  useLogHistory,
+  useSearch,
+  useSendToClient,
+} from '../hooks'
 import { useSearchStore } from '../stores'
 import { SearchResult, SearchCategory, SortBy, SortOrder } from '../types'
 import toast from 'react-hot-toast'
@@ -49,8 +56,10 @@ const sortOrders: { value: SortOrder; label: string }[] = [
 
 export function SearchPage() {
   const { data: instancesStatus } = useInstancesStatus()
+  const { data: clientsStatus } = useClientsStatus()
   const searchMutation = useSearch()
   const logHistory = useLogHistory()
+  const sendToClient = useSendToClient()
   // results comes from the store; the hook reads it below.
 
   const {
@@ -81,6 +90,38 @@ export function SearchPage() {
   } = useSearchStore()
 
   const [sendResult, setSendResult] = useState<SearchResult | null>(null)
+
+  const defaultClient = clientsStatus?.find((c) => c.is_default && c.status === 'online') ?? null
+
+  const handleSendClick = useCallback(
+    (result: SearchResult, event: React.MouseEvent) => {
+      // Holding Shift forces the picker, even if a default exists.
+      if (defaultClient && !event.shiftKey) {
+        const instances =
+          result.source_type === 'jackett'
+            ? (instancesStatus?.jackett ?? [])
+            : (instancesStatus?.prowlarr ?? [])
+        const sourceInstance = instances.find((i) => i.name === result.source)
+
+        sendToClient.mutate({
+          client_id: defaultClient.id,
+          magnet_link: result.magnet_link ?? undefined,
+          torrent_url: result.torrent_url ?? undefined,
+          title: result.title,
+          size_bytes: result.size,
+          info_url: result.info_url,
+          source_type: result.source_type,
+          source_instance_id: sourceInstance?.id ?? null,
+          source_instance_name: result.source,
+          indexer: result.indexer,
+          search_query: query?.trim() || null,
+        })
+        return
+      }
+      setSendResult(result)
+    },
+    [defaultClient, instancesStatus, sendToClient, query],
+  )
 
   const { matchesByResultId } = useHistoryLookup(results)
 
@@ -444,7 +485,7 @@ export function SearchPage() {
                       S/L
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                      Date
+                      Age
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
                       Actions
@@ -567,7 +608,7 @@ export function SearchPage() {
                       <td className="px-4 py-3 text-sm text-slate-400">
                         <div className="flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5" />
-                          {formatDate(result.date)}
+                          {formatAge(result.date)}
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -589,13 +630,17 @@ export function SearchPage() {
                             <FileDown className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => setSendResult(result)}
-                            disabled={!result.magnet_link && !result.torrent_url}
+                            onClick={(e) => handleSendClick(result, e)}
+                            disabled={
+                              (!result.magnet_link && !result.torrent_url) || sendToClient.isPending
+                            }
                             className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-3 py-2 text-xs font-medium text-emerald-400 transition-all hover:from-emerald-500/30 hover:to-green-500/30 disabled:cursor-not-allowed disabled:opacity-50"
                             title={
                               !result.magnet_link && !result.torrent_url
                                 ? 'No magnet link or torrent file available'
-                                : 'Send to download client'
+                                : defaultClient
+                                  ? `Send to ${defaultClient.name} (Shift+click to choose a different client)`
+                                  : 'Send to download client'
                             }
                           >
                             <Download className="h-4 w-4" />
