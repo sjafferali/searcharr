@@ -73,17 +73,25 @@ class JackettService:
             return False, f"Connection error: {str(e)}", None
 
     async def _get_indexer_count(self, client: httpx.AsyncClient) -> int | None:
-        """Get the number of configured indexers."""
-        try:
-            # Jackett's indexer list endpoint
-            url = urljoin(self.base_url, "/api/v2.0/indexers")
-            response = await client.get(url, params={"apikey": self.api_key})
+        """Get the number of configured indexers via the Torznab capability endpoint.
 
-            if response.status_code == 200:
-                indexers = response.json()
-                # Count only configured (non-aggregate) indexers
-                return len([i for i in indexers if i.get("configured", False)])
-            return None
+        Uses ``t=indexers`` so the request authenticates with the API key. The
+        admin-password-protected ``/api/v2.0/indexers`` JSON endpoint is unsuitable
+        because it 302s to the login UI when an admin password is set.
+        """
+        try:
+            url = self._get_api_url("indexers/all/results/torznab/api")
+            params = {
+                "apikey": self.api_key,
+                "t": "indexers",
+                "configured": "true",
+            }
+            response = await client.get(url, params=params)
+
+            if response.status_code != 200:
+                return None
+
+            return len(self._parse_indexers_xml(response.text))
         except Exception:
             return None
 
@@ -104,43 +112,66 @@ class JackettService:
         """
         Get the list of configured indexers on this Jackett instance.
 
+        Uses Jackett's Torznab ``t=indexers`` endpoint (authenticated by API key)
+        rather than ``/api/v2.0/indexers``, which is gated by the admin password
+        and redirects to the login UI when one is set.
+
         Returns:
             List of IndexerInfo objects for indexers that have been configured.
         """
         indexers: list[IndexerInfo] = []
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                url = urljoin(self.base_url, "/api/v2.0/indexers")
-                response = await client.get(url, params={"apikey": self.api_key})
+            async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=False) as client:
+                url = self._get_api_url("indexers/all/results/torznab/api")
+                params = {
+                    "apikey": self.api_key,
+                    "t": "indexers",
+                    "configured": "true",
+                }
+                response = await client.get(url, params=params)
 
                 if response.status_code != 200:
                     logger.warning(f"Jackett get_indexers failed: HTTP {response.status_code}")
                     return indexers
 
-                payload = response.json()
-                for entry in payload:
-                    if not isinstance(entry, dict):
-                        continue
-                    if not entry.get("configured", False):
-                        continue
-                    indexer_id = entry.get("id")
-                    name = entry.get("name")
-                    if not indexer_id or not name:
-                        continue
-                    indexers.append(
-                        IndexerInfo(
-                            id=str(indexer_id),
-                            name=str(name),
-                            type=entry.get("type"),
-                            enabled=True,
-                        )
-                    )
+                indexers = self._parse_indexers_xml(response.text)
         except httpx.TimeoutException:
             logger.warning("Jackett get_indexers request timed out")
         except Exception:
             logger.exception("Error fetching Jackett indexers")
 
         return sorted(indexers, key=lambda i: i.name.lower())
+
+    @staticmethod
+    def _parse_indexers_xml(xml_content: str) -> list[IndexerInfo]:
+        """Parse the ``t=indexers`` Torznab XML response into IndexerInfo objects."""
+        import xml.etree.ElementTree as ET
+
+        indexers: list[IndexerInfo] = []
+        try:
+            root = ET.fromstring(xml_content)
+        except ET.ParseError as e:
+            logger.error(f"Failed to parse Jackett indexers XML: {e}")
+            return indexers
+
+        for entry in root.iter("indexer"):
+            indexer_id = entry.get("id")
+            if not indexer_id:
+                continue
+            configured_attr = (entry.get("configured") or "").strip().lower()
+            if configured_attr and configured_attr != "true":
+                continue
+            title = entry.findtext("title") or indexer_id
+            type_text = entry.findtext("type")
+            indexers.append(
+                IndexerInfo(
+                    id=str(indexer_id),
+                    name=str(title),
+                    type=str(type_text) if type_text else None,
+                    enabled=True,
+                )
+            )
+        return indexers
 
     async def search(
         self,
