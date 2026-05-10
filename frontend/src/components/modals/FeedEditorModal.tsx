@@ -552,7 +552,7 @@ function FeedInstanceSection({
                   className="w-full rounded-md border border-slate-700/50 bg-slate-800/40 py-1.5 pl-7 pr-2 text-xs text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
                 />
               </div>
-              <div className="grid max-h-56 grid-cols-1 gap-1.5 overflow-y-auto pr-1 sm:grid-cols-2">
+              <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto pr-1">
                 {filteredIndexers.map((indexer) => {
                   const ref: FeedIndexerRef = {
                     source_type: type,
@@ -568,6 +568,7 @@ function FeedInstanceSection({
                       key={indexer.id}
                       type="button"
                       onClick={() => onToggle(ref)}
+                      title={indexer.name}
                       className={cn(
                         'flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-left text-xs transition-all',
                         isSelected
@@ -577,7 +578,7 @@ function FeedInstanceSection({
                           : 'border-slate-700/50 bg-slate-800/30 text-slate-300 hover:border-slate-600 hover:bg-slate-800/60',
                       )}
                     >
-                      <span className="flex min-w-0 items-center gap-2">
+                      <span className="flex min-w-0 flex-1 items-center gap-2">
                         <span
                           className={cn(
                             'flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded border',
@@ -590,12 +591,12 @@ function FeedInstanceSection({
                         >
                           {isSelected && <Check className="h-2.5 w-2.5" />}
                         </span>
-                        <span className="truncate">{indexer.name}</span>
+                        <span className="min-w-0 break-words">{indexer.name}</span>
                       </span>
                       {badge && (
                         <span
                           className={cn(
-                            'inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium',
+                            'inline-flex flex-shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium',
                             badge.className,
                           )}
                         >
