@@ -6,8 +6,10 @@ Includes all v1 API endpoints for the Searcharr application.
 
 from fastapi import APIRouter
 
+from app.api.v1.bookmarks import router as bookmarks_router
 from app.api.v1.clients import router as clients_router
 from app.api.v1.download import router as download_router
+from app.api.v1.feeds import router as feeds_router
 from app.api.v1.history import router as history_router
 from app.api.v1.instances import router as instances_router
 from app.api.v1.search import router as search_router
@@ -21,6 +23,8 @@ api_router.include_router(clients_router)
 api_router.include_router(search_router)
 api_router.include_router(download_router)
 api_router.include_router(history_router)
+api_router.include_router(bookmarks_router)
+api_router.include_router(feeds_router)
 
 
 @api_router.get("/")

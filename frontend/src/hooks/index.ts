@@ -36,3 +36,23 @@ export {
   useHistoryLookup,
   historyKeys,
 } from './useHistory'
+
+export {
+  useBookmarks,
+  useCreateBookmark,
+  useDeleteBookmark,
+  useDeleteBookmarkByKey,
+  useBookmarkLookup,
+  useToggleResultBookmark,
+  bookmarkKeys,
+} from './useBookmarks'
+
+export {
+  useFeeds,
+  useFeed,
+  useCreateFeed,
+  useUpdateFeed,
+  useDeleteFeed,
+  useFeedFetch,
+  feedKeys,
+} from './useFeeds'

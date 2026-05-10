@@ -43,6 +43,8 @@ export interface HistoryListParams {
   status?: HistoryStatus
   since?: string
   until?: string
+  min_size_bytes?: number
+  max_size_bytes?: number
   sort_by?: HistorySortBy
   sort_order?: SortOrder
   limit?: number

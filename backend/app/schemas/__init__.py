@@ -10,6 +10,15 @@ from app.schemas.base import (
     TestConnectionResponse,
     TimestampSchema,
 )
+from app.schemas.bookmark import (
+    BookmarkCreate,
+    BookmarkListResponse,
+    BookmarkLookupItem,
+    BookmarkLookupRequest,
+    BookmarkLookupResponse,
+    BookmarkResponse,
+    BookmarkSortBy,
+)
 from app.schemas.client import (
     DownloadClientCreate,
     DownloadClientResponse,
@@ -17,6 +26,15 @@ from app.schemas.client import (
     DownloadClientWithStatus,
 )
 from app.schemas.download import DownloadRequest, DownloadResponse
+from app.schemas.feed import (
+    FeedCreate,
+    FeedFetchResponse,
+    FeedFilters,
+    FeedIndexerRef,
+    FeedListResponse,
+    FeedResponse,
+    FeedUpdate,
+)
 from app.schemas.history import (
     HistoryAction,
     HistoryEntryCreate,
@@ -59,6 +77,14 @@ __all__ = [
     "TimestampSchema",
     "StatusResponse",
     "TestConnectionResponse",
+    # Bookmarks
+    "BookmarkCreate",
+    "BookmarkResponse",
+    "BookmarkListResponse",
+    "BookmarkLookupItem",
+    "BookmarkLookupRequest",
+    "BookmarkLookupResponse",
+    "BookmarkSortBy",
     # Instance
     "JackettInstanceCreate",
     "JackettInstanceUpdate",
@@ -87,6 +113,14 @@ __all__ = [
     # Download
     "DownloadRequest",
     "DownloadResponse",
+    # Feeds
+    "FeedCreate",
+    "FeedFetchResponse",
+    "FeedFilters",
+    "FeedIndexerRef",
+    "FeedListResponse",
+    "FeedResponse",
+    "FeedUpdate",
     # History
     "HistoryAction",
     "HistoryStatus",

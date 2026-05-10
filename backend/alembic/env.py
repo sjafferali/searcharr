@@ -12,8 +12,11 @@ from app.core.database import Base
 
 # Import all models here to ensure they are registered with SQLAlchemy
 from app.models import (  # noqa: F401
+    Bookmark,
     DownloadClient,
     DownloadHistory,
+    Feed,
+    FeedIndexer,
     JackettInstance,
     ProwlarrInstance,
 )

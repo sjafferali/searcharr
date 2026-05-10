@@ -240,6 +240,50 @@ class TestHistoryList:
         titles = [e["title"] for e in data["entries"]]
         assert titles == sorted(titles)
 
+    @pytest.mark.asyncio
+    async def test_list_filter_by_min_size_excludes_smaller(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        # Three entries with distinct sizes.
+        sizes = [500_000_000, 4_700_000_000, 50_000_000_000]
+        for s in sizes:
+            db_session.add(_entry(title=f"row-{s}", size_bytes=s))
+        await db_session.commit()
+
+        response = await client.get("/api/v1/history", params={"min_size_bytes": 1_000_000_000})
+        assert response.status_code == 200
+        returned = sorted(e["size_bytes"] for e in response.json()["entries"])
+        assert returned == [4_700_000_000, 50_000_000_000]
+
+    @pytest.mark.asyncio
+    async def test_list_filter_by_max_size_excludes_larger(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        sizes = [500_000_000, 4_700_000_000, 50_000_000_000]
+        for s in sizes:
+            db_session.add(_entry(title=f"row-{s}", size_bytes=s))
+        await db_session.commit()
+
+        response = await client.get("/api/v1/history", params={"max_size_bytes": 5_000_000_000})
+        assert response.status_code == 200
+        returned = sorted(e["size_bytes"] for e in response.json()["entries"])
+        assert returned == [500_000_000, 4_700_000_000]
+
+    @pytest.mark.asyncio
+    async def test_list_filter_by_size_range(self, client: AsyncClient, db_session: AsyncSession):
+        sizes = [500_000_000, 4_700_000_000, 50_000_000_000]
+        for s in sizes:
+            db_session.add(_entry(title=f"row-{s}", size_bytes=s))
+        await db_session.commit()
+
+        response = await client.get(
+            "/api/v1/history",
+            params={"min_size_bytes": 1_000_000_000, "max_size_bytes": 10_000_000_000},
+        )
+        assert response.status_code == 200
+        returned = [e["size_bytes"] for e in response.json()["entries"]]
+        assert returned == [4_700_000_000]
+
 
 class TestHistoryDelete:
     @pytest.mark.asyncio

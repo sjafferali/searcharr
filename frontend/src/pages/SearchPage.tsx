@@ -30,12 +30,14 @@ import {
 } from '../components'
 import { cn, formatAge, parseSize } from '../utils'
 import {
+  useBookmarkLookup,
   useClientsStatus,
   useHistoryLookup,
   useInstancesStatus,
   useLogHistory,
   useSearch,
   useSendToClient,
+  useToggleResultBookmark,
 } from '../hooks'
 import { useSearchStore } from '../stores'
 import { SearchResult, SearchCategory, SortBy, SortOrder } from '../types'
@@ -116,8 +118,6 @@ export function SearchPage() {
     setTotalResults,
     isFiltersExpanded,
     toggleFilters,
-    bookmarkedIds,
-    toggleBookmark,
   } = useSearchStore()
 
   const [sendResult, setSendResult] = useState<SearchResult | null>(null)
@@ -205,6 +205,8 @@ export function SearchPage() {
   }, [filteredResults, filters.sortBy, filters.sortOrder])
 
   const { matchesByResultId } = useHistoryLookup(sortedResults)
+  const { bookmarkIdByResultId } = useBookmarkLookup(sortedResults)
+  const bookmarkToggle = useToggleResultBookmark()
 
   const jackettInstances = instancesStatus?.jackett ?? []
   const prowlarrInstances = instancesStatus?.prowlarr ?? []
@@ -651,18 +653,31 @@ export function SearchPage() {
                         <td className="px-4 py-3">
                           <div className="flex items-start gap-3">
                             <button
-                              onClick={() => toggleBookmark(result.id)}
+                              onClick={() =>
+                                bookmarkToggle.toggle({
+                                  result,
+                                  isCurrentlyBookmarked:
+                                    bookmarkIdByResultId[result.id] !== undefined,
+                                  bookmarkId: bookmarkIdByResultId[result.id],
+                                })
+                              }
+                              disabled={bookmarkToggle.isPending}
+                              title={
+                                bookmarkIdByResultId[result.id] !== undefined
+                                  ? 'Remove bookmark'
+                                  : 'Bookmark this result'
+                              }
                               className={cn(
-                                'mt-0.5 rounded p-1 transition-colors',
-                                bookmarkedIds.has(result.id)
-                                  ? 'text-amber-400'
+                                'mt-0.5 rounded p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                                bookmarkIdByResultId[result.id] !== undefined
+                                  ? 'text-amber-400 hover:text-amber-300'
                                   : 'text-slate-600 hover:text-slate-400',
                               )}
                             >
                               <Bookmark
                                 className={cn(
                                   'h-4 w-4',
-                                  bookmarkedIds.has(result.id) && 'fill-current',
+                                  bookmarkIdByResultId[result.id] !== undefined && 'fill-current',
                                 )}
                               />
                             </button>

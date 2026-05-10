@@ -45,11 +45,6 @@ interface SearchState {
   totalResults: number
   setTotalResults: (total: number) => void
 
-  // Bookmarks (client-side only)
-  bookmarkedIds: Set<string>
-  toggleBookmark: (id: string) => void
-  isBookmarked: (id: string) => boolean
-
   // UI State
   isFiltersExpanded: boolean
   toggleFilters: () => void
@@ -69,7 +64,7 @@ const defaultFilters: SearchFilters = {
   prowlarrIndexerSelections: {},
 }
 
-export const useSearchStore = create<SearchState>((set, get) => ({
+export const useSearchStore = create<SearchState>((set) => ({
   // Query
   query: '',
   setQuery: (query) => set({ query }),
@@ -189,20 +184,6 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   setResults: (results) => set({ results }),
   totalResults: 0,
   setTotalResults: (total) => set({ totalResults: total }),
-
-  // Bookmarks
-  bookmarkedIds: new Set(),
-  toggleBookmark: (id) =>
-    set((state) => {
-      const newBookmarks = new Set(state.bookmarkedIds)
-      if (newBookmarks.has(id)) {
-        newBookmarks.delete(id)
-      } else {
-        newBookmarks.add(id)
-      }
-      return { bookmarkedIds: newBookmarks }
-    }),
-  isBookmarked: (id) => get().bookmarkedIds.has(id),
 
   // UI State
   isFiltersExpanded: true,

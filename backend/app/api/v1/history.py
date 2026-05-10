@@ -133,6 +133,14 @@ async def list_history(
         datetime | None,
         Query(description="Only include entries on or before this timestamp"),
     ] = None,
+    min_size_bytes: Annotated[
+        int | None,
+        Query(ge=0, description="Only include entries at least this large (bytes)"),
+    ] = None,
+    max_size_bytes: Annotated[
+        int | None,
+        Query(ge=0, description="Only include entries at most this large (bytes)"),
+    ] = None,
     sort_by: Annotated[
         HistorySortBy,
         Query(description="Sort field"),
@@ -186,6 +194,10 @@ async def list_history(
         conditions.append(DownloadHistory.occurred_at >= since)
     if until is not None:
         conditions.append(DownloadHistory.occurred_at <= until)
+    if min_size_bytes is not None:
+        conditions.append(DownloadHistory.size_bytes >= min_size_bytes)
+    if max_size_bytes is not None:
+        conditions.append(DownloadHistory.size_bytes <= max_size_bytes)
 
     for cond in conditions:
         base = base.where(cond)

@@ -144,6 +144,25 @@ class ProwlarrService:
 
         return sorted(indexers, key=lambda i: i.name.lower())
 
+    async def get_latest(
+        self,
+        instance_name: str = "Prowlarr",
+        indexer_ids: list[str] | None = None,
+        category: SearchCategory = SearchCategory.ALL,
+    ) -> list[SearchResult]:
+        """
+        Fetch the latest releases from one or more indexers.
+
+        Equivalent to a Prowlarr search with an empty query, mirroring the
+        behavior of Prowlarr's RSS Sync feature.
+        """
+        return await self.search(
+            query="",
+            category=category,
+            instance_name=instance_name,
+            indexer_ids=indexer_ids,
+        )
+
     async def search(
         self,
         query: str,

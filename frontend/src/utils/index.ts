@@ -8,3 +8,4 @@ export {
   maskString,
   parseSize,
 } from './format'
+export { computeDedupKey } from './dedupKey'

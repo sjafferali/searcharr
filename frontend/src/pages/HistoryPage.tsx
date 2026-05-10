@@ -34,7 +34,7 @@ import {
   SortOrder,
   SourceType,
 } from '../types'
-import { cn, formatDateTime, formatRelative } from '../utils'
+import { cn, formatDateTime, formatRelative, parseSize } from '../utils'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 
@@ -78,6 +78,8 @@ interface FilterState {
   status: HistoryStatus | ''
   since: string
   until: string
+  min_size: string
+  max_size: string
   sort_by: HistorySortBy
   sort_order: SortOrder
   limit: number
@@ -93,6 +95,8 @@ const defaultFilters: FilterState = {
   status: '',
   since: '',
   until: '',
+  min_size: '',
+  max_size: '',
   sort_by: 'occurred_at',
   sort_order: 'desc',
   limit: 50,
@@ -100,6 +104,8 @@ const defaultFilters: FilterState = {
 }
 
 function toApiParams(f: FilterState): HistoryListParams {
+  const minBytes = f.min_size ? parseSize(f.min_size) : null
+  const maxBytes = f.max_size ? parseSize(f.max_size) : null
   return {
     q: f.q.trim() || undefined,
     action: f.action || undefined,
@@ -109,6 +115,8 @@ function toApiParams(f: FilterState): HistoryListParams {
     status: f.status || undefined,
     since: f.since ? new Date(f.since).toISOString() : undefined,
     until: f.until ? new Date(f.until).toISOString() : undefined,
+    min_size_bytes: minBytes ?? undefined,
+    max_size_bytes: maxBytes ?? undefined,
     sort_by: f.sort_by,
     sort_order: f.sort_order,
     limit: f.limit,
@@ -311,14 +319,32 @@ export function HistoryPage() {
       page: 1,
     }))
   }
+  const clearSize = () => {
+    setFilters((prev) => ({
+      ...prev,
+      min_size: '',
+      max_size: '',
+      page: 1,
+    }))
+  }
+
+  const minSizeBytes = filters.min_size ? parseSize(filters.min_size) : null
+  const maxSizeBytes = filters.max_size ? parseSize(filters.max_size) : null
+  const minSizeInvalid = !!filters.min_size && minSizeBytes === null
+  const maxSizeInvalid = !!filters.max_size && maxSizeBytes === null
 
   const titleFilterActive = !!filters.q
   const actionFilterActive = !!(filters.action || filters.status || filters.client_id !== '')
   const sourceFilterActive = !!(filters.source_type || filters.source_instance_id !== '')
   const whenFilterActive = !!(filters.since || filters.until)
+  const sizeFilterActive = !!(filters.min_size || filters.max_size)
 
   const hasActiveFilters =
-    titleFilterActive || actionFilterActive || sourceFilterActive || whenFilterActive
+    titleFilterActive ||
+    actionFilterActive ||
+    sourceFilterActive ||
+    whenFilterActive ||
+    sizeFilterActive
 
   const activePills: { key: string; label: string; onClear: () => void }[] = []
   if (titleFilterActive) {
@@ -358,6 +384,16 @@ export function HistoryPage() {
       key: 'when',
       label: `${fmt(filters.since)} → ${fmt(filters.until)}`,
       onClear: clearWhen,
+    })
+  }
+  if (sizeFilterActive) {
+    const parts: string[] = []
+    if (filters.min_size) parts.push(`≥ ${filters.min_size}`)
+    if (filters.max_size) parts.push(`≤ ${filters.max_size}`)
+    activePills.push({
+      key: 'size',
+      label: parts.join(' · '),
+      onClear: clearSize,
     })
   }
 
@@ -634,6 +670,67 @@ export function HistoryPage() {
                     activeSortBy={filters.sort_by}
                     activeSortOrder={filters.sort_order}
                     onClick={handleSortClick}
+                    filter={{
+                      label: 'Filter by size range',
+                      isActive: sizeFilterActive,
+                      onClear: clearSize,
+                      panelWidthClass: 'w-64',
+                      panel: (close) => (
+                        <div className="space-y-2.5">
+                          <div>
+                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                              Min size
+                            </label>
+                            <input
+                              type="text"
+                              value={filters.min_size}
+                              onChange={(e) => updateFilter('min_size', e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') close()
+                              }}
+                              placeholder="e.g. 500MB"
+                              autoFocus
+                              className={cn(
+                                'w-full rounded-md border bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
+                                minSizeInvalid
+                                  ? 'border-rose-500/60 focus:border-rose-400'
+                                  : 'border-slate-700 focus:border-cyan-500/50',
+                              )}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                              Max size
+                            </label>
+                            <input
+                              type="text"
+                              value={filters.max_size}
+                              onChange={(e) => updateFilter('max_size', e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') close()
+                              }}
+                              placeholder="e.g. 10GB"
+                              className={cn(
+                                'w-full rounded-md border bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
+                                maxSizeInvalid
+                                  ? 'border-rose-500/60 focus:border-rose-400'
+                                  : 'border-slate-700 focus:border-cyan-500/50',
+                              )}
+                            />
+                          </div>
+                          <p
+                            className={cn(
+                              'text-[10px]',
+                              minSizeInvalid || maxSizeInvalid ? 'text-rose-300' : 'text-slate-500',
+                            )}
+                          >
+                            {minSizeInvalid || maxSizeInvalid
+                              ? 'Use a unit like KB, MB, GB, TB.'
+                              : 'Leave a field empty to skip that bound.'}
+                          </p>
+                        </div>
+                      ),
+                    }}
                   />
                   <SortableTh
                     column={whenColumn}

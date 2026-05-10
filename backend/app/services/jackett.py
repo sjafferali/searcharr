@@ -173,6 +173,27 @@ class JackettService:
             )
         return indexers
 
+    async def get_latest(
+        self,
+        instance_name: str = "Jackett",
+        indexer_ids: list[str] | None = None,
+        category: SearchCategory = SearchCategory.ALL,
+    ) -> list[SearchResult]:
+        """
+        Fetch the latest releases from one or more indexers.
+
+        Implemented as a Torznab ``t=search&q=`` call (empty query), which is
+        the same path Jackett uses for its RSS feed. Indexers that don't
+        support browsing return an empty list; indexers that do return their
+        most recent releases.
+        """
+        return await self.search(
+            query="",
+            category=category,
+            instance_name=instance_name,
+            indexer_ids=indexer_ids,
+        )
+
     async def search(
         self,
         query: str,
