@@ -28,15 +28,33 @@ export function formatDate(dateString: string | null): string {
 }
 
 /**
- * Format a date as an age in whole days (e.g. "500 Days").
+ * Format a date as a compact age, picking the unit by Prowlarr's bucketing
+ * (mirrors ``frontend/src/Utilities/Number/formatAge.js`` in the Prowlarr
+ * codebase) but rendering compact suffixes instead of full words:
+ *
+ *   under 2 hours  →  ``"45m"`` (whole minutes)
+ *   2–48 hours     →  ``"3.4h"`` (one decimal)
+ *   48 hours+      →  ``"5d"`` (whole days)
+ *
+ * Negative deltas (publish dates in the future, e.g. clock skew between
+ * Prowlarr and the user's machine) are clamped to zero rather than rendered
+ * as ``"-3m"``, which Prowlarr does not guard against.
  */
 export function formatAge(dateString: string | null | undefined): string {
   if (!dateString) return '-'
   const date = new Date(dateString)
   if (Number.isNaN(date.getTime())) return '-'
-  const diffMs = Date.now() - date.getTime()
-  const days = Math.max(0, Math.floor(diffMs / 86400000))
-  return `${days} ${days === 1 ? 'Day' : 'Days'}`
+  const diffMs = Math.max(0, Date.now() - date.getTime())
+  const days = Math.floor(diffMs / 86400000)
+  if (days < 2) {
+    const hours = diffMs / 3600000
+    if (hours < 2) {
+      const minutes = Math.round(diffMs / 60000)
+      return `${minutes}m`
+    }
+    return `${hours.toFixed(1)}h`
+  }
+  return `${days}d`
 }
 
 /**
