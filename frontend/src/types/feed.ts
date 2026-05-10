@@ -8,6 +8,8 @@ export interface FeedIndexerRef {
   indexer_name: string
 }
 
+export type FeedSortStrategy = 'date_desc' | 'indexer_order'
+
 export interface FeedFilters {
   category: SearchCategory
   freeleech_only: boolean
@@ -22,6 +24,7 @@ export interface Feed {
   id: number
   name: string
   description: string | null
+  sort_strategy: FeedSortStrategy
   filters: FeedFilters
   indexers: FeedIndexerRef[]
   created_at: string
@@ -36,6 +39,7 @@ export interface FeedListResponse {
 export interface FeedCreate {
   name: string
   description?: string | null
+  sort_strategy?: FeedSortStrategy
   filters?: FeedFilters
   indexers: FeedIndexerRef[]
 }
@@ -43,6 +47,7 @@ export interface FeedCreate {
 export interface FeedUpdate {
   name?: string
   description?: string | null
+  sort_strategy?: FeedSortStrategy
   filters?: FeedFilters
   indexers?: FeedIndexerRef[]
 }

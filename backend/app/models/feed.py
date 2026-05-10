@@ -44,6 +44,13 @@ class Feed(BaseModel):
     include_regex: Mapped[str | None] = mapped_column(Text, nullable=True)
     exclude_regex: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # ``date_desc`` (default) sorts merged results by ``pubDate`` descending —
+    # the natural newest-first order. ``indexer_order`` skips the merge sort
+    # and concatenates each instance's results in the order the indexer
+    # returned them, which lets a Prowlarr-side ``orderby=`` (e.g.
+    # ``freeleechstart``) actually reach the UI.
+    sort_strategy: Mapped[str] = mapped_column(String(32), nullable=False, default="date_desc")
+
     indexers: Mapped[list["FeedIndexer"]] = relationship(
         "FeedIndexer",
         back_populates="feed",

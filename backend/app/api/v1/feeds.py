@@ -19,6 +19,7 @@ from app.schemas import (
     FeedIndexerRef,
     FeedListResponse,
     FeedResponse,
+    FeedSortStrategy,
     FeedUpdate,
 )
 from app.schemas.search import SearchCategory
@@ -34,6 +35,7 @@ def _serialize(feed: Feed) -> FeedResponse:
         id=feed.id,
         name=feed.name,
         description=feed.description,
+        sort_strategy=FeedSortStrategy(feed.sort_strategy),
         filters=FeedFilters(
             category=SearchCategory(feed.category),
             freeleech_only=feed.freeleech_only,
@@ -130,7 +132,11 @@ async def list_feeds(db: AsyncSession = Depends(get_db)) -> FeedListResponse:
 @router.post("", response_model=FeedResponse, status_code=status.HTTP_201_CREATED)
 async def create_feed(payload: FeedCreate, db: AsyncSession = Depends(get_db)) -> FeedResponse:
     """Create a new saved feed."""
-    feed = Feed(name=payload.name.strip(), description=payload.description)
+    feed = Feed(
+        name=payload.name.strip(),
+        description=payload.description,
+        sort_strategy=payload.sort_strategy.value,
+    )
     _apply_filters_to_feed(feed, payload.filters)
     _replace_indexers(feed, payload.indexers)
     db.add(feed)
@@ -158,6 +164,8 @@ async def update_feed(
         feed.name = payload.name.strip()
     if payload.description is not None:
         feed.description = payload.description
+    if payload.sort_strategy is not None:
+        feed.sort_strategy = payload.sort_strategy.value
     if payload.filters is not None:
         _apply_filters_to_feed(feed, payload.filters)
     if payload.indexers is not None:

@@ -27,6 +27,7 @@ import {
   Feed,
   FeedFilters,
   FeedIndexerRef,
+  FeedSortStrategy,
   IndexerInfo,
   SearchCategory,
   SourceType,
@@ -90,6 +91,7 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [filters, setFilters] = useState<FeedFilters>(DEFAULT_FILTERS)
+  const [sortStrategy, setSortStrategy] = useState<FeedSortStrategy>('date_desc')
   const [selected, setSelected] = useState<Map<string, FeedIndexerRef>>(new Map())
   const [minSizeText, setMinSizeText] = useState('')
   const [maxSizeText, setMaxSizeText] = useState('')
@@ -100,6 +102,7 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
       setName(feed.name)
       setDescription(feed.description ?? '')
       setFilters(feed.filters)
+      setSortStrategy(feed.sort_strategy)
       const map = new Map<string, FeedIndexerRef>()
       for (const ref of feed.indexers) {
         map.set(refKey(ref), ref)
@@ -111,6 +114,7 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
       setName('')
       setDescription('')
       setFilters(DEFAULT_FILTERS)
+      setSortStrategy('date_desc')
       setSelected(new Map())
       setMinSizeText('')
       setMaxSizeText('')
@@ -178,6 +182,7 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
           payload: {
             name: name.trim(),
             description: description.trim() || null,
+            sort_strategy: sortStrategy,
             filters: finalFilters,
             indexers,
           },
@@ -186,6 +191,7 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
         await createFeed.mutateAsync({
           name: name.trim(),
           description: description.trim() || null,
+          sort_strategy: sortStrategy,
           filters: finalFilters,
           indexers,
         })
@@ -282,6 +288,24 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
               placeholder="What this feed is for"
               className="input"
             />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+              Result order
+            </label>
+            <select
+              value={sortStrategy}
+              onChange={(e) => setSortStrategy(e.target.value as FeedSortStrategy)}
+              className="input cursor-pointer"
+            >
+              <option value="date_desc">Newest first (sort by publish date)</option>
+              <option value="indexer_order">Preserve indexer order</option>
+            </select>
+            <p className="mt-1 text-[11px] text-slate-500">
+              {sortStrategy === 'date_desc'
+                ? 'Merged results are sorted by publish date, newest first.'
+                : "Results stay in the order each indexer returned — useful when an indexer's own sort (e.g. Prowlarr's freeleechstart) should reach the UI."}
+            </p>
           </div>
         </section>
 

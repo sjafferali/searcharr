@@ -33,6 +33,7 @@ from app.schemas.feed import (
     FeedIndexerRef,
     FeedListResponse,
     FeedResponse,
+    FeedSortStrategy,
     FeedUpdate,
 )
 from app.schemas.history import (
@@ -120,6 +121,7 @@ __all__ = [
     "FeedIndexerRef",
     "FeedListResponse",
     "FeedResponse",
+    "FeedSortStrategy",
     "FeedUpdate",
     # History
     "HistoryAction",

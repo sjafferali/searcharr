@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models import Feed, FeedIndexer, JackettInstance, ProwlarrInstance
-from app.schemas.feed import FeedFilters
+from app.schemas.feed import FeedFilters, FeedSortStrategy
 from app.schemas.search import SearchCategory, SearchResult
 from app.services.encryption import decrypt_credential
 from app.services.jackett import JackettService
@@ -107,6 +107,14 @@ class FeedService:
         )
 
         filtered = self._apply_filters(all_results, filters, errors)
+
+        # Default ``date_desc`` sorts the merged stream by ``pubDate``
+        # descending. ``indexer_order`` skips that sort so a per-instance
+        # ``orderby=`` (e.g. Prowlarr's ``freeleechstart``) reaches the UI
+        # in the order the indexer emitted; instances are concatenated in
+        # the order they were dispatched (Jackett first, then Prowlarr).
+        if feed.sort_strategy == FeedSortStrategy.INDEXER_ORDER.value:
+            return filtered, errors, sources_queried
 
         filtered.sort(
             key=lambda r: r.date.timestamp() if r.date else 0.0,

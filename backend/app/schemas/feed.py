@@ -3,12 +3,20 @@ Pydantic schemas for saved feeds.
 """
 
 from datetime import datetime
+from enum import Enum
 from typing import Literal
 
 from pydantic import Field, field_validator
 
 from app.schemas.base import BaseSchema
 from app.schemas.search import SearchCategory, SearchResult
+
+
+class FeedSortStrategy(str, Enum):
+    """How merged feed results are ordered before being returned."""
+
+    DATE_DESC = "date_desc"
+    INDEXER_ORDER = "indexer_order"
 
 
 class FeedIndexerRef(BaseSchema):
@@ -58,6 +66,15 @@ class FeedCreate(BaseSchema):
 
     name: str = Field(..., min_length=1, max_length=255, description="Display name for the feed")
     description: str | None = Field(None, description="Optional notes about this feed")
+    sort_strategy: FeedSortStrategy = Field(
+        FeedSortStrategy.DATE_DESC,
+        description=(
+            "How to order the merged result list. ``date_desc`` (default) "
+            "sorts by ``pubDate`` descending. ``indexer_order`` preserves "
+            "the order each instance returned, letting an indexer-side "
+            "``orderby=`` reach the UI."
+        ),
+    )
     filters: FeedFilters = Field(
         default_factory=lambda: FeedFilters(
             category=SearchCategory.ALL,
@@ -79,6 +96,7 @@ class FeedUpdate(BaseSchema):
 
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
+    sort_strategy: FeedSortStrategy | None = None
     filters: FeedFilters | None = None
     indexers: list[FeedIndexerRef] | None = Field(
         None,
@@ -93,6 +111,7 @@ class FeedResponse(BaseSchema):
     id: int
     name: str
     description: str | None
+    sort_strategy: FeedSortStrategy
     filters: FeedFilters
     indexers: list[FeedIndexerRef]
     created_at: datetime

@@ -13,6 +13,7 @@ def _payload(
     description: str | None = "Daily check",
     indexers: list[dict] | None = None,
     filters: dict | None = None,
+    sort_strategy: str | None = None,
 ) -> dict:
     if indexers is None:
         indexers = [
@@ -27,6 +28,8 @@ def _payload(
     body: dict = {"name": name, "description": description, "indexers": indexers}
     if filters is not None:
         body["filters"] = filters
+    if sort_strategy is not None:
+        body["sort_strategy"] = sort_strategy
     return body
 
 
@@ -55,6 +58,8 @@ class TestFeedsCRUD:
         assert len(data["indexers"]) == 1
         assert data["filters"]["category"] == "All"
         assert data["filters"]["freeleech_only"] is False
+        # Default sort strategy is date_desc when omitted from the payload.
+        assert data["sort_strategy"] == "date_desc"
 
     @pytest.mark.asyncio
     async def test_create_feed_with_filters(
@@ -405,3 +410,77 @@ class TestFeedsCRUD:
         data = response.json()
         assert data["sources_queried"] == 0
         assert any("still configured" in e for e in data["errors"])
+
+    @pytest.mark.asyncio
+    async def test_create_feed_accepts_indexer_order_strategy(
+        self, client: AsyncClient, jackett_instance: JackettInstance
+    ):
+        response = await client.post(
+            "/api/v1/feeds",
+            json=_payload(
+                sort_strategy="indexer_order",
+                indexers=[
+                    {
+                        "source_type": "jackett",
+                        "source_instance_id": jackett_instance.id,
+                        "source_instance_name": jackett_instance.name,
+                        "indexer_id": "ip",
+                        "indexer_name": "IP",
+                    }
+                ],
+            ),
+        )
+        assert response.status_code == 201
+        assert response.json()["sort_strategy"] == "indexer_order"
+
+    @pytest.mark.asyncio
+    async def test_create_feed_rejects_invalid_strategy(
+        self, client: AsyncClient, jackett_instance: JackettInstance
+    ):
+        response = await client.post(
+            "/api/v1/feeds",
+            json=_payload(
+                sort_strategy="alphabetic",
+                indexers=[
+                    {
+                        "source_type": "jackett",
+                        "source_instance_id": jackett_instance.id,
+                        "source_instance_name": jackett_instance.name,
+                        "indexer_id": "ip",
+                        "indexer_name": "IP",
+                    }
+                ],
+            ),
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.asyncio
+    async def test_update_feed_changes_sort_strategy(
+        self, client: AsyncClient, jackett_instance: JackettInstance
+    ):
+        created = await client.post(
+            "/api/v1/feeds",
+            json=_payload(
+                indexers=[
+                    {
+                        "source_type": "jackett",
+                        "source_instance_id": jackett_instance.id,
+                        "source_instance_name": jackett_instance.name,
+                        "indexer_id": "ip",
+                        "indexer_name": "IP",
+                    }
+                ]
+            ),
+        )
+        feed_id = created.json()["id"]
+        assert created.json()["sort_strategy"] == "date_desc"
+
+        response = await client.put(
+            f"/api/v1/feeds/{feed_id}",
+            json={"sort_strategy": "indexer_order"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["sort_strategy"] == "indexer_order"
+        # Indexers are preserved across the partial update.
+        assert len(data["indexers"]) == 1
