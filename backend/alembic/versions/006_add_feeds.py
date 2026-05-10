@@ -27,7 +27,21 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _table_exists(name: str) -> bool:
+    """
+    Skip-creation guard for environments where tables were materialized by
+    SQLAlchemy's ``create_all`` at app startup. Without this, a retry of the
+    migration against such a database raises ``DuplicateTable``.
+    """
+    return name in sa.inspect(op.get_bind()).get_table_names()
+
+
 def upgrade() -> None:
+    # ``feeds`` and ``feed_indexers`` are created together by SQLAlchemy's
+    # ``create_all``; if the parent already exists, the child does too.
+    if _table_exists("feeds"):
+        return
+
     op.create_table(
         "feeds",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -101,7 +115,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(op.f("ix_feed_indexers_feed_id"), table_name="feed_indexers")
-    op.drop_table("feed_indexers")
-    op.drop_index(op.f("ix_feeds_name"), table_name="feeds")
-    op.drop_table("feeds")
+    if _table_exists("feed_indexers"):
+        op.drop_index(op.f("ix_feed_indexers_feed_id"), table_name="feed_indexers")
+        op.drop_table("feed_indexers")
+    if _table_exists("feeds"):
+        op.drop_index(op.f("ix_feeds_name"), table_name="feeds")
+        op.drop_table("feeds")

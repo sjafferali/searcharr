@@ -25,7 +25,21 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _table_exists(name: str) -> bool:
+    """
+    Skip-creation guard for environments where tables were materialized by
+    SQLAlchemy's ``create_all`` at app startup (the deployment entrypoint
+    tolerates ``alembic upgrade`` failures and lets the app's lifespan
+    create whatever's missing). Without this guard, retrying the migration
+    against such a database raises ``DuplicateTable``/``DuplicateObject``.
+    """
+    return name in sa.inspect(op.get_bind()).get_table_names()
+
+
 def upgrade() -> None:
+    if _table_exists("bookmarks"):
+        return
+
     op.create_table(
         "bookmarks",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -71,6 +85,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if not _table_exists("bookmarks"):
+        return
     op.drop_index(op.f("ix_bookmarks_dedup_key"), table_name="bookmarks")
     op.drop_index(op.f("ix_bookmarks_source_type"), table_name="bookmarks")
     op.drop_index(op.f("ix_bookmarks_created_at"), table_name="bookmarks")

@@ -52,9 +52,12 @@ if [ -z "$(ls -A alembic/versions/*.py 2>/dev/null)" ]; then
     alembic revision --autogenerate -m "Initial migration" || true
 fi
 
-# Run migrations
+# Run migrations. ``set -e`` at the top of this script means a failed
+# upgrade aborts container startup — the application owns no schema
+# fallback, so a broken DB must be fixed (or the migration debugged)
+# before the app can serve traffic.
 echo "Applying database migrations..."
-alembic upgrade head || echo "Migration completed or no changes needed"
+alembic upgrade head
 
 # Start supervisord
 echo "Starting application services..."

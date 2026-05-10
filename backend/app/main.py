@@ -13,10 +13,7 @@ from fastapi.responses import JSONResponse
 from app.api.health import router as health_router
 from app.api.v1.router import api_router as v1_router
 from app.config import settings
-from app.core.database import Base, get_engine
-
-# Import models so they are registered with SQLAlchemy Base
-from app.models import DownloadClient, JackettInstance, ProwlarrInstance  # noqa: F401
+from app.core.database import get_engine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -27,21 +24,18 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     Lifespan context manager for FastAPI application.
-    Handles startup and shutdown events.
+
+    Schema management is owned by Alembic and is expected to have run before
+    the app starts (the deployment entrypoint runs ``alembic upgrade head``).
+    For local development, run ``poetry run alembic upgrade head`` once after
+    the database file is created or destroyed.
     """
-    # Startup
     logger.info("Starting up application...")
-
-    # Create database tables
     engine = get_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
     logger.info("Application started successfully")
 
     yield
 
-    # Shutdown
     logger.info("Shutting down application...")
     await engine.dispose()
 
