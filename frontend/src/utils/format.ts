@@ -36,25 +36,35 @@ export function formatDate(dateString: string | null): string {
  *   2–48 hours     →  ``"3.4h"`` (one decimal)
  *   48 hours+      →  ``"5d"`` (whole days)
  *
- * Negative deltas (publish dates in the future, e.g. clock skew between
- * Prowlarr and the user's machine) are clamped to zero rather than rendered
- * as ``"-3m"``, which Prowlarr does not guard against.
+ * When the source date is *in the future* (the indexer's clock or its
+ * Cardigann timezone parser is wrong — common for some private trackers
+ * whose YAMLs misinterpret the site's local time), the same buckets apply
+ * but the result is prefixed with ``"+"`` so the discrepancy is visible
+ * (e.g. ``"+9.0h"``). Skews under 1 minute either direction collapse to
+ * ``"0m"`` because that's just clock noise.
  */
 export function formatAge(dateString: string | null | undefined): string {
   if (!dateString) return '-'
   const date = new Date(dateString)
   if (Number.isNaN(date.getTime())) return '-'
-  const diffMs = Math.max(0, Date.now() - date.getTime())
-  const days = Math.floor(diffMs / 86400000)
+  const diffMs = Date.now() - date.getTime()
+  if (Math.abs(diffMs) < 60_000) return '0m'
+
+  const future = diffMs < 0
+  const abs = Math.abs(diffMs)
+  const days = Math.floor(abs / 86400000)
+  let label: string
   if (days < 2) {
-    const hours = diffMs / 3600000
+    const hours = abs / 3600000
     if (hours < 2) {
-      const minutes = Math.round(diffMs / 60000)
-      return `${minutes}m`
+      label = `${Math.round(abs / 60000)}m`
+    } else {
+      label = `${hours.toFixed(1)}h`
     }
-    return `${hours.toFixed(1)}h`
+  } else {
+    label = `${days}d`
   }
-  return `${days}d`
+  return future ? `+${label}` : label
 }
 
 /**

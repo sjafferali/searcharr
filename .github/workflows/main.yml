@@ -251,6 +251,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
 
     steps:
     - name: Download digests
@@ -295,7 +297,7 @@ jobs:
         docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
 
     - name: Send webhook notification (optional)
-      if: vars.WEBHOOK_URL != ''
+      if: env.WEBHOOK_URL != ''
       uses: distributhor/workflow-webhook@v3
       env:
         webhook_url: ${{ secrets.WEBHOOK_URL }}

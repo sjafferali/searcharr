@@ -28,7 +28,7 @@ import {
   LoadingSpinner,
   SendToClientModal,
 } from '../components'
-import { cn, formatAge, parseSize } from '../utils'
+import { cn, formatAge, formatDateTime, parseSize } from '../utils'
 import {
   useBookmarkLookup,
   useClientsStatus,
@@ -784,7 +784,14 @@ export function SearchPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-400">
-                          <div className="flex items-center gap-1.5">
+                          <div
+                            className="flex items-center gap-1.5"
+                            title={
+                              result.date
+                                ? `Indexer reported: ${formatDateTime(result.date)}`
+                                : 'No date reported'
+                            }
+                          >
                             <Clock className="h-3.5 w-3.5" />
                             {formatAge(result.date)}
                           </div>

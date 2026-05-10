@@ -41,7 +41,7 @@ import {
   useToggleResultBookmark,
 } from '../hooks'
 import { Feed, SearchCategory, SearchResult } from '../types'
-import { cn, formatAge, formatBytes, formatRelative } from '../utils'
+import { cn, formatAge, formatBytes, formatDateTime, formatRelative } from '../utils'
 
 function filterChips(feed: Feed): { label: string; tone: 'normal' | 'highlight' }[] {
   const chips: { label: string; tone: 'normal' | 'highlight' }[] = []
@@ -602,7 +602,14 @@ export function FeedsPage() {
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-sm text-slate-400">
-                                <div className="flex items-center gap-1.5">
+                                <div
+                                  className="flex items-center gap-1.5"
+                                  title={
+                                    result.date
+                                      ? `Indexer reported: ${formatDateTime(result.date)}`
+                                      : 'No date reported'
+                                  }
+                                >
                                   <Clock className="h-3.5 w-3.5" />
                                   {formatAge(result.date)}
                                 </div>
