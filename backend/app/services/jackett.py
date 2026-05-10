@@ -7,13 +7,13 @@ tracker-site-specific HTTP queries, fetching results, and parsing them.
 
 import asyncio
 import logging
-from datetime import datetime
 from typing import Any
 from urllib.parse import urljoin
 
 import httpx
 
 from app.schemas.search import CATEGORY_MAPPINGS, IndexerInfo, SearchCategory, SearchResult
+from app.services.torznab import parse_torznab_response
 
 logger = logging.getLogger(__name__)
 
@@ -261,194 +261,13 @@ class JackettService:
                     )
                     return results
 
-                results = self._parse_torznab_response(
+                results = parse_torznab_response(
                     response.text,
                     instance_name=instance_name,
+                    source_type="jackett",
                 )
         except httpx.TimeoutException:
             logger.warning(f"Jackett search timed out for indexer '{indexer_slug}', query: {query}")
         except Exception as e:
             logger.exception(f"Error searching Jackett indexer '{indexer_slug}': {e}")
         return results
-
-    def _parse_torznab_response(
-        self,
-        xml_content: str,
-        instance_name: str,
-    ) -> list[SearchResult]:
-        """
-        Parse Torznab XML response into SearchResult objects.
-
-        Args:
-            xml_content: The XML response from Jackett
-            instance_name: Name of the instance for attribution
-
-        Returns:
-            List of SearchResult objects
-        """
-        import xml.etree.ElementTree as ET
-
-        results: list[SearchResult] = []
-
-        try:
-            root = ET.fromstring(xml_content)
-
-            # Find the channel containing items
-            channel = root.find("channel")
-            if channel is None:
-                return results
-
-            for item in channel.findall("item"):
-                try:
-                    result = self._parse_item(item, instance_name)
-                    if result:
-                        results.append(result)
-                except Exception as e:
-                    logger.debug(f"Error parsing Jackett result item: {e}")
-                    continue
-
-        except ET.ParseError as e:
-            logger.error(f"Failed to parse Jackett XML response: {e}")
-
-        return results
-
-    def _parse_item(self, item: Any, instance_name: str) -> SearchResult | None:
-        """Parse a single item from the Torznab response."""
-        import hashlib
-
-        # Torznab namespace for extended attributes
-        torznab_ns = {"torznab": "http://torznab.com/schemas/2015/feed"}
-
-        title = item.findtext("title")
-        if not title:
-            return None
-
-        # Get size
-        size = 0
-        size_elem = item.find("size")
-        if size_elem is not None and size_elem.text:
-            size = int(size_elem.text)
-        else:
-            # Try torznab:attr with name="size"
-            for attr in item.findall("torznab:attr", torznab_ns):
-                if attr.get("name") == "size":
-                    size = int(attr.get("value", 0))
-                    break
-
-        # Get seeders/leechers and freeleech indicator
-        seeders = 0
-        leechers = 0
-        download_volume_factor: float | None = None
-        torznab_tags: str = ""
-        for attr in item.findall("torznab:attr", torznab_ns):
-            name = attr.get("name")
-            value = attr.get("value", "0")
-            if name == "seeders":
-                try:
-                    seeders = int(value)
-                except (TypeError, ValueError):
-                    seeders = 0
-            elif name == "peers":
-                try:
-                    leechers = max(0, int(value) - seeders)
-                except (TypeError, ValueError):
-                    leechers = 0
-            elif name == "downloadvolumefactor":
-                try:
-                    download_volume_factor = float(value)
-                except (TypeError, ValueError):
-                    download_volume_factor = None
-            elif name == "tags":
-                torznab_tags = (attr.get("value") or "").lower()
-
-        freeleech = download_volume_factor is not None and download_volume_factor == 0.0
-
-        # Some Torznab indexers omit downloadvolumefactor and instead expose a
-        # "tags" attribute containing values like "freeleech".
-        if not freeleech and "freeleech" in torznab_tags:
-            freeleech = True
-            if download_volume_factor is None:
-                download_volume_factor = 0.0
-
-        # Get date
-        pub_date = None
-        pub_date_str = item.findtext("pubDate")
-        if pub_date_str:
-            try:
-                # Try common date formats
-                for fmt in [
-                    "%a, %d %b %Y %H:%M:%S %z",
-                    "%Y-%m-%dT%H:%M:%S%z",
-                    "%Y-%m-%d %H:%M:%S",
-                ]:
-                    try:
-                        pub_date = datetime.strptime(pub_date_str.strip(), fmt)
-                        break
-                    except ValueError:
-                        continue
-            except Exception:
-                pass
-
-        # Get category
-        category = "Other"
-        category_elem = item.find("category")
-        if category_elem is not None and category_elem.text:
-            category = category_elem.text
-
-        # Get indexer name
-        indexer = item.findtext("jackettindexer") or "Unknown"
-
-        # Get magnet link
-        magnet_link = None
-        for attr in item.findall("torznab:attr", torznab_ns):
-            if attr.get("name") == "magneturl":
-                magnet_link = attr.get("value")
-                break
-
-        # Get torrent URL
-        torrent_url = None
-        link = item.findtext("link")
-        if link:
-            torrent_url = link
-
-        # Get info URL
-        info_url = item.findtext("comments") or item.findtext("guid")
-
-        # Generate unique ID
-        unique_str = f"{instance_name}:{indexer}:{title}:{size}"
-        result_id = hashlib.md5(unique_str.encode()).hexdigest()[:12]
-
-        return SearchResult(
-            id=result_id,
-            title=title,
-            source=instance_name,
-            source_type="jackett",
-            indexer=indexer,
-            size=size,
-            size_formatted=self._format_size(size),
-            seeders=seeders,
-            leechers=leechers,
-            date=pub_date,
-            category=category,
-            magnet_link=magnet_link,
-            torrent_url=torrent_url,
-            info_url=info_url,
-            freeleech=freeleech,
-            download_volume_factor=download_volume_factor,
-        )
-
-    @staticmethod
-    def _format_size(size_bytes: int) -> str:
-        """Format size in bytes to human-readable string."""
-        if size_bytes == 0:
-            return "0 B"
-
-        units = ["B", "KB", "MB", "GB", "TB"]
-        unit_index = 0
-        size = float(size_bytes)
-
-        while size >= 1024 and unit_index < len(units) - 1:
-            size /= 1024
-            unit_index += 1
-
-        return f"{size:.1f} {units[unit_index]}"

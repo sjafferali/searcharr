@@ -244,6 +244,85 @@ class TestFeedsCRUD:
         assert ids == ["new1", "new2"]
 
     @pytest.mark.asyncio
+    async def test_update_with_unchanged_indexers_is_idempotent(
+        self, client: AsyncClient, jackett_instance: JackettInstance
+    ):
+        """
+        Saving a feed without changing the indexer set must not violate the
+        ``(feed_id, source_type, source_instance_id, indexer_id)`` unique
+        constraint — common case when the user only renames the feed or
+        adjusts a filter.
+        """
+        ref = {
+            "source_type": "jackett",
+            "source_instance_id": jackett_instance.id,
+            "source_instance_name": jackett_instance.name,
+            "indexer_id": "ip",
+            "indexer_name": "IP",
+        }
+        created = await client.post("/api/v1/feeds", json=_payload(indexers=[ref]))
+        feed_id = created.json()["id"]
+
+        response = await client.put(
+            f"/api/v1/feeds/{feed_id}",
+            json={
+                "name": "Renamed",
+                "filters": {
+                    "category": "All",
+                    "freeleech_only": True,
+                    "min_seeders": 0,
+                    "min_size_bytes": None,
+                    "max_size_bytes": None,
+                    "include_regex": None,
+                    "exclude_regex": None,
+                },
+                "indexers": [ref],
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Renamed"
+        assert data["filters"]["freeleech_only"] is True
+        assert len(data["indexers"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_update_partially_overlapping_indexers(
+        self, client: AsyncClient, jackett_instance: JackettInstance
+    ):
+        """Adding one indexer and removing another while keeping shared ones."""
+        keep = {
+            "source_type": "jackett",
+            "source_instance_id": jackett_instance.id,
+            "source_instance_name": jackett_instance.name,
+            "indexer_id": "keep",
+            "indexer_name": "Keep",
+        }
+        drop = {
+            "source_type": "jackett",
+            "source_instance_id": jackett_instance.id,
+            "source_instance_name": jackett_instance.name,
+            "indexer_id": "drop",
+            "indexer_name": "Drop",
+        }
+        added = {
+            "source_type": "jackett",
+            "source_instance_id": jackett_instance.id,
+            "source_instance_name": jackett_instance.name,
+            "indexer_id": "added",
+            "indexer_name": "Added",
+        }
+        created = await client.post("/api/v1/feeds", json=_payload(indexers=[keep, drop]))
+        feed_id = created.json()["id"]
+
+        response = await client.put(
+            f"/api/v1/feeds/{feed_id}",
+            json={"indexers": [keep, added]},
+        )
+        assert response.status_code == 200
+        ids = sorted(i["indexer_id"] for i in response.json()["indexers"])
+        assert ids == ["added", "keep"]
+
+    @pytest.mark.asyncio
     async def test_delete_feed(self, client: AsyncClient, jackett_instance: JackettInstance):
         created = await client.post(
             "/api/v1/feeds",

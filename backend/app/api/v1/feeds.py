@@ -69,16 +69,42 @@ def _apply_filters_to_feed(feed: Feed, filters: FeedFilters) -> None:
 
 
 def _replace_indexers(feed: Feed, refs: list[FeedIndexerRef]) -> None:
-    feed.indexers = [
-        FeedIndexer(
-            source_type=ref.source_type,
-            source_instance_id=ref.source_instance_id,
-            source_instance_name=ref.source_instance_name,
-            indexer_id=ref.indexer_id,
-            indexer_name=ref.indexer_name,
-        )
-        for ref in refs
-    ]
+    """
+    Reconcile a feed's indexer collection with the requested set.
+
+    Drops rows whose (source_type, source_instance_id, indexer_id) is not in
+    the new set, refreshes the display names on rows that remain, and
+    appends rows for newly added refs. Rebuilding the list with fresh
+    objects would otherwise hit the (feed_id, source_type, source_instance_id,
+    indexer_id) unique constraint when the user saves an unchanged or
+    partially-overlapping selection — SQLAlchemy emits the new INSERTs
+    before the corresponding DELETEs.
+    """
+    new_keys = {(ref.source_type, ref.source_instance_id, ref.indexer_id) for ref in refs}
+    existing_by_key: dict[tuple[str, int, str], FeedIndexer] = {
+        (fi.source_type, fi.source_instance_id, fi.indexer_id): fi for fi in feed.indexers
+    }
+
+    for stale_key, stale_entry in list(existing_by_key.items()):
+        if stale_key not in new_keys:
+            feed.indexers.remove(stale_entry)
+
+    for ref in refs:
+        key = (ref.source_type, ref.source_instance_id, ref.indexer_id)
+        existing_entry = existing_by_key.get(key)
+        if existing_entry is not None:
+            existing_entry.source_instance_name = ref.source_instance_name
+            existing_entry.indexer_name = ref.indexer_name
+        else:
+            feed.indexers.append(
+                FeedIndexer(
+                    source_type=ref.source_type,
+                    source_instance_id=ref.source_instance_id,
+                    source_instance_name=ref.source_instance_name,
+                    indexer_id=ref.indexer_id,
+                    indexer_name=ref.indexer_name,
+                )
+            )
 
 
 async def _load_feed(feed_id: int, db: AsyncSession) -> Feed:

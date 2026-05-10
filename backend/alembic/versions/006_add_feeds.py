@@ -38,7 +38,7 @@ def upgrade() -> None:
             "freeleech_only",
             sa.Boolean(),
             nullable=False,
-            server_default=sa.text("0"),
+            server_default=sa.false(),
         ),
         sa.Column("min_seeders", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("min_size_bytes", sa.BigInteger(), nullable=True),

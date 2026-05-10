@@ -5,6 +5,7 @@ Prowlarr is an indexer manager/proxy that integrates with various
 PVR apps and supports management of both torrent and usenet indexers.
 """
 
+import asyncio
 import hashlib
 import logging
 from datetime import datetime
@@ -14,6 +15,7 @@ from urllib.parse import urljoin
 import httpx
 
 from app.schemas.search import CATEGORY_MAPPINGS, IndexerInfo, SearchCategory, SearchResult
+from app.services.torznab import parse_torznab_response
 
 logger = logging.getLogger(__name__)
 
@@ -151,17 +153,93 @@ class ProwlarrService:
         category: SearchCategory = SearchCategory.ALL,
     ) -> list[SearchResult]:
         """
-        Fetch the latest releases from one or more indexers.
+        Fetch the latest releases from a set of indexers.
 
-        Equivalent to a Prowlarr search with an empty query, mirroring the
-        behavior of Prowlarr's RSS Sync feature.
+        Hits the per-indexer Newznab passthrough at ``/{indexerId}/api?t=search``
+        — the same path Prowlarr uses for RSS Sync — once per indexer. This
+        is preferred over the unified ``/api/v1/search`` endpoint for feed
+        browsing because:
+
+        * the passthrough is the canonical "browse latest" call for the
+          underlying tracker, and behaves consistently with what RSS-aware
+          clients expect;
+        * Prowlarr enforces query/disabled-indexer limits up front and
+          returns 429 with ``Retry-After``, surfacing throttling rather
+          than silently dropping results;
+        * if every indexer is unavailable, each request returns an empty
+          list independently instead of failing the whole batch with HTTP
+          400 (the unified endpoint's ``interactiveSearch=true`` path).
+
+        ``indexer_ids`` must contain numeric Prowlarr indexer IDs; non-numeric
+        entries are dropped (Prowlarr's route is ``{id:int}``). When the
+        list is empty after filtering, an empty list is returned.
         """
-        return await self.search(
-            query="",
-            category=category,
-            instance_name=instance_name,
-            indexer_ids=indexer_ids,
-        )
+        if not indexer_ids:
+            return []
+
+        numeric_ids = [int(idx) for idx in indexer_ids if str(idx).isdigit()]
+        if not numeric_ids:
+            return []
+
+        tasks = [
+            self._fetch_latest_one_indexer(idx, category, instance_name) for idx in numeric_ids
+        ]
+        grouped = await asyncio.gather(*tasks, return_exceptions=True)
+
+        aggregated: list[SearchResult] = []
+        for group in grouped:
+            if isinstance(group, list):
+                aggregated.extend(group)
+        return aggregated
+
+    async def _fetch_latest_one_indexer(
+        self,
+        indexer_id: int,
+        category: SearchCategory,
+        instance_name: str,
+    ) -> list[SearchResult]:
+        """Hit Prowlarr's per-indexer Newznab passthrough for a single indexer."""
+        results: list[SearchResult] = []
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                url = urljoin(self.base_url, f"/{indexer_id}/api")
+                params: dict[str, Any] = {
+                    "apikey": self.api_key,
+                    "t": "search",
+                    "q": "",
+                    "extended": "1",
+                }
+                category_ids = CATEGORY_MAPPINGS.get(category)
+                if category_ids:
+                    params["cat"] = ",".join(str(c) for c in category_ids)
+
+                response = await client.get(url, params=params)
+
+                if response.status_code == 429:
+                    retry_after = response.headers.get("Retry-After", "?")
+                    logger.warning(
+                        f"Prowlarr indexer {indexer_id} rate-limited "
+                        f"(Retry-After: {retry_after}s)"
+                    )
+                    return results
+                if response.status_code != 200:
+                    logger.warning(
+                        f"Prowlarr Newznab passthrough for indexer {indexer_id} "
+                        f"returned HTTP {response.status_code}"
+                    )
+                    return results
+
+                results = parse_torznab_response(
+                    response.text,
+                    instance_name=instance_name,
+                    source_type="prowlarr",
+                    fallback_indexer=str(indexer_id),
+                )
+        except httpx.TimeoutException:
+            logger.warning(f"Prowlarr Newznab passthrough timed out for indexer {indexer_id}")
+        except Exception:
+            logger.exception(f"Error fetching latest from Prowlarr indexer {indexer_id}")
+        return results
 
     async def search(
         self,
