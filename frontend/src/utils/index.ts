@@ -6,4 +6,5 @@ export {
   formatDateTime,
   formatRelative,
   maskString,
+  parseSize,
 } from './format'

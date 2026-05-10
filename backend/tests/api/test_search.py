@@ -41,30 +41,6 @@ class TestSearch:
         assert data["category"] == "Software"
 
     @pytest.mark.asyncio
-    async def test_search_with_min_seeders(
-        self, client: AsyncClient, jackett_instance: JackettInstance
-    ):
-        """Test search with minimum seeders filter."""
-        response = await client.get(
-            "/api/v1/search",
-            params={"q": "ubuntu", "min_seeders": 10},
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["query"] == "ubuntu"
-
-    @pytest.mark.asyncio
-    async def test_search_with_max_size(
-        self, client: AsyncClient, jackett_instance: JackettInstance
-    ):
-        """Test search with max size filter."""
-        response = await client.get(
-            "/api/v1/search",
-            params={"q": "ubuntu", "max_size": "10GB"},
-        )
-        assert response.status_code == 200
-
-    @pytest.mark.asyncio
     async def test_search_with_sort_options(
         self, client: AsyncClient, jackett_instance: JackettInstance
     ):

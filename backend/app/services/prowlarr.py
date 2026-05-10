@@ -285,6 +285,18 @@ class ProwlarrService:
                 download_volume_factor = None
         freeleech = download_volume_factor is not None and download_volume_factor == 0.0
 
+        # Indexers that don't expose downloadVolumeFactor often signal freeleech
+        # via Prowlarr's indexerFlags array (e.g. ["freeleech", "internal"]).
+        if not freeleech:
+            flags = item.get("indexerFlags") or []
+            if isinstance(flags, list):
+                for flag in flags:
+                    if isinstance(flag, str) and "freeleech" in flag.lower():
+                        freeleech = True
+                        if download_volume_factor is None:
+                            download_volume_factor = 0.0
+                        break
+
         # Generate unique ID
         guid = item.get("guid", "")
         unique_str = f"{instance_name}:{indexer}:{guid}:{title}"

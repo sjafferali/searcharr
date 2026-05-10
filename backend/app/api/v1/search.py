@@ -79,23 +79,12 @@ async def search(
         bool,
         Query(description="If true, only search specified instances (empty means none, not all)"),
     ] = False,
-    min_seeders: Annotated[
-        int,
-        Query(ge=0, description="Minimum number of seeders"),
-    ] = 0,
-    max_size: Annotated[
-        str | None,
-        Query(description="Maximum file size (e.g., '10GB', '500MB')"),
-    ] = None,
     sort_by: Annotated[SortBy, Query(description="Sort results by")] = SortBy.SEEDERS,
     sort_order: Annotated[SortOrder, Query(description="Sort order")] = SortOrder.DESC,
     db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
     """
     Execute a unified search across all configured indexer instances.
-
-    This endpoint searches all selected Jackett and Prowlarr instances concurrently,
-    aggregates the results, applies filters, and returns sorted results.
 
     Query Parameters:
     - **q**: The search query (required)
@@ -104,12 +93,8 @@ async def search(
     - **prowlarr_ids**: List of Prowlarr instance IDs to include (default: all)
     - **jackett_indexers**: Optional per-instance indexer restrictions
     - **prowlarr_indexers**: Optional per-instance indexer restrictions
-    - **min_seeders**: Minimum number of seeders (default: 0)
-    - **max_size**: Maximum file size filter (e.g., "10GB")
     - **sort_by**: Field to sort by (default: seeders)
     - **sort_order**: Sort order (default: desc)
-
-    Returns aggregated search results from all queried instances.
     """
     aggregator = SearchAggregator(db)
 
@@ -124,8 +109,6 @@ async def search(
         jackett_indexer_filters=jackett_indexer_filters,
         prowlarr_indexer_filters=prowlarr_indexer_filters,
         exclusive_filter=exclusive_filter,
-        min_seeders=min_seeders,
-        max_size=max_size,
         sort_by=sort_by,
         sort_order=sort_order,
     )

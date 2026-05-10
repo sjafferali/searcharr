@@ -7,7 +7,6 @@ instances, aggregating and normalizing results.
 
 import asyncio
 import logging
-import re
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,8 +50,6 @@ class SearchAggregator:
         jackett_indexer_filters: dict[int, list[str]] | None = None,
         prowlarr_indexer_filters: dict[int, list[str]] | None = None,
         exclusive_filter: bool = False,
-        min_seeders: int = 0,
-        max_size: str | None = None,
         sort_by: SortBy = SortBy.SEEDERS,
         sort_order: SortOrder = SortOrder.DESC,
     ) -> tuple[list[SearchResult], list[str], int]:
@@ -71,8 +68,6 @@ class SearchAggregator:
                 indexer IDs. When an instance ID has an entry, only the listed indexers
                 are queried for that instance.
             exclusive_filter: If True, None means "search none" instead of "search all"
-            min_seeders: Minimum number of seeders
-            max_size: Maximum size filter (e.g., "10GB", "500MB")
             sort_by: Field to sort by
             sort_order: Sort order (asc/desc)
 
@@ -137,15 +132,7 @@ class SearchAggregator:
                 if error:
                     errors.append(error)
 
-        # Apply filters
-        filtered_results = self._apply_filters(
-            all_results,
-            min_seeders=min_seeders,
-            max_size=max_size,
-        )
-
-        # Sort results
-        sorted_results = self._sort_results(filtered_results, sort_by, sort_order)
+        sorted_results = self._sort_results(all_results, sort_by, sort_order)
 
         return sorted_results, errors, sources_queried
 
@@ -226,72 +213,6 @@ class SearchAggregator:
         except Exception as e:
             logger.exception(f"Error searching Prowlarr instance {instance.name}")
             return [], f"Error searching {instance.name}: {str(e)}"
-
-    def _apply_filters(
-        self,
-        results: list[SearchResult],
-        min_seeders: int = 0,
-        max_size: str | None = None,
-    ) -> list[SearchResult]:
-        """
-        Apply filters to search results.
-
-        Args:
-            results: List of search results
-            min_seeders: Minimum number of seeders
-            max_size: Maximum size (e.g., "10GB", "500MB")
-
-        Returns:
-            Filtered list of results
-        """
-        filtered = results
-
-        # Filter by minimum seeders
-        if min_seeders > 0:
-            filtered = [r for r in filtered if r.seeders >= min_seeders]
-
-        # Filter by maximum size
-        if max_size:
-            max_bytes = self._parse_size(max_size)
-            if max_bytes:
-                filtered = [r for r in filtered if r.size <= max_bytes]
-
-        return filtered
-
-    def _parse_size(self, size_str: str) -> int | None:
-        """
-        Parse a size string like "10GB" or "500MB" into bytes.
-
-        Args:
-            size_str: Size string to parse
-
-        Returns:
-            Size in bytes, or None if parsing fails
-        """
-        size_str = size_str.strip().upper()
-
-        # Match number + optional unit
-        match = re.match(r"^(\d+(?:\.\d+)?)\s*([KMGT]?B?)$", size_str)
-        if not match:
-            return None
-
-        value = float(match.group(1))
-        unit = match.group(2) or "B"
-
-        multipliers = {
-            "B": 1,
-            "KB": 1024,
-            "K": 1024,
-            "MB": 1024**2,
-            "M": 1024**2,
-            "GB": 1024**3,
-            "G": 1024**3,
-            "TB": 1024**4,
-            "T": 1024**4,
-        }
-
-        multiplier = multipliers.get(unit, 1)
-        return int(value * multiplier)
 
     def _sort_results(
         self,

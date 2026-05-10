@@ -32,14 +32,6 @@ export const searchApi = {
       queryParams.append('exclusive_filter', 'true')
     }
 
-    if (params.min_seeders !== undefined && params.min_seeders > 0) {
-      queryParams.append('min_seeders', params.min_seeders.toString())
-    }
-
-    if (params.max_size) {
-      queryParams.append('max_size', params.max_size)
-    }
-
     if (params.sort_by) {
       queryParams.append('sort_by', params.sort_by)
     }

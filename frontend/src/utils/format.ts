@@ -76,6 +76,32 @@ export function formatDateTime(dateString: string | null | undefined): string {
 }
 
 /**
+ * Parse a size string like "10GB" or "500MB" into bytes. Returns null on bad input.
+ */
+export function parseSize(input: string): number | null {
+  const match = input
+    .trim()
+    .toUpperCase()
+    .match(/^(\d+(?:\.\d+)?)\s*([KMGT]?B?)$/)
+  if (!match) return null
+  const value = parseFloat(match[1])
+  const unit = match[2] || 'B'
+  const multipliers: Record<string, number> = {
+    B: 1,
+    KB: 1024,
+    K: 1024,
+    MB: 1024 ** 2,
+    M: 1024 ** 2,
+    GB: 1024 ** 3,
+    G: 1024 ** 3,
+    TB: 1024 ** 4,
+    T: 1024 ** 4,
+  }
+  const multiplier = multipliers[unit] ?? 1
+  return Math.round(value * multiplier)
+}
+
+/**
  * Mask sensitive strings (API keys, passwords)
  */
 export function maskString(str: string, visibleChars = 4): string {

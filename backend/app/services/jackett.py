@@ -318,6 +318,7 @@ class JackettService:
         seeders = 0
         leechers = 0
         download_volume_factor: float | None = None
+        torznab_tags: str = ""
         for attr in item.findall("torznab:attr", torznab_ns):
             name = attr.get("name")
             value = attr.get("value", "0")
@@ -336,8 +337,17 @@ class JackettService:
                     download_volume_factor = float(value)
                 except (TypeError, ValueError):
                     download_volume_factor = None
+            elif name == "tags":
+                torznab_tags = (attr.get("value") or "").lower()
 
         freeleech = download_volume_factor is not None and download_volume_factor == 0.0
+
+        # Some Torznab indexers omit downloadvolumefactor and instead expose a
+        # "tags" attribute containing values like "freeleech".
+        if not freeleech and "freeleech" in torznab_tags:
+            freeleech = True
+            if download_volume_factor is None:
+                download_volume_factor = 0.0
 
         # Get date
         pub_date = None

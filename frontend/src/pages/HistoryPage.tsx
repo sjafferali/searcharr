@@ -1,9 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   History,
   Search,
-  Filter,
-  ChevronDown,
   ChevronRight,
   ChevronLeft,
   ChevronsLeft,
@@ -22,9 +20,10 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  X,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { EmptyState, LoadingSpinner, ConfirmDialog } from '../components'
+import { ColumnFilter, EmptyState, LoadingSpinner, ConfirmDialog } from '../components'
 import { useHistory, useDeleteHistoryEntry, useInstancesStatus, useClientsStatus } from '../hooks'
 import {
   HistoryAction,
@@ -47,7 +46,6 @@ const ACTION_LABELS: Record<HistoryAction, string> = {
 type SortableColumn = {
   key: HistorySortBy
   label: string
-  pillLabel?: string
   align?: 'left' | 'center' | 'right'
   defaultOrder?: SortOrder
 }
@@ -61,19 +59,15 @@ const titleColumn: SortableColumn = {
 const sizeColumn: SortableColumn = {
   key: 'size_bytes',
   label: 'Size',
-  pillLabel: 'Size',
   align: 'left',
   defaultOrder: 'desc',
 }
 const whenColumn: SortableColumn = {
   key: 'occurred_at',
   label: 'When',
-  pillLabel: 'Date',
   align: 'left',
   defaultOrder: 'desc',
 }
-
-const sortableColumns: SortableColumn[] = [titleColumn, sizeColumn, whenColumn]
 
 interface FilterState {
   q: string
@@ -252,7 +246,6 @@ function Pagination({
 
 export function HistoryPage() {
   const [filters, setFilters] = useState<FilterState>(defaultFilters)
-  const [filtersExpanded, setFiltersExpanded] = useState(true)
   const [pendingDelete, setPendingDelete] = useState<HistoryEntry | null>(null)
 
   const apiParams = useMemo(() => toApiParams(filters), [filters])
@@ -290,25 +283,83 @@ export function HistoryPage() {
     })
   }
 
-  const toggleSortOrder = () => {
+  const resetFilters = () => setFilters(defaultFilters)
+
+  const clearTitle = () => updateFilter('q', '')
+  const clearAction = () => {
     setFilters((prev) => ({
       ...prev,
-      sort_order: prev.sort_order === 'asc' ? 'desc' : 'asc',
+      action: '',
+      status: '',
+      client_id: '',
+      page: 1,
+    }))
+  }
+  const clearSource = () => {
+    setFilters((prev) => ({
+      ...prev,
+      source_type: '',
+      source_instance_id: '',
+      page: 1,
+    }))
+  }
+  const clearWhen = () => {
+    setFilters((prev) => ({
+      ...prev,
+      since: '',
+      until: '',
       page: 1,
     }))
   }
 
-  const resetFilters = () => setFilters(defaultFilters)
+  const titleFilterActive = !!filters.q
+  const actionFilterActive = !!(filters.action || filters.status || filters.client_id !== '')
+  const sourceFilterActive = !!(filters.source_type || filters.source_instance_id !== '')
+  const whenFilterActive = !!(filters.since || filters.until)
 
   const hasActiveFilters =
-    filters.q ||
-    filters.action ||
-    filters.source_type ||
-    filters.source_instance_id !== '' ||
-    filters.client_id !== '' ||
-    filters.status ||
-    filters.since ||
-    filters.until
+    titleFilterActive || actionFilterActive || sourceFilterActive || whenFilterActive
+
+  const activePills: { key: string; label: string; onClear: () => void }[] = []
+  if (titleFilterActive) {
+    activePills.push({ key: 'q', label: `“${filters.q}”`, onClear: clearTitle })
+  }
+  if (actionFilterActive) {
+    const parts: string[] = []
+    if (filters.action) parts.push(ACTION_LABELS[filters.action])
+    if (filters.status) parts.push(filters.status === 'success' ? 'Success' : 'Failed')
+    if (filters.client_id !== '') {
+      const c = (clients ?? []).find((x) => x.id === filters.client_id)
+      if (c) parts.push(`→ ${c.name}`)
+    }
+    activePills.push({
+      key: 'action',
+      label: parts.join(' · ') || 'Action',
+      onClear: clearAction,
+    })
+  }
+  if (sourceFilterActive) {
+    const parts: string[] = []
+    if (filters.source_type) parts.push(filters.source_type === 'jackett' ? 'Jackett' : 'Prowlarr')
+    if (filters.source_instance_id !== '') {
+      const allInst = [...(instancesStatus?.jackett ?? []), ...(instancesStatus?.prowlarr ?? [])]
+      const inst = allInst.find((i) => i.id === filters.source_instance_id)
+      if (inst) parts.push(inst.name)
+    }
+    activePills.push({
+      key: 'source',
+      label: parts.join(' · ') || 'Source',
+      onClear: clearSource,
+    })
+  }
+  if (whenFilterActive) {
+    const fmt = (s: string) => (s ? new Date(s).toLocaleDateString() : '—')
+    activePills.push({
+      key: 'when',
+      label: `${fmt(filters.since)} → ${fmt(filters.until)}`,
+      onClear: clearWhen,
+    })
+  }
 
   const allInstances = [
     ...(instancesStatus?.jackett ?? []).map((i) => ({
@@ -374,177 +425,29 @@ export function HistoryPage() {
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="overflow-hidden rounded-xl border border-slate-800/50 bg-slate-900/50">
-        <button
-          onClick={() => setFiltersExpanded((v) => !v)}
-          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/30"
-        >
-          <span className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-cyan-400" />
-            Filters
-            {hasActiveFilters && (
-              <span className="ml-2 rounded-full bg-cyan-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-300">
-                Active
-              </span>
-            )}
-          </span>
-          {filtersExpanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </button>
-
-        {filtersExpanded && (
-          <div className="space-y-4 border-t border-slate-800/50 px-4 pb-4 pt-4">
-            {/* Search bar */}
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                value={filters.q}
-                onChange={(e) => updateFilter('q', e.target.value)}
-                placeholder="Search by title or original query…"
-                className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 py-2.5 pl-10 pr-3 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
-              />
-            </div>
-
-            {/* Filter selects */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                  Action
-                </label>
-                <select
-                  value={filters.action}
-                  onChange={(e) => updateFilter('action', e.target.value as HistoryAction | '')}
-                  className="w-full cursor-pointer rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                >
-                  <option value="">All actions</option>
-                  <option value="sent_to_client">Sent to client</option>
-                  <option value="downloaded_torrent">Downloaded .torrent</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                  Status
-                </label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => updateFilter('status', e.target.value as HistoryStatus | '')}
-                  className="w-full cursor-pointer rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                >
-                  <option value="">Any</option>
-                  <option value="success">Success</option>
-                  <option value="failed">Failed</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                  Source Type
-                </label>
-                <select
-                  value={filters.source_type}
-                  onChange={(e) => updateFilter('source_type', e.target.value as SourceType | '')}
-                  className="w-full cursor-pointer rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                >
-                  <option value="">All sources</option>
-                  <option value="jackett">Jackett</option>
-                  <option value="prowlarr">Prowlarr</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                  Instance
-                </label>
-                <select
-                  value={filters.source_instance_id}
-                  onChange={(e) =>
-                    updateFilter(
-                      'source_instance_id',
-                      e.target.value === '' ? '' : Number(e.target.value),
-                    )
-                  }
-                  className="w-full cursor-pointer rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                >
-                  <option value="">All instances</option>
-                  {allInstances.map((i) => (
-                    <option key={`${i.type}-${i.id}`} value={i.id}>
-                      {i.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                  Client
-                </label>
-                <select
-                  value={filters.client_id}
-                  onChange={(e) =>
-                    updateFilter('client_id', e.target.value === '' ? '' : Number(e.target.value))
-                  }
-                  className="w-full cursor-pointer rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                >
-                  <option value="">All clients</option>
-                  {(clients ?? []).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                  From
-                </label>
-                <input
-                  type="datetime-local"
-                  value={filters.since}
-                  onChange={(e) => updateFilter('since', e.target.value)}
-                  className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                  To
-                </label>
-                <input
-                  type="datetime-local"
-                  value={filters.until}
-                  onChange={(e) => updateFilter('until', e.target.value)}
-                  className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {hasActiveFilters && (
-              <div className="flex justify-end">
-                <button
-                  onClick={resetFilters}
-                  className="text-xs font-medium text-slate-400 transition-colors hover:text-cyan-300"
-                >
-                  Clear filters
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Sort control */}
-      {!isLoading && !isError && entries.length > 0 && (
-        <div className="flex justify-end">
-          <SortControl
-            sortBy={filters.sort_by}
-            sortOrder={filters.sort_order}
-            onSelectSort={(key) => {
-              const col = sortableColumns.find((c) => c.key === key)
-              if (col) handleSortClick(col)
-            }}
-            onToggleOrder={toggleSortOrder}
-          />
+      {/* Active filter pills */}
+      {hasActiveFilters && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] uppercase tracking-wider text-slate-500">Filters:</span>
+          {activePills.map((pill) => (
+            <button
+              key={pill.key}
+              type="button"
+              onClick={pill.onClear}
+              className="group/pill inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+              title="Clear this filter"
+            >
+              {pill.label}
+              <X className="h-3 w-3 opacity-60 transition-opacity group-hover/pill:opacity-100" />
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="ml-1 text-[11px] font-medium text-slate-400 transition-colors hover:text-cyan-300"
+          >
+            Clear all
+          </button>
         </div>
       )}
 
@@ -578,13 +481,151 @@ export function HistoryPage() {
                     activeSortBy={filters.sort_by}
                     activeSortOrder={filters.sort_order}
                     onClick={handleSortClick}
+                    filter={{
+                      label: 'Filter by title or query',
+                      isActive: titleFilterActive,
+                      onClear: clearTitle,
+                      panel: (close) => (
+                        <div>
+                          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                            Title or original query
+                          </label>
+                          <div className="relative">
+                            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                            <input
+                              type="text"
+                              value={filters.q}
+                              onChange={(e) => updateFilter('q', e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') close()
+                              }}
+                              placeholder="Substring match"
+                              autoFocus
+                              className="w-full rounded-md border border-slate-700 bg-slate-800/60 py-1.5 pl-8 pr-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      ),
+                    }}
                   />
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    Action
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    Source
-                  </th>
+                  <FilterableTh
+                    label="Action"
+                    filter={{
+                      panelLabel: 'Filter by action, status, or client',
+                      isActive: actionFilterActive,
+                      onClear: clearAction,
+                      panelWidthClass: 'w-64',
+                      panel: () => (
+                        <div className="space-y-2.5">
+                          <div>
+                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                              Action
+                            </label>
+                            <select
+                              value={filters.action}
+                              onChange={(e) =>
+                                updateFilter('action', e.target.value as HistoryAction | '')
+                              }
+                              className="w-full cursor-pointer rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                            >
+                              <option value="">All actions</option>
+                              <option value="sent_to_client">Sent to client</option>
+                              <option value="downloaded_torrent">Downloaded .torrent</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                              Status
+                            </label>
+                            <select
+                              value={filters.status}
+                              onChange={(e) =>
+                                updateFilter('status', e.target.value as HistoryStatus | '')
+                              }
+                              className="w-full cursor-pointer rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                            >
+                              <option value="">Any</option>
+                              <option value="success">Success</option>
+                              <option value="failed">Failed</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                              Client
+                            </label>
+                            <select
+                              value={filters.client_id}
+                              onChange={(e) =>
+                                updateFilter(
+                                  'client_id',
+                                  e.target.value === '' ? '' : Number(e.target.value),
+                                )
+                              }
+                              className="w-full cursor-pointer rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                            >
+                              <option value="">All clients</option>
+                              {(clients ?? []).map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ),
+                    }}
+                  />
+                  <FilterableTh
+                    label="Source"
+                    filter={{
+                      panelLabel: 'Filter by source type or instance',
+                      isActive: sourceFilterActive,
+                      onClear: clearSource,
+                      panelWidthClass: 'w-64',
+                      panel: () => (
+                        <div className="space-y-2.5">
+                          <div>
+                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                              Source type
+                            </label>
+                            <select
+                              value={filters.source_type}
+                              onChange={(e) =>
+                                updateFilter('source_type', e.target.value as SourceType | '')
+                              }
+                              className="w-full cursor-pointer rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                            >
+                              <option value="">All sources</option>
+                              <option value="jackett">Jackett</option>
+                              <option value="prowlarr">Prowlarr</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                              Instance
+                            </label>
+                            <select
+                              value={filters.source_instance_id}
+                              onChange={(e) =>
+                                updateFilter(
+                                  'source_instance_id',
+                                  e.target.value === '' ? '' : Number(e.target.value),
+                                )
+                              }
+                              className="w-full cursor-pointer rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                            >
+                              <option value="">All instances</option>
+                              {allInstances.map((i) => (
+                                <option key={`${i.type}-${i.id}`} value={i.id}>
+                                  {i.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ),
+                    }}
+                  />
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
                     Indexer
                   </th>
@@ -599,6 +640,38 @@ export function HistoryPage() {
                     activeSortBy={filters.sort_by}
                     activeSortOrder={filters.sort_order}
                     onClick={handleSortClick}
+                    filter={{
+                      label: 'Filter by date range',
+                      isActive: whenFilterActive,
+                      onClear: clearWhen,
+                      panelWidthClass: 'w-64',
+                      panel: () => (
+                        <div className="space-y-2.5">
+                          <div>
+                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                              From
+                            </label>
+                            <input
+                              type="datetime-local"
+                              value={filters.since}
+                              onChange={(e) => updateFilter('since', e.target.value)}
+                              className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                              To
+                            </label>
+                            <input
+                              type="datetime-local"
+                              value={filters.until}
+                              onChange={(e) => updateFilter('until', e.target.value)}
+                              className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      ),
+                    }}
                   />
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
                     Actions
@@ -760,9 +833,16 @@ interface SortableThProps {
   activeSortBy: HistorySortBy
   activeSortOrder: SortOrder
   onClick: (column: SortableColumn) => void
+  filter?: {
+    isActive: boolean
+    label: string
+    panel: (close: () => void) => ReactNode
+    onClear: () => void
+    panelWidthClass?: string
+  }
 }
 
-function SortableTh({ column, activeSortBy, activeSortOrder, onClick }: SortableThProps) {
+function SortableTh({ column, activeSortBy, activeSortOrder, onClick, filter }: SortableThProps) {
   const isActive = activeSortBy === column.key
   const align = column.align ?? 'left'
   const justify =
@@ -776,75 +856,76 @@ function SortableTh({ column, activeSortBy, activeSortOrder, onClick }: Sortable
       aria-sort={isActive ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
       className={cn('px-4 py-3 text-xs font-medium uppercase tracking-wider', textAlign)}
     >
-      <button
-        type="button"
-        onClick={() => onClick(column)}
-        className={cn(
-          'group inline-flex items-center gap-1.5 rounded transition-colors',
-          justify,
-          isActive ? 'text-cyan-300' : 'text-slate-400 hover:text-slate-200',
-        )}
-        title={`Sort by ${column.label.toLowerCase()}`}
-      >
-        <span>{column.label}</span>
-        {isActive ? (
-          activeSortOrder === 'asc' ? (
-            <ArrowUp className="h-3.5 w-3.5" />
+      <div className={cn('group/cell flex items-center gap-1', justify)}>
+        <button
+          type="button"
+          onClick={() => onClick(column)}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded transition-colors',
+            isActive ? 'text-cyan-300' : 'text-slate-400 hover:text-slate-200',
+          )}
+          title={`Sort by ${column.label.toLowerCase()}`}
+        >
+          <span>{column.label}</span>
+          {isActive ? (
+            activeSortOrder === 'asc' ? (
+              <ArrowUp className="h-3.5 w-3.5" />
+            ) : (
+              <ArrowDown className="h-3.5 w-3.5" />
+            )
           ) : (
-            <ArrowDown className="h-3.5 w-3.5" />
-          )
-        ) : (
-          <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-60" />
+            <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover/cell:opacity-60" />
+          )}
+        </button>
+        {filter && (
+          <ColumnFilter
+            label={filter.label}
+            isActive={filter.isActive}
+            panel={filter.panel}
+            onClear={filter.onClear}
+            panelWidthClass={filter.panelWidthClass}
+          />
         )}
-      </button>
+      </div>
     </th>
   )
 }
 
-interface SortControlProps {
-  sortBy: HistorySortBy
-  sortOrder: SortOrder
-  onSelectSort: (key: HistorySortBy) => void
-  onToggleOrder: () => void
-}
+function FilterableTh({
+  label,
+  align = 'left',
+  filter,
+}: {
+  label: string
+  align?: 'left' | 'center' | 'right'
+  filter: {
+    isActive: boolean
+    panelLabel: string
+    panel: (close: () => void) => ReactNode
+    onClear: () => void
+    panelWidthClass?: string
+  }
+}) {
+  const justify =
+    align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'
+  const textAlign =
+    align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
 
-function SortControl({ sortBy, sortOrder, onSelectSort, onToggleOrder }: SortControlProps) {
   return (
-    <div className="flex items-center gap-1 rounded-lg border border-slate-800/50 bg-slate-900/50 p-1 text-xs">
-      <span className="px-2 text-slate-500">Sort</span>
-      {sortableColumns.map((col) => {
-        const isActive = sortBy === col.key
-        return (
-          <button
-            key={col.key}
-            type="button"
-            onClick={() => onSelectSort(col.key)}
-            className={cn(
-              'rounded-md px-2.5 py-1 font-medium transition-colors',
-              isActive
-                ? 'bg-cyan-500/20 text-cyan-300'
-                : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200',
-            )}
-          >
-            {col.pillLabel ?? col.label}
-          </button>
-        )
-      })}
-      <button
-        type="button"
-        onClick={onToggleOrder}
-        className="ml-1 flex items-center gap-1 rounded-md border border-slate-700/50 bg-slate-800/40 px-2 py-1 text-slate-300 transition-colors hover:bg-slate-800/80"
-        title={
-          sortOrder === 'asc' ? 'Ascending — click to reverse' : 'Descending — click to reverse'
-        }
-      >
-        {sortOrder === 'asc' ? (
-          <ArrowUp className="h-3.5 w-3.5" />
-        ) : (
-          <ArrowDown className="h-3.5 w-3.5" />
-        )}
-        <span className="hidden sm:inline">{sortOrder === 'asc' ? 'Asc' : 'Desc'}</span>
-      </button>
-    </div>
+    <th
+      scope="col"
+      className={cn('px-4 py-3 text-xs font-medium uppercase tracking-wider', textAlign)}
+    >
+      <div className={cn('group/cell flex items-center gap-1', justify)}>
+        <span className="text-slate-400">{label}</span>
+        <ColumnFilter
+          label={filter.panelLabel}
+          isActive={filter.isActive}
+          panel={filter.panel}
+          onClear={filter.onClear}
+          panelWidthClass={filter.panelWidthClass}
+        />
+      </div>
+    </th>
   )
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, type ReactNode } from 'react'
 import {
   Search,
   Filter,
@@ -19,9 +19,16 @@ import {
   ArrowDown,
   ArrowUpDown,
   AlertTriangle,
+  X,
 } from 'lucide-react'
-import { DownloadedBadge, IndexerPicker, LoadingSpinner, SendToClientModal } from '../components'
-import { cn, formatAge } from '../utils'
+import {
+  ColumnFilter,
+  DownloadedBadge,
+  IndexerPicker,
+  LoadingSpinner,
+  SendToClientModal,
+} from '../components'
+import { cn, formatAge, parseSize } from '../utils'
 import {
   useClientsStatus,
   useHistoryLookup,
@@ -159,8 +166,22 @@ export function SearchPage() {
     [filters.sortBy, filters.sortOrder, setSortBy, setSortOrder],
   )
 
+  const maxSizeBytes = useMemo(
+    () => (filters.maxSize ? parseSize(filters.maxSize) : null),
+    [filters.maxSize],
+  )
+  const maxSizeInvalid = !!filters.maxSize && maxSizeBytes === null
+
+  const filteredResults = useMemo(() => {
+    return results.filter((r) => {
+      if (filters.minSeeders > 0 && r.seeders < filters.minSeeders) return false
+      if (maxSizeBytes !== null && r.size > maxSizeBytes) return false
+      return true
+    })
+  }, [results, filters.minSeeders, maxSizeBytes])
+
   const sortedResults = useMemo(() => {
-    const copy = [...results]
+    const copy = [...filteredResults]
     const reverse = filters.sortOrder === 'desc'
     const dir = reverse ? -1 : 1
     copy.sort((a, b) => {
@@ -181,7 +202,7 @@ export function SearchPage() {
       }
     })
     return copy
-  }, [results, filters.sortBy, filters.sortOrder])
+  }, [filteredResults, filters.sortBy, filters.sortOrder])
 
   const { matchesByResultId } = useHistoryLookup(sortedResults)
 
@@ -233,8 +254,6 @@ export function SearchPage() {
         jackett_indexers: jackettIndexerParams.length > 0 ? jackettIndexerParams : undefined,
         prowlarr_indexers: prowlarrIndexerParams.length > 0 ? prowlarrIndexerParams : undefined,
         exclusive_filter: hasAnySelection,
-        min_seeders: filters.minSeeders > 0 ? filters.minSeeders : undefined,
-        max_size: filters.maxSize || undefined,
         sort_by: filters.sortBy,
         sort_order: filters.sortOrder,
       })
@@ -354,8 +373,8 @@ export function SearchPage() {
           className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/30"
         >
           <span className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-cyan-400" />
-            Filters & Sources
+            <Database className="h-4 w-4 text-cyan-400" />
+            Sources
           </span>
           {isFiltersExpanded ? (
             <ChevronDown className="h-4 w-4" />
@@ -366,19 +385,12 @@ export function SearchPage() {
 
         {isFiltersExpanded && (
           <div className="space-y-4 border-t border-slate-800/50 px-4 pb-4">
-            {/* Source Selection */}
             <div className="pt-4">
-              <div className="mb-3 flex items-baseline justify-between gap-3">
-                <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                  Search Sources
-                </p>
-                <p className="text-[11px] text-slate-500">
-                  {filters.selectedJackettIds.length === 0 &&
-                  filters.selectedProwlarrIds.length === 0
-                    ? 'Searches every configured instance'
-                    : 'Searches only the selected instances'}
-                </p>
-              </div>
+              <p className="mb-3 text-[11px] text-slate-500">
+                {filters.selectedJackettIds.length === 0 && filters.selectedProwlarrIds.length === 0
+                  ? 'Searching every configured instance.'
+                  : 'Searching only the selected instances.'}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {allInstances.map((instance) => {
                   const isSelected =
@@ -462,31 +474,6 @@ export function SearchPage() {
                 </div>
               )}
             </div>
-
-            {/* Filter Options */}
-            <div className="grid grid-cols-1 gap-4 border-t border-slate-800/50 pt-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-xs font-medium text-slate-400">Min Seeders</label>
-                <input
-                  type="number"
-                  value={filters.minSeeders}
-                  onChange={(e) => setMinSeeders(Number(e.target.value))}
-                  placeholder="0"
-                  min="0"
-                  className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-xs font-medium text-slate-400">Max Size</label>
-                <input
-                  type="text"
-                  value={filters.maxSize}
-                  onChange={(e) => setMaxSize(e.target.value)}
-                  placeholder="e.g. 10GB"
-                  className="w-full rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
-                />
-              </div>
-            </div>
           </div>
         )}
       </div>
@@ -494,17 +481,54 @@ export function SearchPage() {
       {/* Results */}
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-slate-400">{totalResults} results found</p>
-          {results.length > 0 && (
-            <SortControl
-              sortBy={filters.sortBy}
-              sortOrder={filters.sortOrder}
-              onSelectSort={(key) => {
-                const col = sortableColumns.find((c) => c.key === key)
-                if (col) handleSortClick(col)
-              }}
-              onToggleOrder={() => setSortOrder(filters.sortOrder === 'asc' ? 'desc' : 'asc')}
-            />
+          <p className="text-sm text-slate-400">
+            {results.length === 0 ? (
+              <>{totalResults} results found</>
+            ) : sortedResults.length === results.length ? (
+              <>
+                <span className="font-medium text-slate-200">{results.length}</span>{' '}
+                {results.length === 1 ? 'result' : 'results'}
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-slate-200">{sortedResults.length}</span> of{' '}
+                <span className="font-medium text-slate-200">{results.length}</span> shown
+                <span className="ml-1 text-slate-500">
+                  ({results.length - sortedResults.length} hidden by filters)
+                </span>
+              </>
+            )}
+          </p>
+          {(filters.minSeeders > 0 || filters.maxSize) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {filters.minSeeders > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMinSeeders(0)}
+                  className="group/pill inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                  title="Clear filter"
+                >
+                  ≥ {filters.minSeeders} seeders
+                  <X className="h-3 w-3 opacity-60 transition-opacity group-hover/pill:opacity-100" />
+                </button>
+              )}
+              {filters.maxSize && (
+                <button
+                  type="button"
+                  onClick={() => setMaxSize('')}
+                  className={cn(
+                    'group/pill inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                    maxSizeInvalid
+                      ? 'border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20'
+                      : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20',
+                  )}
+                  title="Clear filter"
+                >
+                  ≤ {filters.maxSize}
+                  <X className="h-3 w-3 opacity-60 transition-opacity group-hover/pill:opacity-100" />
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -529,12 +553,77 @@ export function SearchPage() {
                       activeSortBy={filters.sortBy}
                       activeSortOrder={filters.sortOrder}
                       onClick={handleSortClick}
+                      filter={{
+                        label: 'Filter by max size',
+                        isActive: !!filters.maxSize,
+                        onClear: () => setMaxSize(''),
+                        panel: (close) => (
+                          <div>
+                            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                              Max size
+                            </label>
+                            <input
+                              type="text"
+                              value={filters.maxSize}
+                              onChange={(e) => setMaxSize(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') close()
+                              }}
+                              placeholder="e.g. 10GB"
+                              className={cn(
+                                'w-full rounded-md border bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
+                                maxSizeInvalid
+                                  ? 'border-rose-500/60 focus:border-rose-400'
+                                  : 'border-slate-700 focus:border-cyan-500/50',
+                              )}
+                              autoFocus
+                            />
+                            <p
+                              className={cn(
+                                'mt-1.5 text-[10px]',
+                                maxSizeInvalid ? 'text-rose-300' : 'text-slate-500',
+                              )}
+                            >
+                              {maxSizeInvalid
+                                ? 'Use a unit like KB, MB, GB, TB.'
+                                : 'Hides results larger than this.'}
+                            </p>
+                          </div>
+                        ),
+                      }}
                     />
                     <SortableTh
                       column={seedersColumn}
                       activeSortBy={filters.sortBy}
                       activeSortOrder={filters.sortOrder}
                       onClick={handleSortClick}
+                      filter={{
+                        label: 'Filter by minimum seeders',
+                        isActive: filters.minSeeders > 0,
+                        onClear: () => setMinSeeders(0),
+                        panel: (close) => (
+                          <div>
+                            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                              Min seeders
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={filters.minSeeders || ''}
+                              onChange={(e) => setMinSeeders(Number(e.target.value) || 0)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') close()
+                              }}
+                              placeholder="0"
+                              className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
+                              autoFocus
+                            />
+                            <p className="mt-1.5 text-[10px] text-slate-500">
+                              Hides results with fewer seeders.
+                            </p>
+                          </div>
+                        ),
+                      }}
                     />
                     <SortableTh
                       column={dateColumn}
@@ -578,26 +667,26 @@ export function SearchPage() {
                               />
                             </button>
                             <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
-                                {result.info_url ? (
-                                  <a
-                                    href={result.info_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group/link inline-flex items-start gap-1.5 break-words text-sm font-medium leading-snug text-slate-200 transition-colors hover:text-cyan-300"
-                                    title={result.title}
-                                  >
-                                    <span className="break-words">{result.title}</span>
-                                    <ExternalLink className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 opacity-0 transition-opacity group-hover/link:opacity-100" />
-                                  </a>
-                                ) : (
-                                  <p
-                                    className="break-words text-sm font-medium leading-snug text-slate-200"
-                                    title={result.title}
-                                  >
-                                    {result.title}
-                                  </p>
-                                )}
+                              {result.info_url ? (
+                                <a
+                                  href={result.info_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="group/link block text-sm font-medium leading-snug text-slate-200 transition-colors [overflow-wrap:anywhere] hover:text-cyan-300"
+                                  title={result.title}
+                                >
+                                  {result.title}
+                                  <ExternalLink className="ml-1 inline-block h-3.5 w-3.5 -translate-y-px align-middle opacity-0 transition-opacity group-hover/link:opacity-100" />
+                                </a>
+                              ) : (
+                                <p
+                                  className="block text-sm font-medium leading-snug text-slate-200 [overflow-wrap:anywhere]"
+                                  title={result.title}
+                                >
+                                  {result.title}
+                                </p>
+                              )}
+                              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                                 {matchesByResultId[result.id] && (
                                   <DownloadedBadge match={matchesByResultId[result.id]} />
                                 )}
@@ -730,6 +819,14 @@ export function SearchPage() {
               </table>
             </div>
           </div>
+        ) : results.length > 0 ? (
+          <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
+            <Filter className="mx-auto mb-4 h-12 w-12 text-slate-600" />
+            <p className="text-slate-400">No results match the active filters</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Loosen the column filters above to see more.
+            </p>
+          </div>
         ) : (
           <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
             <Search className="mx-auto mb-4 h-12 w-12 text-slate-600" />
@@ -752,16 +849,20 @@ export function SearchPage() {
   )
 }
 
-const sortableColumns: SortableColumn[] = [titleColumn, sizeColumn, seedersColumn, dateColumn]
-
 interface SortableThProps {
   column: SortableColumn
   activeSortBy: SortBy
   activeSortOrder: SortOrder
   onClick: (column: SortableColumn) => void
+  filter?: {
+    isActive: boolean
+    label: string
+    panel: (close: () => void) => ReactNode
+    onClear: () => void
+  }
 }
 
-function SortableTh({ column, activeSortBy, activeSortOrder, onClick }: SortableThProps) {
+function SortableTh({ column, activeSortBy, activeSortOrder, onClick, filter }: SortableThProps) {
   const isActive = activeSortBy === column.key
   const align = column.align ?? 'left'
   const justify =
@@ -775,75 +876,36 @@ function SortableTh({ column, activeSortBy, activeSortOrder, onClick }: Sortable
       aria-sort={isActive ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
       className={cn('px-4 py-3 text-xs font-medium uppercase tracking-wider', textAlign)}
     >
-      <button
-        type="button"
-        onClick={() => onClick(column)}
-        className={cn(
-          'group inline-flex items-center gap-1.5 rounded transition-colors',
-          justify,
-          isActive ? 'text-cyan-300' : 'text-slate-400 hover:text-slate-200',
-        )}
-        title={`Sort by ${column.label.toLowerCase()}`}
-      >
-        <span>{column.label}</span>
-        {isActive ? (
-          activeSortOrder === 'asc' ? (
-            <ArrowUp className="h-3.5 w-3.5" />
+      <div className={cn('group/cell flex items-center gap-1', justify)}>
+        <button
+          type="button"
+          onClick={() => onClick(column)}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded transition-colors',
+            isActive ? 'text-cyan-300' : 'text-slate-400 hover:text-slate-200',
+          )}
+          title={`Sort by ${column.label.toLowerCase()}`}
+        >
+          <span>{column.label}</span>
+          {isActive ? (
+            activeSortOrder === 'asc' ? (
+              <ArrowUp className="h-3.5 w-3.5" />
+            ) : (
+              <ArrowDown className="h-3.5 w-3.5" />
+            )
           ) : (
-            <ArrowDown className="h-3.5 w-3.5" />
-          )
-        ) : (
-          <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-60" />
+            <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover/cell:opacity-60" />
+          )}
+        </button>
+        {filter && (
+          <ColumnFilter
+            label={filter.label}
+            isActive={filter.isActive}
+            panel={filter.panel}
+            onClear={filter.onClear}
+          />
         )}
-      </button>
+      </div>
     </th>
-  )
-}
-
-interface SortControlProps {
-  sortBy: SortBy
-  sortOrder: SortOrder
-  onSelectSort: (key: SortBy) => void
-  onToggleOrder: () => void
-}
-
-function SortControl({ sortBy, sortOrder, onSelectSort, onToggleOrder }: SortControlProps) {
-  return (
-    <div className="flex items-center gap-1 rounded-lg border border-slate-800/50 bg-slate-900/50 p-1 text-xs">
-      <span className="px-2 text-slate-500">Sort</span>
-      {sortableColumns.map((col) => {
-        const isActive = sortBy === col.key
-        return (
-          <button
-            key={col.key}
-            type="button"
-            onClick={() => onSelectSort(col.key)}
-            className={cn(
-              'rounded-md px-2.5 py-1 font-medium transition-colors',
-              isActive
-                ? 'bg-cyan-500/20 text-cyan-300'
-                : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200',
-            )}
-          >
-            {col.label === 'S/L' ? 'Seeders' : col.label === 'Age' ? 'Date' : col.label}
-          </button>
-        )
-      })}
-      <button
-        type="button"
-        onClick={onToggleOrder}
-        className="ml-1 flex items-center gap-1 rounded-md border border-slate-700/50 bg-slate-800/40 px-2 py-1 text-slate-300 transition-colors hover:bg-slate-800/80"
-        title={
-          sortOrder === 'asc' ? 'Ascending — click to reverse' : 'Descending — click to reverse'
-        }
-      >
-        {sortOrder === 'asc' ? (
-          <ArrowUp className="h-3.5 w-3.5" />
-        ) : (
-          <ArrowDown className="h-3.5 w-3.5" />
-        )}
-        <span className="hidden sm:inline">{sortOrder === 'asc' ? 'Asc' : 'Desc'}</span>
-      </button>
-    </div>
   )
 }

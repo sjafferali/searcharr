@@ -62,8 +62,6 @@ export interface SearchParams {
   jackett_indexers?: string[]
   prowlarr_indexers?: string[]
   exclusive_filter?: boolean
-  min_seeders?: number
-  max_size?: string
   sort_by?: SortBy
   sort_order?: SortOrder
 }
