@@ -11,6 +11,11 @@ from pydantic import Field, field_validator
 from app.schemas.base import BaseSchema
 from app.schemas.search import SearchCategory, SearchResult
 
+POLL_INTERVAL_MIN = 5
+POLL_INTERVAL_MAX = 1440
+RETENTION_DAYS_MIN = 1
+RETENTION_DAYS_MAX = 365
+
 
 class FeedSortStrategy(str, Enum):
     """How merged feed results are ordered before being returned."""
@@ -86,6 +91,21 @@ class FeedCreate(BaseSchema):
             exclude_regex=None,
         )
     )
+    poll_interval_minutes: int = Field(
+        15,
+        ge=POLL_INTERVAL_MIN,
+        le=POLL_INTERVAL_MAX,
+        description="Minutes between background polls",
+    )
+    retention_days: int = Field(
+        30,
+        ge=RETENTION_DAYS_MIN,
+        le=RETENTION_DAYS_MAX,
+        description="Days to retain observed items before pruning",
+    )
+    polling_enabled: bool = Field(
+        True, description="Disable to pause background polling without losing history"
+    )
     indexers: list[FeedIndexerRef] = Field(
         ..., min_length=1, description="Indexer references this feed pulls from"
     )
@@ -98,6 +118,9 @@ class FeedUpdate(BaseSchema):
     description: str | None = None
     sort_strategy: FeedSortStrategy | None = None
     filters: FeedFilters | None = None
+    poll_interval_minutes: int | None = Field(None, ge=POLL_INTERVAL_MIN, le=POLL_INTERVAL_MAX)
+    retention_days: int | None = Field(None, ge=RETENTION_DAYS_MIN, le=RETENTION_DAYS_MAX)
+    polling_enabled: bool | None = None
     indexers: list[FeedIndexerRef] | None = Field(
         None,
         min_length=1,
@@ -114,6 +137,11 @@ class FeedResponse(BaseSchema):
     sort_strategy: FeedSortStrategy
     filters: FeedFilters
     indexers: list[FeedIndexerRef]
+    poll_interval_minutes: int
+    retention_days: int
+    polling_enabled: bool
+    last_polled_at: datetime | None
+    stale_after_seconds: int
     created_at: datetime
     updated_at: datetime
 
@@ -135,3 +163,61 @@ class FeedFetchResponse(BaseSchema):
     results: list[SearchResult]
     sources_queried: int
     errors: list[str] = Field(default_factory=list)
+
+
+class FeedItemSortBy(str, Enum):
+    """Sort columns available on the persisted feed-item listing."""
+
+    LAST_SEEN = "last_seen"
+    FIRST_SEEN = "first_seen"
+    PUB_DATE = "pub_date"
+    SEEDERS = "seeders"
+    SIZE = "size"
+    TITLE = "title"
+
+
+class FeedItem(BaseSchema):
+    """
+    A single persisted feed item.
+
+    Field names mirror ``SearchResult`` (``id``, ``source``, ``size``,
+    ``date``) so the existing row renderers on the frontend keep working
+    without a per-field adapter. ``id`` is the row's ``dedup_key`` (stable
+    per-feed) so React keys / bookmark+history lookups behave identically
+    to live search results. ``first_seen_at`` / ``last_seen_at`` /
+    ``dedup_key`` carry the polling-specific signals.
+    """
+
+    id: str
+    item_id: int
+    first_seen_at: datetime
+    last_seen_at: datetime
+    title: str
+    source: str
+    source_type: Literal["jackett", "prowlarr"]
+    indexer: str
+    size: int
+    size_formatted: str
+    seeders: int
+    leechers: int
+    date: datetime | None
+    category: str
+    magnet_link: str | None
+    torrent_url: str | None
+    info_url: str | None
+    freeleech: bool
+    download_volume_factor: float | None
+    dedup_key: str
+
+
+class FeedItemListResponse(BaseSchema):
+    """Paged listing of persisted feed items for one feed."""
+
+    total: int
+    entries: list[FeedItem]
+    feed_id: int
+    feed_name: str
+    last_polled_at: datetime | None
+    next_poll_at: datetime | None
+    stale_after_seconds: int
+    polling_enabled: bool

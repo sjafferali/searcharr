@@ -1,0 +1,445 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - link "Searcharr Unified Search Aggregator" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - img [ref=e11]
+          - generic [ref=e16]:
+            - heading "Searcharr" [level=1] [ref=e17]
+            - paragraph [ref=e18]: Unified Search Aggregator
+        - navigation [ref=e19]:
+          - link "Search" [ref=e20] [cursor=pointer]:
+            - /url: /
+            - img [ref=e21]
+            - text: Search
+          - link "Feeds" [ref=e24] [cursor=pointer]:
+            - /url: /feeds
+            - img [ref=e25]
+            - text: Feeds
+          - link "Bookmarks" [ref=e29] [cursor=pointer]:
+            - /url: /bookmarks
+            - img [ref=e30]
+            - text: Bookmarks
+          - link "History" [ref=e32] [cursor=pointer]:
+            - /url: /history
+            - img [ref=e33]
+            - text: History
+          - link "Instances" [ref=e37] [cursor=pointer]:
+            - /url: /instances
+            - img [ref=e38]
+            - text: Instances
+          - link "Clients" [ref=e41] [cursor=pointer]:
+            - /url: /clients
+            - img [ref=e42]
+            - text: Clients
+        - generic [ref=e47]: 0 sources online
+    - main [ref=e48]:
+      - generic [ref=e49]:
+        - complementary [ref=e50]:
+          - generic [ref=e51]:
+            - heading "Feeds" [level=2] [ref=e52]:
+              - img [ref=e53]
+              - text: Feeds
+            - button "New" [ref=e57] [cursor=pointer]:
+              - img [ref=e58]
+              - text: New
+          - button "Freeleech Watch 1 indexer FL" [ref=e60] [cursor=pointer]:
+            - generic [ref=e62]:
+              - paragraph [ref=e63]: Freeleech Watch
+              - paragraph [ref=e64]:
+                - img [ref=e65]
+                - text: 1 indexer
+                - generic [ref=e69]:
+                  - img [ref=e70]
+                  - text: FL
+        - generic [ref=e73]:
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - generic [ref=e76]:
+                - heading "Freeleech Watch" [level=2] [ref=e77]:
+                  - img [ref=e78]
+                  - text: Freeleech Watch
+                - paragraph [ref=e82]: Daily freeleech sweep
+                - generic [ref=e83]:
+                  - generic [ref=e84]:
+                    - img [ref=e85]
+                    - text: Freeleech only
+                  - generic [ref=e88]: ≥ 5 seeders
+                - generic [ref=e90]:
+                  - img [ref=e91]
+                  - text: IPTorrents
+              - generic [ref=e93]:
+                - button "Refresh now" [ref=e94] [cursor=pointer]:
+                  - img [ref=e95]
+                  - text: Refresh now
+                - button "Edit feed" [ref=e100] [cursor=pointer]:
+                  - img [ref=e101]
+                - button "Delete feed" [ref=e104] [cursor=pointer]:
+                  - img [ref=e105]
+            - generic [ref=e108]:
+              - generic [ref=e109]:
+                - img [ref=e110]
+                - generic [ref=e117]: Polling every 15m
+              - generic [ref=e118]:
+                - generic [ref=e119]:
+                  - img [ref=e120]
+                  - text: Last poll 2 minutes ago
+                - generic [ref=e123]:
+                  - img [ref=e124]
+                  - text: Next in 13m
+              - generic [ref=e126]:
+                - text: "6"
+                - generic [ref=e127]: items in history
+          - generic [ref=e128]:
+            - generic [ref=e129]:
+              - generic [ref=e130] [cursor=pointer]:
+                - checkbox "Show stale items" [checked] [ref=e131]
+                - generic [ref=e132]: Show stale items
+              - generic [ref=e133] [cursor=pointer]:
+                - checkbox "Freeleech only" [ref=e134]
+                - generic [ref=e135]:
+                  - img [ref=e136]
+                  - text: Freeleech only
+            - paragraph [ref=e139]: 6 items match
+          - table [ref=e142]:
+            - rowgroup [ref=e143]:
+              - row "Title Source Size Filter by max size S/L Filter by minimum seeders Age Seen Seen within last hours Added First seen within last hours Actions" [ref=e144]:
+                - columnheader "Title" [ref=e145]:
+                  - button "Title" [ref=e147] [cursor=pointer]:
+                    - generic [ref=e148]: Title
+                    - img [ref=e149]
+                - columnheader "Source" [ref=e152]
+                - columnheader "Size Filter by max size" [ref=e153]:
+                  - generic [ref=e154]:
+                    - button "Size" [ref=e155] [cursor=pointer]:
+                      - generic [ref=e156]: Size
+                      - img [ref=e157]
+                    - button "Filter by max size" [ref=e161] [cursor=pointer]:
+                      - img [ref=e162]
+                - columnheader "S/L Filter by minimum seeders" [ref=e164]:
+                  - generic [ref=e165]:
+                    - button "S/L" [ref=e166] [cursor=pointer]:
+                      - generic [ref=e167]: S/L
+                      - img [ref=e168]
+                    - button "Filter by minimum seeders" [ref=e172] [cursor=pointer]:
+                      - img [ref=e173]
+                - columnheader "Age" [ref=e175]:
+                  - button "Age" [ref=e177] [cursor=pointer]:
+                    - generic [ref=e178]: Age
+                    - img [ref=e179]
+                - columnheader "Seen Seen within last hours" [ref=e182]:
+                  - generic [ref=e183]:
+                    - button "Seen" [ref=e184] [cursor=pointer]:
+                      - generic [ref=e185]: Seen
+                      - img [ref=e186]
+                    - button "Seen within last hours" [ref=e189] [cursor=pointer]:
+                      - img [ref=e190]
+                - columnheader "Added First seen within last hours" [ref=e192]:
+                  - generic [ref=e193]:
+                    - button "Added" [ref=e194] [cursor=pointer]:
+                      - generic [ref=e195]: Added
+                      - img [ref=e196]
+                    - button "First seen within last hours" [ref=e200] [cursor=pointer]:
+                      - img [ref=e201]
+                - columnheader "Actions" [ref=e203]
+            - rowgroup [ref=e204]:
+              - row "Seen 6 minutes ago • First seen 6 minutes ago Sintel.2010.2160p.BluRay.x265-COLLECTIVE Freeleech Movies IPTorrents Test Jackett 7.9 GB 250 / 12 16m 6m 6m Send" [ref=e205]:
+                - cell "Seen 6 minutes ago • First seen 6 minutes ago Sintel.2010.2160p.BluRay.x265-COLLECTIVE Freeleech Movies IPTorrents" [ref=e206]:
+                  - generic [ref=e207]:
+                    - button "Bookmark this result" [ref=e208] [cursor=pointer]:
+                      - img [ref=e209]
+                    - generic "Seen 6 minutes ago • First seen 6 minutes ago" [ref=e211]
+                    - generic [ref=e212]:
+                      - paragraph [ref=e213]: Sintel.2010.2160p.BluRay.x265-COLLECTIVE
+                      - generic "Freeleech — download does not count against ratio" [ref=e215]:
+                        - img [ref=e216]
+                        - text: Freeleech
+                      - generic [ref=e219]:
+                        - generic [ref=e220]: Movies
+                        - generic [ref=e221]: IPTorrents
+                - cell "Test Jackett" [ref=e222]:
+                  - generic [ref=e223]:
+                    - img [ref=e224]
+                    - text: Test Jackett
+                - cell "7.9 GB" [ref=e226]
+                - cell "250 / 12" [ref=e227]:
+                  - generic [ref=e228]:
+                    - generic [ref=e229]:
+                      - img [ref=e230]
+                      - text: "250"
+                    - generic [ref=e235]: /
+                    - generic [ref=e236]: "12"
+                - cell "16m" [ref=e237]:
+                  - 'generic "Indexer reported: May 11, 2026, 11:21 AM" [ref=e238]':
+                    - img [ref=e239]
+                    - text: 16m
+                - cell "6m" [ref=e242]:
+                  - 'generic "Last seen: May 11, 2026, 11:31 AM" [ref=e243]':
+                    - img [ref=e244]
+                    - text: 6m
+                - cell "6m" [ref=e247]:
+                  - 'generic "First seen: May 11, 2026, 11:31 AM" [ref=e248]':
+                    - img [ref=e249]
+                    - text: 6m
+                - cell "Send" [ref=e251]:
+                  - generic [ref=e252]:
+                    - button "Copy magnet" [disabled] [ref=e253]:
+                      - img [ref=e254]
+                    - button "Download .torrent" [ref=e258] [cursor=pointer]:
+                      - img [ref=e259]
+                    - button "Send" [ref=e263] [cursor=pointer]:
+                      - img [ref=e264]
+                      - text: Send
+              - row "Seen 44 minutes ago • First seen 7 hours ago Big.Buck.Bunny.1080p.x264.AAC-AMIABLE Movies IPTorrents Test Jackett 1.3 GB 87 / 3 54m 44m 6.7h Send" [ref=e267]:
+                - cell "Seen 44 minutes ago • First seen 7 hours ago Big.Buck.Bunny.1080p.x264.AAC-AMIABLE Movies IPTorrents" [ref=e268]:
+                  - generic [ref=e269]:
+                    - button "Bookmark this result" [ref=e270] [cursor=pointer]:
+                      - img [ref=e271]
+                    - generic "Seen 44 minutes ago • First seen 7 hours ago" [ref=e273]
+                    - generic [ref=e274]:
+                      - paragraph [ref=e275]: Big.Buck.Bunny.1080p.x264.AAC-AMIABLE
+                      - generic [ref=e276]:
+                        - generic [ref=e277]: Movies
+                        - generic [ref=e278]: IPTorrents
+                - cell "Test Jackett" [ref=e279]:
+                  - generic [ref=e280]:
+                    - img [ref=e281]
+                    - text: Test Jackett
+                - cell "1.3 GB" [ref=e283]
+                - cell "87 / 3" [ref=e284]:
+                  - generic [ref=e285]:
+                    - generic [ref=e286]:
+                      - img [ref=e287]
+                      - text: "87"
+                    - generic [ref=e292]: /
+                    - generic [ref=e293]: "3"
+                - cell "54m" [ref=e294]:
+                  - 'generic "Indexer reported: May 11, 2026, 10:43 AM" [ref=e295]':
+                    - img [ref=e296]
+                    - text: 54m
+                - cell "44m" [ref=e299]:
+                  - 'generic "Last seen: May 11, 2026, 10:53 AM" [ref=e300]':
+                    - img [ref=e301]
+                    - text: 44m
+                - cell "6.7h" [ref=e304]:
+                  - 'generic "First seen: May 11, 2026, 4:53 AM" [ref=e305]':
+                    - img [ref=e306]
+                    - text: 6.7h
+                - cell "Send" [ref=e308]:
+                  - generic [ref=e309]:
+                    - button "Copy magnet" [disabled] [ref=e310]:
+                      - img [ref=e311]
+                    - button "Download .torrent" [ref=e315] [cursor=pointer]:
+                      - img [ref=e316]
+                    - button "Send" [ref=e320] [cursor=pointer]:
+                      - img [ref=e321]
+                      - text: Send
+              - row "Seen 2 hours ago • First seen 14 hours ago Tears.of.Steel.4K.HDR.x265-SPARKS Freeleech Stale Movies IPTorrents Test Jackett 5.8 GB 31 / 5 2.2h 2.0h 14.0h Send" [ref=e324]:
+                - cell "Seen 2 hours ago • First seen 14 hours ago Tears.of.Steel.4K.HDR.x265-SPARKS Freeleech Stale Movies IPTorrents" [ref=e325]:
+                  - generic [ref=e326]:
+                    - button "Bookmark this result" [ref=e327] [cursor=pointer]:
+                      - img [ref=e328]
+                    - generic "Seen 2 hours ago • First seen 14 hours ago" [ref=e330]
+                    - generic [ref=e331]:
+                      - paragraph [ref=e332]: Tears.of.Steel.4K.HDR.x265-SPARKS
+                      - generic [ref=e333]:
+                        - generic "Freeleech — download does not count against ratio" [ref=e334]:
+                          - img [ref=e335]
+                          - text: Freeleech
+                        - generic "Last observed 2 hours ago — freeleech / seeders may be stale" [ref=e338]:
+                          - img [ref=e339]
+                          - text: Stale
+                      - generic [ref=e342]:
+                        - generic [ref=e343]: Movies
+                        - generic [ref=e344]: IPTorrents
+                - cell "Test Jackett" [ref=e345]:
+                  - generic [ref=e346]:
+                    - img [ref=e347]
+                    - text: Test Jackett
+                - cell "5.8 GB" [ref=e349]
+                - cell "31 / 5" [ref=e350]:
+                  - generic [ref=e351]:
+                    - generic [ref=e352]:
+                      - img [ref=e353]
+                      - text: "31"
+                    - generic [ref=e358]: /
+                    - generic [ref=e359]: "5"
+                - cell "2.2h" [ref=e360]:
+                  - 'generic "Indexer reported: May 11, 2026, 9:25 AM" [ref=e361]':
+                    - img [ref=e362]
+                    - text: 2.2h
+                - cell "2.0h" [ref=e365]:
+                  - 'generic "Last seen: May 11, 2026, 9:35 AM" [ref=e366]':
+                    - img [ref=e367]
+                    - text: 2.0h
+                - cell "14.0h" [ref=e370]:
+                  - 'generic "First seen: May 10, 2026, 9:35 PM" [ref=e371]':
+                    - img [ref=e372]
+                    - text: 14.0h
+                - cell "Send" [ref=e374]:
+                  - generic [ref=e375]:
+                    - button "Copy magnet" [disabled] [ref=e376]:
+                      - img [ref=e377]
+                    - button "Download .torrent" [ref=e381] [cursor=pointer]:
+                      - img [ref=e382]
+                    - button "Send" [ref=e386] [cursor=pointer]:
+                      - img [ref=e387]
+                      - text: Send
+              - row "Seen 7 hours ago • First seen yesterday Cosmos.Laundromat.4K.x265-EXCEPTIONAL 50% leech Stale Movies IPTorrents Test Jackett 4.6 GB 14 / 1 7.2h 7.0h 25.0h Send" [ref=e390]:
+                - cell "Seen 7 hours ago • First seen yesterday Cosmos.Laundromat.4K.x265-EXCEPTIONAL 50% leech Stale Movies IPTorrents" [ref=e391]:
+                  - generic [ref=e392]:
+                    - button "Bookmark this result" [ref=e393] [cursor=pointer]:
+                      - img [ref=e394]
+                    - generic "Seen 7 hours ago • First seen yesterday" [ref=e396]
+                    - generic [ref=e397]:
+                      - paragraph [ref=e398]: Cosmos.Laundromat.4K.x265-EXCEPTIONAL
+                      - generic [ref=e399]:
+                        - generic "Download counts at 50% of size" [ref=e400]:
+                          - img [ref=e401]
+                          - text: 50% leech
+                        - generic "Last observed 7 hours ago — freeleech / seeders may be stale" [ref=e404]:
+                          - img [ref=e405]
+                          - text: Stale
+                      - generic [ref=e408]:
+                        - generic [ref=e409]: Movies
+                        - generic [ref=e410]: IPTorrents
+                - cell "Test Jackett" [ref=e411]:
+                  - generic [ref=e412]:
+                    - img [ref=e413]
+                    - text: Test Jackett
+                - cell "4.6 GB" [ref=e415]
+                - cell "14 / 1" [ref=e416]:
+                  - generic [ref=e417]:
+                    - generic [ref=e418]:
+                      - img [ref=e419]
+                      - text: "14"
+                    - generic [ref=e424]: /
+                    - generic [ref=e425]: "1"
+                - cell "7.2h" [ref=e426]:
+                  - 'generic "Indexer reported: May 11, 2026, 4:25 AM" [ref=e427]':
+                    - img [ref=e428]
+                    - text: 7.2h
+                - cell "7.0h" [ref=e431]:
+                  - 'generic "Last seen: May 11, 2026, 4:35 AM" [ref=e432]':
+                    - img [ref=e433]
+                    - text: 7.0h
+                - cell "25.0h" [ref=e436]:
+                  - 'generic "First seen: May 10, 2026, 10:35 AM" [ref=e437]':
+                    - img [ref=e438]
+                    - text: 25.0h
+                - cell "Send" [ref=e440]:
+                  - generic [ref=e441]:
+                    - button "Copy magnet" [disabled] [ref=e442]:
+                      - img [ref=e443]
+                    - button "Download .torrent" [ref=e447] [cursor=pointer]:
+                      - img [ref=e448]
+                    - button "Send" [ref=e452] [cursor=pointer]:
+                      - img [ref=e453]
+                      - text: Send
+              - row "Seen 2 days ago • First seen 3 days ago Elephants.Dream.1080p.HEVC.x265-RETAIL Dead Stale Movies IPTorrents Test Jackett 858.3 MB 0 / 0 2d 2d 3d Send" [ref=e456]:
+                - cell "Seen 2 days ago • First seen 3 days ago Elephants.Dream.1080p.HEVC.x265-RETAIL Dead Stale Movies IPTorrents" [ref=e457]:
+                  - generic [ref=e458]:
+                    - button "Bookmark this result" [ref=e459] [cursor=pointer]:
+                      - img [ref=e460]
+                    - generic "Seen 2 days ago • First seen 3 days ago" [ref=e462]
+                    - generic [ref=e463]:
+                      - paragraph [ref=e464]: Elephants.Dream.1080p.HEVC.x265-RETAIL
+                      - generic [ref=e465]:
+                        - generic "No seeders — this torrent is unlikely to download" [ref=e466]:
+                          - img [ref=e467]
+                          - text: Dead
+                        - generic "Last observed 2 days ago — freeleech / seeders may be stale" [ref=e469]:
+                          - img [ref=e470]
+                          - text: Stale
+                      - generic [ref=e473]:
+                        - generic [ref=e474]: Movies
+                        - generic [ref=e475]: IPTorrents
+                - cell "Test Jackett" [ref=e476]:
+                  - generic [ref=e477]:
+                    - img [ref=e478]
+                    - text: Test Jackett
+                - cell "858.3 MB" [ref=e480]
+                - cell "0 / 0" [ref=e481]:
+                  - generic [ref=e482]:
+                    - generic [ref=e483]:
+                      - img [ref=e484]
+                      - text: "0"
+                    - generic [ref=e489]: /
+                    - generic [ref=e490]: "0"
+                - cell "2d" [ref=e491]:
+                  - 'generic "Indexer reported: May 9, 2026, 11:25 AM" [ref=e492]':
+                    - img [ref=e493]
+                    - text: 2d
+                - cell "2d" [ref=e496]:
+                  - 'generic "Last seen: May 9, 2026, 11:35 AM" [ref=e497]':
+                    - img [ref=e498]
+                    - text: 2d
+                - cell "3d" [ref=e501]:
+                  - 'generic "First seen: May 8, 2026, 11:35 AM" [ref=e502]':
+                    - img [ref=e503]
+                    - text: 3d
+                - cell "Send" [ref=e505]:
+                  - generic [ref=e506]:
+                    - button "Copy magnet" [disabled] [ref=e507]:
+                      - img [ref=e508]
+                    - button "Download .torrent" [ref=e512] [cursor=pointer]:
+                      - img [ref=e513]
+                    - button "Send" [ref=e517] [cursor=pointer]:
+                      - img [ref=e518]
+                      - text: Send
+              - row "Seen 5 days ago • First seen 6 days ago Caminandes.Llama.Drama.480p-INTERNAL Freeleech Stale Movies IPTorrents Test Jackett 209.8 MB 5 / 0 5d 5d 6d Send" [ref=e521]:
+                - cell "Seen 5 days ago • First seen 6 days ago Caminandes.Llama.Drama.480p-INTERNAL Freeleech Stale Movies IPTorrents" [ref=e522]:
+                  - generic [ref=e523]:
+                    - button "Bookmark this result" [ref=e524] [cursor=pointer]:
+                      - img [ref=e525]
+                    - generic "Seen 5 days ago • First seen 6 days ago" [ref=e527]
+                    - generic [ref=e528]:
+                      - paragraph [ref=e529]: Caminandes.Llama.Drama.480p-INTERNAL
+                      - generic [ref=e530]:
+                        - generic "Freeleech — download does not count against ratio" [ref=e531]:
+                          - img [ref=e532]
+                          - text: Freeleech
+                        - generic "Last observed 5 days ago — freeleech / seeders may be stale" [ref=e535]:
+                          - img [ref=e536]
+                          - text: Stale
+                      - generic [ref=e539]:
+                        - generic [ref=e540]: Movies
+                        - generic [ref=e541]: IPTorrents
+                - cell "Test Jackett" [ref=e542]:
+                  - generic [ref=e543]:
+                    - img [ref=e544]
+                    - text: Test Jackett
+                - cell "209.8 MB" [ref=e546]
+                - cell "5 / 0" [ref=e547]:
+                  - generic [ref=e548]:
+                    - generic [ref=e549]:
+                      - img [ref=e550]
+                      - text: "5"
+                    - generic [ref=e555]: /
+                    - generic [ref=e556]: "0"
+                - cell "5d" [ref=e557]:
+                  - 'generic "Indexer reported: May 6, 2026, 11:25 AM" [ref=e558]':
+                    - img [ref=e559]
+                    - text: 5d
+                - cell "5d" [ref=e562]:
+                  - 'generic "Last seen: May 6, 2026, 11:35 AM" [ref=e563]':
+                    - img [ref=e564]
+                    - text: 5d
+                - cell "6d" [ref=e567]:
+                  - 'generic "First seen: May 5, 2026, 5:35 AM" [ref=e568]':
+                    - img [ref=e569]
+                    - text: 6d
+                - cell "Send" [ref=e571]:
+                  - generic [ref=e572]:
+                    - button "Copy magnet" [disabled] [ref=e573]:
+                      - img [ref=e574]
+                    - button "Download .torrent" [ref=e578] [cursor=pointer]:
+                      - img [ref=e579]
+                    - button "Send" [ref=e583] [cursor=pointer]:
+                      - img [ref=e584]
+                      - text: Send
+  - generic [ref=e587]:
+    - img [ref=e589]
+    - button "Open Tanstack query devtools" [ref=e637] [cursor=pointer]:
+      - img [ref=e638]

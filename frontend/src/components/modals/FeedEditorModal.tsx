@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Activity,
   ChevronDown,
   ChevronRight,
   Check,
@@ -32,7 +33,14 @@ import {
   SearchCategory,
   SourceType,
 } from '../../types'
-import { cn, formatBytes, parseSize } from '../../utils'
+import { cn, formatBytes, formatRelative, parseSize } from '../../utils'
+
+const POLL_INTERVAL_MIN = 5
+const POLL_INTERVAL_MAX = 1440
+const RETENTION_DAYS_MIN = 1
+const RETENTION_DAYS_MAX = 365
+const DEFAULT_POLL_INTERVAL = 15
+const DEFAULT_RETENTION_DAYS = 30
 
 interface FeedEditorModalProps {
   isOpen: boolean
@@ -95,6 +103,9 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
   const [selected, setSelected] = useState<Map<string, FeedIndexerRef>>(new Map())
   const [minSizeText, setMinSizeText] = useState('')
   const [maxSizeText, setMaxSizeText] = useState('')
+  const [pollingEnabled, setPollingEnabled] = useState<boolean>(true)
+  const [pollIntervalText, setPollIntervalText] = useState<string>(String(DEFAULT_POLL_INTERVAL))
+  const [retentionDaysText, setRetentionDaysText] = useState<string>(String(DEFAULT_RETENTION_DAYS))
 
   useEffect(() => {
     if (!isOpen) return
@@ -110,6 +121,9 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
       setSelected(map)
       setMinSizeText(bytesToInputString(feed.filters.min_size_bytes))
       setMaxSizeText(bytesToInputString(feed.filters.max_size_bytes))
+      setPollingEnabled(feed.polling_enabled)
+      setPollIntervalText(String(feed.poll_interval_minutes))
+      setRetentionDaysText(String(feed.retention_days))
     } else {
       setName('')
       setDescription('')
@@ -118,8 +132,28 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
       setSelected(new Map())
       setMinSizeText('')
       setMaxSizeText('')
+      setPollingEnabled(true)
+      setPollIntervalText(String(DEFAULT_POLL_INTERVAL))
+      setRetentionDaysText(String(DEFAULT_RETENTION_DAYS))
     }
   }, [isOpen, feed])
+
+  const pollIntervalParsed = useMemo(() => {
+    const n = Number(pollIntervalText)
+    return Number.isFinite(n) && Number.isInteger(n) ? n : NaN
+  }, [pollIntervalText])
+  const retentionDaysParsed = useMemo(() => {
+    const n = Number(retentionDaysText)
+    return Number.isFinite(n) && Number.isInteger(n) ? n : NaN
+  }, [retentionDaysText])
+  const pollIntervalInvalid =
+    !Number.isFinite(pollIntervalParsed) ||
+    pollIntervalParsed < POLL_INTERVAL_MIN ||
+    pollIntervalParsed > POLL_INTERVAL_MAX
+  const retentionDaysInvalid =
+    !Number.isFinite(retentionDaysParsed) ||
+    retentionDaysParsed < RETENTION_DAYS_MIN ||
+    retentionDaysParsed > RETENTION_DAYS_MAX
 
   const minSizeParsed = useMemo(() => safeParseSize(minSizeText), [minSizeText])
   const maxSizeParsed = useMemo(() => safeParseSize(maxSizeText), [maxSizeText])
@@ -164,6 +198,16 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
       toast.error('Maximum size: use a unit like KB, MB, GB, TB')
       return
     }
+    if (pollIntervalInvalid) {
+      toast.error(
+        `Poll interval must be between ${POLL_INTERVAL_MIN} and ${POLL_INTERVAL_MAX} minutes`,
+      )
+      return
+    }
+    if (retentionDaysInvalid) {
+      toast.error(`Retention must be between ${RETENTION_DAYS_MIN} and ${RETENTION_DAYS_MAX} days`)
+      return
+    }
 
     const finalFilters: FeedFilters = {
       ...filters,
@@ -184,6 +228,9 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
             description: description.trim() || null,
             sort_strategy: sortStrategy,
             filters: finalFilters,
+            poll_interval_minutes: pollIntervalParsed,
+            retention_days: retentionDaysParsed,
+            polling_enabled: pollingEnabled,
             indexers,
           },
         })
@@ -193,6 +240,9 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
           description: description.trim() || null,
           sort_strategy: sortStrategy,
           filters: finalFilters,
+          poll_interval_minutes: pollIntervalParsed,
+          retention_days: retentionDaysParsed,
+          polling_enabled: pollingEnabled,
           indexers,
         })
       }
@@ -406,6 +456,93 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
               />
             </div>
           </div>
+        </section>
+
+        <section className="space-y-3 rounded-xl border border-slate-800/60 bg-slate-900/40 p-3">
+          <header className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <Activity className="h-3.5 w-3.5 text-cyan-400" />
+            Background polling
+          </header>
+          <label
+            className={cn(
+              'flex cursor-pointer items-start gap-3 rounded-lg border bg-slate-900/60 px-3 py-2.5 transition-colors',
+              pollingEnabled
+                ? 'border-cyan-500/40 shadow-[0_0_0_1px_rgba(34,211,238,0.1)]'
+                : 'border-slate-800/60 hover:border-cyan-500/30',
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={pollingEnabled}
+              onChange={(e) => setPollingEnabled(e.target.checked)}
+              className="mt-0.5 h-4 w-4 cursor-pointer accent-cyan-500"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-slate-200">Enabled</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Searcharr polls in the background and remembers every item it sees, so freeleech
+                windows aren't missed while you're away. Manual refresh still works when polling is
+                paused.
+              </p>
+            </div>
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                Refresh every
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={POLL_INTERVAL_MIN}
+                  max={POLL_INTERVAL_MAX}
+                  value={pollIntervalText}
+                  onChange={(e) => setPollIntervalText(e.target.value)}
+                  className={cn('input flex-1', pollIntervalInvalid && 'border-rose-500/60')}
+                  disabled={!pollingEnabled}
+                />
+                <span className="text-xs text-slate-400">minutes</span>
+              </div>
+              <p
+                className={cn(
+                  'mt-1 text-[10px]',
+                  pollIntervalInvalid ? 'text-rose-300' : 'text-slate-500',
+                )}
+              >
+                Between {POLL_INTERVAL_MIN} and {POLL_INTERVAL_MAX} minutes.
+              </p>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                Retain history for
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={RETENTION_DAYS_MIN}
+                  max={RETENTION_DAYS_MAX}
+                  value={retentionDaysText}
+                  onChange={(e) => setRetentionDaysText(e.target.value)}
+                  className={cn('input flex-1', retentionDaysInvalid && 'border-rose-500/60')}
+                />
+                <span className="text-xs text-slate-400">days</span>
+              </div>
+              <p
+                className={cn(
+                  'mt-1 text-[10px]',
+                  retentionDaysInvalid ? 'text-rose-300' : 'text-slate-500',
+                )}
+              >
+                Older items are pruned automatically.
+              </p>
+            </div>
+          </div>
+          {feed?.last_polled_at && (
+            <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <Activity className="h-3 w-3" />
+              Last polled {formatRelative(feed.last_polled_at)}
+            </p>
+          )}
         </section>
 
         <section className="space-y-2">

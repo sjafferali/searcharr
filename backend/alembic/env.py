@@ -17,6 +17,7 @@ from app.models import (  # noqa: F401
     DownloadHistory,
     Feed,
     FeedIndexer,
+    FeedItem,
     JackettInstance,
     ProwlarrInstance,
 )

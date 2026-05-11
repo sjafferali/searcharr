@@ -1,17 +1,24 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
+  Activity,
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Bookmark,
   Clock,
   Database,
   Download,
+  Eye,
   ExternalLink,
-  Filter as FilterIcon,
   FileDown,
+  Filter as FilterIcon,
   Layers,
   Magnet,
+  PauseCircle,
   Pencil,
   Plus,
+  Radar,
   RefreshCw,
   Rss,
   Sparkles,
@@ -21,6 +28,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
+  ColumnFilter,
   ConfirmDialog,
   DownloadedBadge,
   EmptyState,
@@ -32,16 +40,73 @@ import {
   useBookmarkLookup,
   useClientsStatus,
   useDeleteFeed,
-  useFeedFetch,
+  useFeedItems,
   useFeeds,
   useHistoryLookup,
   useInstancesStatus,
   useLogHistory,
+  useRefreshFeed,
   useSendToClient,
   useToggleResultBookmark,
 } from '../hooks'
-import { Feed, SearchCategory, SearchResult } from '../types'
+import {
+  Feed,
+  FeedItem,
+  FeedItemListParams,
+  FeedItemSortBy,
+  SearchCategory,
+  SearchResult,
+  SortOrder,
+} from '../types'
 import { cn, formatAge, formatBytes, formatDateTime, formatRelative } from '../utils'
+
+const PAGE_SIZE = 100
+
+type SortableColumnKey = FeedItemSortBy
+
+interface SortableColumn {
+  key: SortableColumnKey
+  label: string
+  align?: 'left' | 'center' | 'right'
+  defaultOrder: SortOrder
+}
+
+const titleColumn: SortableColumn = {
+  key: 'title',
+  label: 'Title',
+  align: 'left',
+  defaultOrder: 'asc',
+}
+const sizeColumn: SortableColumn = {
+  key: 'size',
+  label: 'Size',
+  align: 'left',
+  defaultOrder: 'desc',
+}
+const seedersColumn: SortableColumn = {
+  key: 'seeders',
+  label: 'S/L',
+  align: 'center',
+  defaultOrder: 'desc',
+}
+const pubDateColumn: SortableColumn = {
+  key: 'pub_date',
+  label: 'Age',
+  align: 'left',
+  defaultOrder: 'desc',
+}
+const lastSeenColumn: SortableColumn = {
+  key: 'last_seen',
+  label: 'Seen',
+  align: 'left',
+  defaultOrder: 'desc',
+}
+const firstSeenColumn: SortableColumn = {
+  key: 'first_seen',
+  label: 'Added',
+  align: 'left',
+  defaultOrder: 'desc',
+}
 
 function filterChips(feed: Feed): { label: string; tone: 'normal' | 'highlight' }[] {
   const chips: { label: string; tone: 'normal' | 'highlight' }[] = []
@@ -62,6 +127,41 @@ function filterChips(feed: Feed): { label: string; tone: 'normal' | 'highlight' 
   return chips
 }
 
+function freshnessTone(item: FeedItem, staleAfterSeconds: number): string {
+  const ageSec = (Date.now() - new Date(item.last_seen_at).getTime()) / 1000
+  if (ageSec < 1800) {
+    return 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.7)]'
+  }
+  if (ageSec < staleAfterSeconds) {
+    return 'bg-slate-400'
+  }
+  return 'bg-slate-700'
+}
+
+function isStale(item: FeedItem, staleAfterSeconds: number): boolean {
+  const ageSec = (Date.now() - new Date(item.last_seen_at).getTime()) / 1000
+  return ageSec >= staleAfterSeconds
+}
+
+function formatHoursDuration(seconds: number | null): string {
+  if (seconds === null) return ''
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.round((seconds / 3600) * 10) / 10
+  if (hours < 24) return `${hours}h`
+  const days = Math.round(seconds / 86400)
+  return `${days}d`
+}
+
+function nextPollLabel(nextPollAt: string | null, pollingEnabled: boolean): string | null {
+  if (!pollingEnabled) return null
+  if (!nextPollAt) return 'soon'
+  const ms = new Date(nextPollAt).getTime() - Date.now()
+  if (ms <= 0) return 'imminent'
+  return `in ${formatHoursDuration(Math.round(ms / 1000))}`
+}
+
 export function FeedsPage() {
   const { data: feedsData, isLoading: feedsLoading, isError: feedsError } = useFeeds()
   const { data: instancesStatus } = useInstancesStatus()
@@ -69,6 +169,7 @@ export function FeedsPage() {
   const sendToClient = useSendToClient()
   const logHistory = useLogHistory()
   const deleteFeed = useDeleteFeed()
+  const refreshFeed = useRefreshFeed()
 
   const feeds = useMemo(() => feedsData?.entries ?? [], [feedsData])
 
@@ -78,12 +179,22 @@ export function FeedsPage() {
   const [pendingDelete, setPendingDelete] = useState<Feed | null>(null)
   const [sendResult, setSendResult] = useState<SearchResult | null>(null)
 
-  // Auto-select first feed when feeds load and none is selected.
+  // Filters / sort state. Reset on feed-change.
+  const [sortBy, setSortBy] = useState<SortableColumnKey>('last_seen')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+  const [freeleechOnly, setFreeleechOnly] = useState(false)
+  const [minSeedersFilter, setMinSeedersFilter] = useState(0)
+  const [maxSizeFilter, setMaxSizeFilter] = useState<number | null>(null)
+  const [seenWithinHours, setSeenWithinHours] = useState<number | null>(null)
+  const [firstSeenWithinHours, setFirstSeenWithinHours] = useState<number | null>(null)
+  const [hideStale, setHideStale] = useState(false)
+  const [offset, setOffset] = useState(0)
+
+  // Auto-select first feed when feeds load and none is selected; clear on delete.
   useEffect(() => {
     if (selectedFeedId === null && feeds.length > 0) {
       setSelectedFeedId(feeds[0].id)
     }
-    // If the selected feed disappears (e.g., deleted), pick another or clear.
     if (selectedFeedId !== null && !feeds.some((f) => f.id === selectedFeedId)) {
       setSelectedFeedId(feeds.length > 0 ? feeds[0].id : null)
     }
@@ -94,17 +205,98 @@ export function FeedsPage() {
     [feeds, selectedFeedId],
   )
 
-  const fetchQuery = useFeedFetch(selectedFeedId)
-  const results = fetchQuery.data?.results ?? []
-  const fetchedAt = fetchQuery.data?.fetched_at
-  const errors = fetchQuery.data?.errors ?? []
-  const sourcesQueried = fetchQuery.data?.sources_queried ?? 0
+  // Resetting filters when the selected feed changes keeps the UX coherent —
+  // a saved feed's own filters already shape what's persisted; transient UI
+  // filters here are layered on top and shouldn't leak between feeds.
+  useEffect(() => {
+    setSortBy('last_seen')
+    setSortOrder('desc')
+    setFreeleechOnly(false)
+    setMinSeedersFilter(0)
+    setMaxSizeFilter(null)
+    setSeenWithinHours(null)
+    setFirstSeenWithinHours(null)
+    setHideStale(false)
+    setOffset(0)
+  }, [selectedFeedId])
 
-  const { matchesByResultId } = useHistoryLookup(results)
-  const { bookmarkIdByResultId } = useBookmarkLookup(results)
+  // Reset offset when any filter or sort changes (stay in sync with the server)
+  useEffect(() => {
+    setOffset(0)
+  }, [
+    sortBy,
+    sortOrder,
+    freeleechOnly,
+    minSeedersFilter,
+    maxSizeFilter,
+    seenWithinHours,
+    firstSeenWithinHours,
+    hideStale,
+  ])
+
+  const effectiveSeenWithin = useMemo(() => {
+    if (seenWithinHours !== null) return seenWithinHours
+    if (hideStale && selectedFeed) {
+      return Math.max(1, Math.ceil(selectedFeed.stale_after_seconds / 3600))
+    }
+    return undefined
+  }, [seenWithinHours, hideStale, selectedFeed])
+
+  const itemsParams: FeedItemListParams = useMemo(
+    () => ({
+      limit: PAGE_SIZE,
+      offset,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+      freeleech_only: freeleechOnly || undefined,
+      min_seeders: minSeedersFilter > 0 ? minSeedersFilter : undefined,
+      max_size_bytes: maxSizeFilter ?? undefined,
+      seen_within_hours: effectiveSeenWithin,
+      first_seen_within_hours: firstSeenWithinHours ?? undefined,
+    }),
+    [
+      offset,
+      sortBy,
+      sortOrder,
+      freeleechOnly,
+      minSeedersFilter,
+      maxSizeFilter,
+      effectiveSeenWithin,
+      firstSeenWithinHours,
+    ],
+  )
+
+  const itemsQuery = useFeedItems(selectedFeedId, itemsParams)
+  const entries = itemsQuery.data?.entries ?? []
+  const total = itemsQuery.data?.total ?? 0
+  const lastPolledAt = itemsQuery.data?.last_polled_at ?? selectedFeed?.last_polled_at ?? null
+  const nextPollAt = itemsQuery.data?.next_poll_at ?? null
+  const staleAfterSeconds =
+    itemsQuery.data?.stale_after_seconds ?? selectedFeed?.stale_after_seconds ?? 3600
+  const pollingEnabled = itemsQuery.data?.polling_enabled ?? selectedFeed?.polling_enabled ?? true
+
+  const { matchesByResultId } = useHistoryLookup(entries)
+  const { bookmarkIdByResultId } = useBookmarkLookup(entries)
   const bookmarkToggle = useToggleResultBookmark()
 
   const defaultClient = clientsStatus?.find((c) => c.is_default && c.status === 'online') ?? null
+
+  const handleRefresh = useCallback(() => {
+    if (selectedFeedId === null) return
+    refreshFeed.mutate(selectedFeedId)
+  }, [selectedFeedId, refreshFeed])
+
+  const handleSortClick = useCallback(
+    (column: SortableColumn) => {
+      if (sortBy === column.key) {
+        setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+      } else {
+        setSortBy(column.key)
+        setSortOrder(column.defaultOrder)
+      }
+    },
+    [sortBy],
+  )
 
   const handleSendClick = (result: SearchResult, event: React.MouseEvent) => {
     if (defaultClient && !event.shiftKey) {
@@ -194,6 +386,15 @@ export function FeedsPage() {
     }
   }
 
+  const activeFilterCount =
+    (freeleechOnly ? 1 : 0) +
+    (minSeedersFilter > 0 ? 1 : 0) +
+    (maxSizeFilter !== null ? 1 : 0) +
+    (seenWithinHours !== null ? 1 : 0) +
+    (firstSeenWithinHours !== null ? 1 : 0)
+
+  const isRefreshing = refreshFeed.isPending && refreshFeed.variables === selectedFeedId
+
   return (
     <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
       <aside className="space-y-3">
@@ -266,6 +467,12 @@ export function FeedsPage() {
                             FL
                           </span>
                         )}
+                        {!feed.polling_enabled && (
+                          <span className="ml-1 inline-flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-amber-300">
+                            <PauseCircle className="h-2.5 w-2.5" />
+                            Paused
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -281,7 +488,7 @@ export function FeedsPage() {
           <EmptyState
             icon={<Rss className="h-12 w-12" />}
             title="No feed selected"
-            description="Create a feed to monitor latest releases from a chosen set of indexers."
+            description="Create a feed to start collecting a polled history of indexer releases."
             action={
               feeds.length === 0 ? { label: 'Create a feed', onClick: openCreate } : undefined
             }
@@ -347,15 +554,13 @@ export function FeedsPage() {
                 </div>
                 <div className="flex flex-shrink-0 items-center gap-2">
                   <button
-                    onClick={() => fetchQuery.refetch()}
-                    disabled={fetchQuery.isFetching}
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
                     className="flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-                    title="Fetch latest releases now"
+                    title="Refresh this feed now"
                   >
-                    <RefreshCw
-                      className={cn('h-3.5 w-3.5', fetchQuery.isFetching && 'animate-spin')}
-                    />
-                    Refresh
+                    <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
+                    Refresh now
                   </button>
                   <button
                     onClick={() => openEdit(selectedFeed)}
@@ -373,104 +578,264 @@ export function FeedsPage() {
                   </button>
                 </div>
               </div>
-              {fetchedAt && (
-                <p className="mt-3 text-[11px] text-slate-500">
-                  Fetched {formatRelative(fetchedAt)} from {sourcesQueried} instance
-                  {sourcesQueried === 1 ? '' : 's'}.
-                </p>
-              )}
-            </header>
 
-            {errors.length > 0 && (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-400" />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-xs font-medium text-amber-200">
-                      {errors.length} source{errors.length === 1 ? '' : 's'} reported errors
-                    </p>
-                    <ul className="space-y-0.5 text-[11px] text-amber-300/80">
-                      {errors.slice(0, 5).map((e, i) => (
-                        <li key={i} className="truncate">
-                          • {e}
-                        </li>
-                      ))}
-                      {errors.length > 5 && (
-                        <li className="italic text-amber-300/60">and {errors.length - 5} more…</li>
-                      )}
-                    </ul>
-                  </div>
+              {/* Polling status panel */}
+              <div
+                className={cn(
+                  'mt-3 grid gap-3 rounded-lg border bg-slate-950/40 p-3 text-[11px] sm:grid-cols-[auto_1fr_auto]',
+                  pollingEnabled ? 'border-slate-800/60' : 'border-amber-500/30 bg-amber-500/5',
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  {pollingEnabled ? (
+                    <Radar
+                      className={cn('h-4 w-4 text-cyan-400', isRefreshing && 'animate-pulse')}
+                    />
+                  ) : (
+                    <PauseCircle className="h-4 w-4 text-amber-400" />
+                  )}
+                  <span
+                    className={cn(
+                      'font-semibold uppercase tracking-wider',
+                      pollingEnabled ? 'text-cyan-300' : 'text-amber-300',
+                    )}
+                  >
+                    {pollingEnabled
+                      ? `Polling every ${selectedFeed.poll_interval_minutes}m`
+                      : 'Polling paused'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-400 sm:justify-self-center">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {lastPolledAt ? `Last poll ${formatRelative(lastPolledAt)}` : 'Not yet polled'}
+                  </span>
+                  {pollingEnabled && nextPollAt && (
+                    <span className="flex items-center gap-1">
+                      <ArrowDown className="h-3 w-3" />
+                      Next {nextPollLabel(nextPollAt, pollingEnabled)}
+                    </span>
+                  )}
+                </div>
+                <div className="text-slate-300 sm:justify-self-end">
+                  <span className="font-medium text-slate-200">{total.toLocaleString()}</span>{' '}
+                  <span className="text-slate-500">item{total === 1 ? '' : 's'} in history</span>
                 </div>
               </div>
-            )}
+            </header>
 
-            {fetchQuery.isLoading || (fetchQuery.isFetching && results.length === 0) ? (
+            {/* Filters bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/50 bg-slate-900/40 px-3 py-2 text-xs">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex cursor-pointer items-center gap-1.5 text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={!hideStale}
+                    onChange={(e) => setHideStale(!e.target.checked)}
+                    className="h-3.5 w-3.5 cursor-pointer accent-cyan-500"
+                  />
+                  <span>Show stale items</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-1.5 text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={freeleechOnly}
+                    onChange={(e) => setFreeleechOnly(e.target.checked)}
+                    className="h-3.5 w-3.5 cursor-pointer accent-emerald-500"
+                  />
+                  <span className="flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 text-emerald-400" />
+                    Freeleech only
+                  </span>
+                </label>
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={() => {
+                      setFreeleechOnly(false)
+                      setMinSeedersFilter(0)
+                      setMaxSizeFilter(null)
+                      setSeenWithinHours(null)
+                      setFirstSeenWithinHours(null)
+                    }}
+                    className="text-[11px] font-medium text-cyan-400 hover:underline"
+                  >
+                    Clear {activeFilterCount} filter{activeFilterCount === 1 ? '' : 's'}
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500">
+                {itemsQuery.isLoading
+                  ? 'Loading…'
+                  : `${total.toLocaleString()} item${total === 1 ? '' : 's'} match${total === 1 ? 'es' : ''}`}
+              </p>
+            </div>
+
+            {itemsQuery.isLoading && entries.length === 0 ? (
               <div className="flex items-center justify-center rounded-xl border border-slate-800/50 bg-slate-900/50 py-16">
                 <LoadingSpinner size="md" />
-                <span className="ml-3 text-sm text-slate-400">Fetching latest releases…</span>
+                <span className="ml-3 text-sm text-slate-400">Loading feed history…</span>
               </div>
-            ) : fetchQuery.isError ? (
+            ) : itemsQuery.isError ? (
               <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-6 text-center">
                 <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-rose-400" />
-                <p className="text-sm text-rose-200">Failed to fetch this feed.</p>
+                <p className="text-sm text-rose-200">Failed to load this feed.</p>
                 <button
-                  onClick={() => fetchQuery.refetch()}
+                  onClick={() => itemsQuery.refetch()}
                   className="mt-3 text-xs font-medium text-cyan-400 hover:underline"
                 >
                   Try again
                 </button>
               </div>
-            ) : results.length === 0 ? (
+            ) : entries.length === 0 && total === 0 ? (
+              <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
+                <Radar className="mx-auto mb-4 h-12 w-12 text-slate-600" />
+                <p className="text-slate-400">No items yet</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {pollingEnabled
+                    ? `History fills up automatically. The next poll is ${nextPollLabel(nextPollAt, pollingEnabled) ?? 'on its way'}.`
+                    : 'Polling is paused. Enable it or hit Refresh now to collect items.'}
+                </p>
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-cyan-400 hover:underline disabled:opacity-50"
+                >
+                  <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
+                  Refresh now
+                </button>
+              </div>
+            ) : entries.length === 0 ? (
               <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
                 <FilterIcon className="mx-auto mb-4 h-12 w-12 text-slate-600" />
-                <p className="text-slate-400">No results match this feed</p>
+                <p className="text-slate-400">No items match these filters</p>
                 <p className="mt-1 text-sm text-slate-500">
-                  Loosen filters or add more indexers, then refresh.
+                  History has {total.toLocaleString()} item{total === 1 ? '' : 's'}, but none pass
+                  the current filter selection.
                 </p>
               </div>
             ) : (
               <>
-                <p className="text-sm text-slate-400">
-                  <span className="font-medium text-slate-200">{results.length}</span> result
-                  {results.length === 1 ? '' : 's'} after filters
-                </p>
                 <div className="overflow-hidden rounded-xl border border-slate-800/50 bg-slate-900/50">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-slate-800/50">
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                            Title
-                          </th>
+                          <SortableTh
+                            column={titleColumn}
+                            activeSortBy={sortBy}
+                            activeSortOrder={sortOrder}
+                            onClick={handleSortClick}
+                          />
                           <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
                             Source
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                            Size
-                          </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-slate-400">
-                            S/L
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                            Age
-                          </th>
+                          <SortableTh
+                            column={sizeColumn}
+                            activeSortBy={sortBy}
+                            activeSortOrder={sortOrder}
+                            onClick={handleSortClick}
+                            filter={{
+                              label: 'Filter by max size',
+                              isActive: maxSizeFilter !== null,
+                              onClear: () => setMaxSizeFilter(null),
+                              panel: (close) => (
+                                <MaxSizeFilterPanel
+                                  current={maxSizeFilter}
+                                  onSubmit={(bytes) => {
+                                    setMaxSizeFilter(bytes)
+                                    close()
+                                  }}
+                                />
+                              ),
+                            }}
+                          />
+                          <SortableTh
+                            column={seedersColumn}
+                            activeSortBy={sortBy}
+                            activeSortOrder={sortOrder}
+                            onClick={handleSortClick}
+                            filter={{
+                              label: 'Filter by minimum seeders',
+                              isActive: minSeedersFilter > 0,
+                              onClear: () => setMinSeedersFilter(0),
+                              panel: (close) => (
+                                <MinSeedersFilterPanel
+                                  current={minSeedersFilter}
+                                  onSubmit={(n) => {
+                                    setMinSeedersFilter(n)
+                                    close()
+                                  }}
+                                />
+                              ),
+                            }}
+                          />
+                          <SortableTh
+                            column={pubDateColumn}
+                            activeSortBy={sortBy}
+                            activeSortOrder={sortOrder}
+                            onClick={handleSortClick}
+                          />
+                          <SortableTh
+                            column={lastSeenColumn}
+                            activeSortBy={sortBy}
+                            activeSortOrder={sortOrder}
+                            onClick={handleSortClick}
+                            filter={{
+                              label: 'Seen within last hours',
+                              isActive: seenWithinHours !== null,
+                              onClear: () => setSeenWithinHours(null),
+                              panel: (close) => (
+                                <HoursFilterPanel
+                                  current={seenWithinHours}
+                                  hint="Hides items last seen earlier than this."
+                                  onSubmit={(hours) => {
+                                    setSeenWithinHours(hours)
+                                    close()
+                                  }}
+                                />
+                              ),
+                            }}
+                          />
+                          <SortableTh
+                            column={firstSeenColumn}
+                            activeSortBy={sortBy}
+                            activeSortOrder={sortOrder}
+                            onClick={handleSortClick}
+                            filter={{
+                              label: 'First seen within last hours',
+                              isActive: firstSeenWithinHours !== null,
+                              onClear: () => setFirstSeenWithinHours(null),
+                              panel: (close) => (
+                                <HoursFilterPanel
+                                  current={firstSeenWithinHours}
+                                  hint="Only shows items first added within this window."
+                                  onSubmit={(hours) => {
+                                    setFirstSeenWithinHours(hours)
+                                    close()
+                                  }}
+                                />
+                              ),
+                            }}
+                          />
                           <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
                             Actions
                           </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/30">
-                        {results.map((result, idx) => {
+                        {entries.map((result, idx) => {
                           const isDead = result.seeders === 0
                           const isBookmarked = bookmarkIdByResultId[result.id] !== undefined
+                          const stale = isStale(result, staleAfterSeconds)
                           return (
                             <tr
-                              key={result.id}
+                              key={result.dedup_key}
                               className={cn(
                                 'group animate-fade-in transition-all hover:bg-slate-800/30',
-                                isDead && 'opacity-60 hover:opacity-100',
+                                stale && 'opacity-60 hover:opacity-100',
+                                isDead && !stale && 'opacity-60 hover:opacity-100',
                               )}
-                              style={{ animationDelay: `${idx * 30}ms` }}
+                              style={{ animationDelay: `${Math.min(idx * 20, 600)}ms` }}
                             >
                               <td className="px-4 py-3">
                                 <div className="flex items-start gap-3">
@@ -497,6 +862,13 @@ export function FeedsPage() {
                                       className={cn('h-4 w-4', isBookmarked && 'fill-current')}
                                     />
                                   </button>
+                                  <span
+                                    className={cn(
+                                      'mt-1.5 h-2 w-2 flex-shrink-0 rounded-full',
+                                      freshnessTone(result, staleAfterSeconds),
+                                    )}
+                                    title={`Seen ${formatRelative(result.last_seen_at)} • First seen ${formatRelative(result.first_seen_at)}`}
+                                  />
                                   <div className="min-w-0 flex-1">
                                     {result.info_url ? (
                                       <a
@@ -554,10 +926,19 @@ export function FeedsPage() {
                                             {Math.round(result.download_volume_factor * 100)}% leech
                                           </span>
                                         )}
+                                      {stale && (
+                                        <span
+                                          className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-slate-700/40 bg-slate-800/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400"
+                                          title={`Last observed ${formatRelative(result.last_seen_at)} — freeleech / seeders may be stale`}
+                                        >
+                                          <Clock className="h-3 w-3" />
+                                          Stale
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="mt-1 flex items-center gap-2">
                                       <span className="rounded bg-slate-700/50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                                        {result.category}
+                                        {result.category || '—'}
                                       </span>
                                       <span className="text-[10px] text-slate-500">
                                         {result.indexer}
@@ -614,6 +995,24 @@ export function FeedsPage() {
                                   {formatAge(result.date)}
                                 </div>
                               </td>
+                              <td className="px-4 py-3 text-sm text-slate-400">
+                                <div
+                                  className="flex items-center gap-1.5"
+                                  title={`Last seen: ${formatDateTime(result.last_seen_at)}`}
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  {formatAge(result.last_seen_at)}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-400">
+                                <div
+                                  className="flex items-center gap-1.5"
+                                  title={`First seen: ${formatDateTime(result.first_seen_at)}`}
+                                >
+                                  <Activity className="h-3.5 w-3.5" />
+                                  {formatAge(result.first_seen_at)}
+                                </div>
+                              </td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center justify-end gap-2">
                                   <button
@@ -659,6 +1058,53 @@ export function FeedsPage() {
                     </table>
                   </div>
                 </div>
+
+                {/* Pagination footer */}
+                {total > entries.length + offset ? (
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-slate-400">
+                    <span>
+                      Showing{' '}
+                      <span className="font-medium text-slate-200">
+                        {offset + 1}–{offset + entries.length}
+                      </span>{' '}
+                      of{' '}
+                      <span className="font-medium text-slate-200">{total.toLocaleString()}</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                        disabled={offset === 0}
+                        className="rounded-md border border-slate-700/60 bg-slate-800/40 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        ← Previous
+                      </button>
+                      <button
+                        onClick={() => setOffset(offset + PAGE_SIZE)}
+                        disabled={offset + entries.length >= total}
+                        className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  </div>
+                ) : offset > 0 ? (
+                  <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-slate-400">
+                    <span>
+                      Showing{' '}
+                      <span className="font-medium text-slate-200">
+                        {offset + 1}–{offset + entries.length}
+                      </span>{' '}
+                      of{' '}
+                      <span className="font-medium text-slate-200">{total.toLocaleString()}</span>
+                    </span>
+                    <button
+                      onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                      className="rounded-md border border-slate-700/60 bg-slate-800/40 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:bg-slate-800/70"
+                    >
+                      ← Previous
+                    </button>
+                  </div>
+                ) : null}
               </>
             )}
           </>
@@ -679,12 +1125,215 @@ export function FeedsPage() {
         title="Delete feed?"
         message={
           pendingDelete
-            ? `“${pendingDelete.name}” will be removed. The indexers themselves are not affected.`
+            ? `“${pendingDelete.name}” will be removed along with its polled history. The indexers themselves are not affected.`
             : ''
         }
         confirmLabel="Delete feed"
         isLoading={deleteFeed.isPending}
       />
+    </div>
+  )
+}
+
+interface SortableThProps {
+  column: SortableColumn
+  activeSortBy: SortableColumnKey
+  activeSortOrder: SortOrder
+  onClick: (column: SortableColumn) => void
+  filter?: {
+    isActive: boolean
+    label: string
+    panel: (close: () => void) => ReactNode
+    onClear: () => void
+  }
+}
+
+function SortableTh({ column, activeSortBy, activeSortOrder, onClick, filter }: SortableThProps) {
+  const isActive = activeSortBy === column.key
+  const align = column.align ?? 'left'
+  const justify =
+    align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'
+  const textAlign =
+    align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+
+  return (
+    <th
+      scope="col"
+      aria-sort={isActive ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className={cn('px-4 py-3 text-xs font-medium uppercase tracking-wider', textAlign)}
+    >
+      <div className={cn('group/cell flex items-center gap-1', justify)}>
+        <button
+          type="button"
+          onClick={() => onClick(column)}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded transition-colors',
+            isActive ? 'text-cyan-300' : 'text-slate-400 hover:text-slate-200',
+          )}
+          title={`Sort by ${column.label.toLowerCase()}`}
+        >
+          <span>{column.label}</span>
+          {isActive ? (
+            activeSortOrder === 'asc' ? (
+              <ArrowUp className="h-3.5 w-3.5" />
+            ) : (
+              <ArrowDown className="h-3.5 w-3.5" />
+            )
+          ) : (
+            <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover/cell:opacity-60" />
+          )}
+        </button>
+        {filter && (
+          <ColumnFilter
+            label={filter.label}
+            isActive={filter.isActive}
+            panel={filter.panel}
+            onClear={filter.onClear}
+          />
+        )}
+      </div>
+    </th>
+  )
+}
+
+interface MinSeedersFilterPanelProps {
+  current: number
+  onSubmit: (n: number) => void
+}
+
+function MinSeedersFilterPanel({ current, onSubmit }: MinSeedersFilterPanelProps) {
+  const [value, setValue] = useState(String(current || ''))
+  return (
+    <div>
+      <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+        Min seeders
+      </label>
+      <input
+        type="number"
+        min={0}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onSubmit(Number(value) || 0)
+        }}
+        placeholder="0"
+        className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
+        autoFocus
+      />
+      <button
+        onClick={() => onSubmit(Number(value) || 0)}
+        className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+      >
+        Apply
+      </button>
+    </div>
+  )
+}
+
+interface MaxSizeFilterPanelProps {
+  current: number | null
+  onSubmit: (bytes: number | null) => void
+}
+
+function MaxSizeFilterPanel({ current, onSubmit }: MaxSizeFilterPanelProps) {
+  const initial = current !== null ? formatBytes(current).replace(/\s+/g, '') : ''
+  const [value, setValue] = useState(initial)
+  const trimmed = value.trim()
+  const parsed = trimmed ? parseSize(trimmed) : null
+  const invalid = !!trimmed && parsed === null
+
+  return (
+    <div>
+      <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+        Max size
+      </label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !invalid) onSubmit(parsed)
+        }}
+        placeholder="e.g. 10GB"
+        className={cn(
+          'w-full rounded-md border bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
+          invalid ? 'border-rose-500/60' : 'border-slate-700 focus:border-cyan-500/50',
+        )}
+        autoFocus
+      />
+      <p className={cn('mt-1.5 text-[10px]', invalid ? 'text-rose-300' : 'text-slate-500')}>
+        {invalid ? 'Use a unit like KB, MB, GB, TB.' : 'Hides items larger than this.'}
+      </p>
+      <button
+        disabled={invalid}
+        onClick={() => onSubmit(parsed)}
+        className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
+      >
+        Apply
+      </button>
+    </div>
+  )
+}
+
+interface HoursFilterPanelProps {
+  current: number | null
+  hint: string
+  onSubmit: (hours: number | null) => void
+}
+
+function HoursFilterPanel({ current, hint, onSubmit }: HoursFilterPanelProps) {
+  const [value, setValue] = useState(current !== null ? String(current) : '')
+  const presets: { label: string; hours: number }[] = [
+    { label: '1h', hours: 1 },
+    { label: '6h', hours: 6 },
+    { label: '24h', hours: 24 },
+    { label: '7d', hours: 168 },
+  ]
+  return (
+    <div>
+      <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+        Within last (hours)
+      </label>
+      <input
+        type="number"
+        min={1}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            const n = Number(value)
+            onSubmit(Number.isFinite(n) && n > 0 ? n : null)
+          }
+        }}
+        placeholder="e.g. 24"
+        className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
+        autoFocus
+      />
+      <div className="mt-2 flex flex-wrap gap-1">
+        {presets.map((p) => (
+          <button
+            key={p.label}
+            type="button"
+            onClick={() => {
+              setValue(String(p.hours))
+              onSubmit(p.hours)
+            }}
+            className="rounded border border-slate-700/60 bg-slate-800/40 px-1.5 py-0.5 text-[10px] font-medium text-slate-300 transition-colors hover:bg-slate-800/70"
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[10px] text-slate-500">{hint}</p>
+      <button
+        onClick={() => {
+          const n = Number(value)
+          onSubmit(Number.isFinite(n) && n > 0 ? n : null)
+        }}
+        className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+      >
+        Apply
+      </button>
     </div>
   )
 }

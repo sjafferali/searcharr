@@ -7,6 +7,7 @@ This module exports all service classes for business logic.
 from app.services.bookmark import compute_dedup_key
 from app.services.encryption import decrypt_credential, encrypt_credential
 from app.services.feed import FeedService
+from app.services.feed_poller import FeedPoller
 from app.services.history import format_size, record_history
 from app.services.jackett import JackettService
 from app.services.prowlarr import ProwlarrService
@@ -19,6 +20,7 @@ __all__ = [
     "decrypt_credential",
     "format_size",
     "record_history",
+    "FeedPoller",
     "FeedService",
     "JackettService",
     "ProwlarrService",

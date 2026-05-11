@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { feedsApi } from '../api'
-import { FeedCreate, FeedUpdate } from '../types'
+import { FeedCreate, FeedItemListParams, FeedUpdate } from '../types'
 
 export const feedKeys = {
   all: ['feeds'] as const,
   list: () => [...feedKeys.all, 'list'] as const,
   detail: (id: number) => [...feedKeys.all, 'detail', id] as const,
   fetched: (id: number) => [...feedKeys.all, 'fetched', id] as const,
+  items: (id: number, params?: FeedItemListParams) =>
+    [...feedKeys.all, 'items', id, params ?? {}] as const,
 }
 
 export function useFeeds() {
@@ -83,5 +85,39 @@ export function useFeedFetch(id: number | null) {
     enabled: id !== null,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
+  })
+}
+
+/**
+ * Reads the persisted feed-item history.
+ *
+ * Polls in the background every 30 seconds so newly arriving items from
+ * the FeedPoller surface without the user clicking refresh. ``placeholderData``
+ * keeps the previous page visible while filter/sort changes are in flight.
+ */
+export function useFeedItems(id: number | null, params: FeedItemListParams) {
+  return useQuery({
+    queryKey: feedKeys.items(id ?? -1, params),
+    queryFn: () => feedsApi.items(id as number, params),
+    enabled: id !== null,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: false,
+    placeholderData: (previous) => previous,
+  })
+}
+
+export function useRefreshFeed() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => feedsApi.refresh(id),
+    onSuccess: (data, id) => {
+      queryClient.invalidateQueries({ queryKey: [...feedKeys.all, 'items', id] })
+      queryClient.invalidateQueries({ queryKey: feedKeys.list() })
+      const total = data.total
+      toast.success(`Refreshed — ${total} item${total === 1 ? '' : 's'} in history`)
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Refresh failed')
+    },
   })
 }

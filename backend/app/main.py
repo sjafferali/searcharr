@@ -2,6 +2,7 @@
 Main FastAPI application module.
 """
 
+import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -13,7 +14,8 @@ from fastapi.responses import JSONResponse
 from app.api.health import router as health_router
 from app.api.v1.router import api_router as v1_router
 from app.config import settings
-from app.core.database import get_engine
+from app.core.database import get_engine, get_session_factory
+from app.services import FeedPoller
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,15 +31,34 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     the app starts (the deployment entrypoint runs ``alembic upgrade head``).
     For local development, run ``poetry run alembic upgrade head`` once after
     the database file is created or destroyed.
+
+    Starts the ``FeedPoller`` so saved feeds accumulate ``feed_items`` history
+    in the background. The poller is exposed on ``app.state.feed_poller`` so
+    the synchronous refresh endpoint can ride the same upsert path.
     """
     logger.info("Starting up application...")
     engine = get_engine()
+
+    poller = FeedPoller(get_session_factory())
+    poller_task = asyncio.create_task(poller.run_forever(), name="feed-poller")
+    app.state.feed_poller = poller
+
     logger.info("Application started successfully")
-
-    yield
-
-    logger.info("Shutting down application...")
-    await engine.dispose()
+    try:
+        yield
+    finally:
+        logger.info("Shutting down application...")
+        poller.stop()
+        try:
+            await asyncio.wait_for(poller_task, timeout=10)
+        except TimeoutError:
+            logger.warning("FeedPoller did not stop within 10s; cancelling")
+            poller_task.cancel()
+            try:
+                await poller_task
+            except (asyncio.CancelledError, Exception):
+                pass
+        await engine.dispose()
 
 
 # Create FastAPI application
