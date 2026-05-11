@@ -6,6 +6,10 @@ import {
   ArrowUp,
   ArrowUpDown,
   Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Clock,
   Database,
   Download,
@@ -60,7 +64,10 @@ import {
 } from '../types'
 import { cn, formatAge, formatBytes, formatDateTime, formatRelative } from '../utils'
 
-const PAGE_SIZE = 100
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
+const DEFAULT_PAGE_SIZE = 50
+const SIDEBAR_STATE_KEY = 'feeds.sidebarCollapsed'
+const PAGE_SIZE_STATE_KEY = 'feeds.pageSize'
 
 type SortableColumnKey = FeedItemSortBy
 
@@ -178,6 +185,26 @@ export function FeedsPage() {
   const [editingFeed, setEditingFeed] = useState<Feed | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Feed | null>(null)
   const [sendResult, setSendResult] = useState<SearchResult | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem(SIDEBAR_STATE_KEY) === '1'
+  })
+  const [pageSize, setPageSize] = useState<number>(() => {
+    if (typeof window === 'undefined') return DEFAULT_PAGE_SIZE
+    const stored = window.localStorage.getItem(PAGE_SIZE_STATE_KEY)
+    const parsed = stored ? Number(stored) : NaN
+    return (PAGE_SIZE_OPTIONS as readonly number[]).includes(parsed) ? parsed : DEFAULT_PAGE_SIZE
+  })
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(SIDEBAR_STATE_KEY, sidebarCollapsed ? '1' : '0')
+  }, [sidebarCollapsed])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(PAGE_SIZE_STATE_KEY, String(pageSize))
+  }, [pageSize])
 
   // Filters / sort state. Reset on feed-change.
   const [sortBy, setSortBy] = useState<SortableColumnKey>('last_seen')
@@ -220,7 +247,7 @@ export function FeedsPage() {
     setOffset(0)
   }, [selectedFeedId])
 
-  // Reset offset when any filter or sort changes (stay in sync with the server)
+  // Reset offset when any filter, sort, or page size changes (stay in sync with the server)
   useEffect(() => {
     setOffset(0)
   }, [
@@ -232,6 +259,7 @@ export function FeedsPage() {
     seenWithinHours,
     firstSeenWithinHours,
     hideStale,
+    pageSize,
   ])
 
   const effectiveSeenWithin = useMemo(() => {
@@ -244,7 +272,7 @@ export function FeedsPage() {
 
   const itemsParams: FeedItemListParams = useMemo(
     () => ({
-      limit: PAGE_SIZE,
+      limit: pageSize,
       offset,
       sort_by: sortBy,
       sort_order: sortOrder,
@@ -255,6 +283,7 @@ export function FeedsPage() {
       first_seen_within_hours: firstSeenWithinHours ?? undefined,
     }),
     [
+      pageSize,
       offset,
       sortBy,
       sortOrder,
@@ -396,90 +425,118 @@ export function FeedsPage() {
   const isRefreshing = refreshFeed.isPending && refreshFeed.variables === selectedFeedId
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
+    <div
+      className={cn(
+        'grid gap-5 transition-[grid-template-columns] duration-200 ease-out',
+        sidebarCollapsed ? 'lg:grid-cols-[56px_1fr]' : 'lg:grid-cols-[280px_1fr]',
+      )}
+    >
       <aside className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-300">
-            <Rss className="h-4 w-4 text-cyan-400" />
-            Feeds
-          </h2>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New
-          </button>
-        </div>
-
-        {feedsLoading ? (
-          <div className="flex items-center justify-center rounded-lg border border-slate-800/50 bg-slate-900/40 py-8 text-slate-400">
-            <LoadingSpinner size="sm" />
-            <span className="ml-2 text-xs">Loading feeds…</span>
-          </div>
-        ) : feedsError ? (
-          <p className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
-            Failed to load feeds.
-          </p>
-        ) : feeds.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-700/60 bg-slate-900/30 p-4 text-center">
-            <Rss className="mx-auto mb-2 h-8 w-8 text-slate-600" />
-            <p className="text-xs text-slate-400">No feeds yet.</p>
-            <button
-              onClick={openCreate}
-              className="mt-2 text-xs font-medium text-cyan-400 hover:underline"
-            >
-              Create your first feed
-            </button>
-          </div>
+        {sidebarCollapsed ? (
+          <CollapsedFeedRail
+            feeds={feeds}
+            selectedFeedId={selectedFeedId}
+            onSelect={setSelectedFeedId}
+            onCreate={openCreate}
+            onExpand={() => setSidebarCollapsed(false)}
+            isLoading={feedsLoading}
+          />
         ) : (
-          <div className="space-y-1.5">
-            {feeds.map((feed) => {
-              const isActive = feed.id === selectedFeedId
-              const indexerCount = feed.indexers.length
-              return (
+          <>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-300">
+                <Rss className="h-4 w-4 text-cyan-400" />
+                Feeds
+              </h2>
+              <div className="flex items-center gap-1.5">
                 <button
-                  key={feed.id}
-                  onClick={() => setSelectedFeedId(feed.id)}
-                  className={cn(
-                    'group block w-full rounded-lg border px-3 py-2.5 text-left transition-all',
-                    isActive
-                      ? 'border-cyan-500/40 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.15)]'
-                      : 'border-slate-800/50 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/70',
-                  )}
+                  onClick={openCreate}
+                  className="flex items-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={cn(
-                          'truncate text-sm font-medium',
-                          isActive ? 'text-cyan-100' : 'text-slate-200',
-                        )}
-                      >
-                        {feed.name}
-                      </p>
-                      <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
-                        <Layers className="h-3 w-3" />
-                        {indexerCount} indexer{indexerCount === 1 ? '' : 's'}
-                        {feed.filters.freeleech_only && (
-                          <span className="ml-1 inline-flex items-center gap-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-emerald-300">
-                            <Sparkles className="h-2.5 w-2.5" />
-                            FL
-                          </span>
-                        )}
-                        {!feed.polling_enabled && (
-                          <span className="ml-1 inline-flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-amber-300">
-                            <PauseCircle className="h-2.5 w-2.5" />
-                            Paused
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
+                  <Plus className="h-3.5 w-3.5" />
+                  New
                 </button>
-              )
-            })}
-          </div>
+                <button
+                  onClick={() => setSidebarCollapsed(true)}
+                  className="rounded-lg border border-slate-700/60 bg-slate-800/40 p-1 text-slate-400 transition-colors hover:bg-slate-800/70 hover:text-slate-200"
+                  title="Collapse sidebar"
+                  aria-label="Collapse feeds sidebar"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {feedsLoading ? (
+              <div className="flex items-center justify-center rounded-lg border border-slate-800/50 bg-slate-900/40 py-8 text-slate-400">
+                <LoadingSpinner size="sm" />
+                <span className="ml-2 text-xs">Loading feeds…</span>
+              </div>
+            ) : feedsError ? (
+              <p className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+                Failed to load feeds.
+              </p>
+            ) : feeds.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-700/60 bg-slate-900/30 p-4 text-center">
+                <Rss className="mx-auto mb-2 h-8 w-8 text-slate-600" />
+                <p className="text-xs text-slate-400">No feeds yet.</p>
+                <button
+                  onClick={openCreate}
+                  className="mt-2 text-xs font-medium text-cyan-400 hover:underline"
+                >
+                  Create your first feed
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {feeds.map((feed) => {
+                  const isActive = feed.id === selectedFeedId
+                  const indexerCount = feed.indexers.length
+                  return (
+                    <button
+                      key={feed.id}
+                      onClick={() => setSelectedFeedId(feed.id)}
+                      className={cn(
+                        'group block w-full rounded-lg border px-3 py-2.5 text-left transition-all',
+                        isActive
+                          ? 'border-cyan-500/40 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.15)]'
+                          : 'border-slate-800/50 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/70',
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={cn(
+                              'truncate text-sm font-medium',
+                              isActive ? 'text-cyan-100' : 'text-slate-200',
+                            )}
+                          >
+                            {feed.name}
+                          </p>
+                          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
+                            <Layers className="h-3 w-3" />
+                            {indexerCount} indexer{indexerCount === 1 ? '' : 's'}
+                            {feed.filters.freeleech_only && (
+                              <span className="ml-1 inline-flex items-center gap-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-emerald-300">
+                                <Sparkles className="h-2.5 w-2.5" />
+                                FL
+                              </span>
+                            )}
+                            {!feed.polling_enabled && (
+                              <span className="ml-1 inline-flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-amber-300">
+                                <PauseCircle className="h-2.5 w-2.5" />
+                                Paused
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </>
         )}
       </aside>
 
@@ -726,9 +783,6 @@ export function FeedsPage() {
                             activeSortOrder={sortOrder}
                             onClick={handleSortClick}
                           />
-                          <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                            Source
-                          </th>
                           <SortableTh
                             column={sizeColumn}
                             activeSortBy={sortBy}
@@ -936,7 +990,23 @@ export function FeedsPage() {
                                         </span>
                                       )}
                                     </div>
-                                    <div className="mt-1 flex items-center gap-2">
+                                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                      <span
+                                        className={cn(
+                                          'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium',
+                                          result.source_type === 'jackett'
+                                            ? 'border border-amber-500/20 bg-amber-500/10 text-amber-300'
+                                            : 'border border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
+                                        )}
+                                        title={`${result.source} (${result.source_type})`}
+                                      >
+                                        {result.source_type === 'jackett' ? (
+                                          <Zap className="h-2.5 w-2.5" />
+                                        ) : (
+                                          <Database className="h-2.5 w-2.5" />
+                                        )}
+                                        {result.source}
+                                      </span>
                                       <span className="rounded bg-slate-700/50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
                                         {result.category || '—'}
                                       </span>
@@ -946,23 +1016,6 @@ export function FeedsPage() {
                                     </div>
                                   </div>
                                 </div>
-                              </td>
-                              <td className="px-4 py-3">
-                                <span
-                                  className={cn(
-                                    'inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium',
-                                    result.source_type === 'jackett'
-                                      ? 'border border-amber-500/20 bg-amber-500/10 text-amber-400'
-                                      : 'border border-cyan-500/20 bg-cyan-500/10 text-cyan-400',
-                                  )}
-                                >
-                                  {result.source_type === 'jackett' ? (
-                                    <Zap className="h-3 w-3" />
-                                  ) : (
-                                    <Database className="h-3 w-3" />
-                                  )}
-                                  {result.source}
-                                </span>
                               </td>
                               <td className="px-4 py-3 font-mono text-sm text-slate-300">
                                 {result.size_formatted}
@@ -1059,52 +1112,14 @@ export function FeedsPage() {
                   </div>
                 </div>
 
-                {/* Pagination footer */}
-                {total > entries.length + offset ? (
-                  <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-slate-400">
-                    <span>
-                      Showing{' '}
-                      <span className="font-medium text-slate-200">
-                        {offset + 1}–{offset + entries.length}
-                      </span>{' '}
-                      of{' '}
-                      <span className="font-medium text-slate-200">{total.toLocaleString()}</span>
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                        disabled={offset === 0}
-                        className="rounded-md border border-slate-700/60 bg-slate-800/40 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        ← Previous
-                      </button>
-                      <button
-                        onClick={() => setOffset(offset + PAGE_SIZE)}
-                        disabled={offset + entries.length >= total}
-                        className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Next →
-                      </button>
-                    </div>
-                  </div>
-                ) : offset > 0 ? (
-                  <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-slate-400">
-                    <span>
-                      Showing{' '}
-                      <span className="font-medium text-slate-200">
-                        {offset + 1}–{offset + entries.length}
-                      </span>{' '}
-                      of{' '}
-                      <span className="font-medium text-slate-200">{total.toLocaleString()}</span>
-                    </span>
-                    <button
-                      onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                      className="rounded-md border border-slate-700/60 bg-slate-800/40 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:bg-slate-800/70"
-                    >
-                      ← Previous
-                    </button>
-                  </div>
-                ) : null}
+                <PaginationFooter
+                  total={total}
+                  offset={offset}
+                  pageSize={pageSize}
+                  shownCount={entries.length}
+                  onOffsetChange={setOffset}
+                  onPageSizeChange={setPageSize}
+                />
               </>
             )}
           </>
@@ -1146,6 +1161,236 @@ interface SortableThProps {
     panel: (close: () => void) => ReactNode
     onClear: () => void
   }
+}
+
+interface CollapsedFeedRailProps {
+  feeds: Feed[]
+  selectedFeedId: number | null
+  onSelect: (id: number) => void
+  onCreate: () => void
+  onExpand: () => void
+  isLoading: boolean
+}
+
+function feedInitials(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return '·'
+  const parts = trimmed.split(/\s+/).filter(Boolean)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
+}
+
+function CollapsedFeedRail({
+  feeds,
+  selectedFeedId,
+  onSelect,
+  onCreate,
+  onExpand,
+  isLoading,
+}: CollapsedFeedRailProps) {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <button
+        onClick={onExpand}
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/40 text-slate-300 transition-colors hover:bg-slate-800/70 hover:text-cyan-300"
+        title="Expand feeds"
+        aria-label="Expand feeds sidebar"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
+      <button
+        onClick={onCreate}
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 transition-colors hover:bg-cyan-500/20"
+        title="New feed"
+        aria-label="Create a new feed"
+      >
+        <Plus className="h-4 w-4" />
+      </button>
+      <div className="my-1 h-px w-6 bg-slate-800/80" />
+      {isLoading ? (
+        <LoadingSpinner size="sm" />
+      ) : (
+        feeds.map((feed) => {
+          const isActive = feed.id === selectedFeedId
+          return (
+            <button
+              key={feed.id}
+              onClick={() => onSelect(feed.id)}
+              title={feed.name}
+              aria-label={feed.name}
+              className={cn(
+                'relative flex h-9 w-9 items-center justify-center rounded-lg border text-[11px] font-semibold transition-all',
+                isActive
+                  ? 'border-cyan-500/50 bg-gradient-to-br from-cyan-500/20 to-blue-500/15 text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,0.2)]'
+                  : 'border-slate-800/60 bg-slate-900/50 text-slate-300 hover:border-slate-700 hover:bg-slate-800/60',
+              )}
+            >
+              {feedInitials(feed.name)}
+              {feed.filters.freeleech_only && (
+                <span
+                  className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-slate-950 bg-emerald-400 shadow-[0_0_4px_rgba(16,185,129,0.7)]"
+                  aria-hidden
+                />
+              )}
+              {!feed.polling_enabled && (
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-slate-950 bg-amber-400"
+                  aria-hidden
+                />
+              )}
+            </button>
+          )
+        })
+      )}
+    </div>
+  )
+}
+
+interface PaginationFooterProps {
+  total: number
+  offset: number
+  pageSize: number
+  shownCount: number
+  onOffsetChange: (next: number) => void
+  onPageSizeChange: (next: number) => void
+}
+
+/**
+ * Compact pages list with a sliding window of numbered buttons around the
+ * current page and ``…`` collapses for big totals. The window stays a
+ * constant width so layout doesn't shift as the user pages through.
+ */
+function pageWindow(currentPage: number, totalPages: number): (number | 'ellipsis')[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1)
+  }
+  const pages: (number | 'ellipsis')[] = [1]
+  const start = Math.max(2, currentPage - 1)
+  const end = Math.min(totalPages - 1, currentPage + 1)
+  if (start > 2) pages.push('ellipsis')
+  for (let p = start; p <= end; p++) pages.push(p)
+  if (end < totalPages - 1) pages.push('ellipsis')
+  pages.push(totalPages)
+  return pages
+}
+
+function PaginationFooter({
+  total,
+  offset,
+  pageSize,
+  shownCount,
+  onOffsetChange,
+  onPageSizeChange,
+}: PaginationFooterProps) {
+  if (total === 0) return null
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const currentPage = Math.min(totalPages, Math.floor(offset / pageSize) + 1)
+  const onFirst = currentPage === 1
+  const onLast = currentPage === totalPages
+  const goToPage = (page: number) => {
+    const clamped = Math.max(1, Math.min(totalPages, page))
+    onOffsetChange((clamped - 1) * pageSize)
+  }
+  const pages = pageWindow(currentPage, totalPages)
+  const rangeStart = offset + 1
+  const rangeEnd = offset + shownCount
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800/50 bg-slate-900/40 px-3 py-2 text-[11px] text-slate-400">
+      <div className="flex items-center gap-2">
+        <span>
+          Showing{' '}
+          <span className="font-medium text-slate-200">
+            {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()}
+          </span>{' '}
+          of <span className="font-medium text-slate-200">{total.toLocaleString()}</span>
+        </span>
+        <span className="hidden text-slate-700 sm:inline">•</span>
+        <label className="hidden items-center gap-1.5 sm:flex">
+          <span className="text-slate-500">Per page</span>
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            className="cursor-pointer rounded border border-slate-700/60 bg-slate-800/50 px-1.5 py-0.5 text-[11px] text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {totalPages > 1 && (
+        <nav className="flex items-center gap-1" aria-label="Pagination" role="navigation">
+          <button
+            onClick={() => goToPage(1)}
+            disabled={onFirst}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 bg-slate-800/40 text-slate-300 transition-colors hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-30"
+            title="First page"
+            aria-label="First page"
+          >
+            <ChevronsLeft className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={onFirst}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 bg-slate-800/40 text-slate-300 transition-colors hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-30"
+            title="Previous page"
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <div className="mx-0.5 flex items-center gap-1">
+            {pages.map((p, idx) =>
+              p === 'ellipsis' ? (
+                <span
+                  key={`e-${idx}`}
+                  className="inline-flex h-7 w-7 items-center justify-center text-slate-600"
+                  aria-hidden
+                >
+                  …
+                </span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => goToPage(p)}
+                  aria-current={p === currentPage ? 'page' : undefined}
+                  className={cn(
+                    'inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-md border px-1.5 text-[11px] font-medium transition-colors',
+                    p === currentPage
+                      ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-200 shadow-[0_0_0_1px_rgba(34,211,238,0.15)]'
+                      : 'border-slate-700/60 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70',
+                  )}
+                >
+                  {p}
+                </button>
+              ),
+            )}
+          </div>
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={onLast}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 bg-slate-800/40 text-slate-300 transition-colors hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-30"
+            title="Next page"
+            aria-label="Next page"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => goToPage(totalPages)}
+            disabled={onLast}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 bg-slate-800/40 text-slate-300 transition-colors hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-30"
+            title="Last page"
+            aria-label="Last page"
+          >
+            <ChevronsRight className="h-3.5 w-3.5" />
+          </button>
+        </nav>
+      )}
+    </div>
+  )
 }
 
 function SortableTh({ column, activeSortBy, activeSortOrder, onClick, filter }: SortableThProps) {

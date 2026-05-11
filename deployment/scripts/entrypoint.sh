@@ -3,9 +3,6 @@ set -e
 
 echo "Starting Searcharr..."
 
-# Create necessary directories
-mkdir -p /app/logs
-
 # Database initialization based on type
 if [ "$DATABASE_TYPE" = "postgresql" ]; then
     echo "Using PostgreSQL database"

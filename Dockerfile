@@ -95,9 +95,9 @@ RUN mkdir -p /var/cache/nginx /var/log/nginx /run && \
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 
-# Create directories for logs and data
-RUN mkdir -p /app/logs /app/data && \
-    chown -R appuser:appuser /app/logs /app/data
+# Create data directory for SQLite (when DATABASE_TYPE=sqlite)
+RUN mkdir -p /app/data && \
+    chown -R appuser:appuser /app/data
 
 # Environment variables
 ENV PYTHONPATH=/app \
