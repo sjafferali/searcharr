@@ -87,7 +87,7 @@ def upgrade() -> None:
         "feed_items",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("feed_id", sa.Integer(), nullable=False),
-        sa.Column("dedup_key", sa.String(length=255), nullable=False),
+        sa.Column("dedup_key", sa.Text(), nullable=False),
         sa.Column(
             "first_seen_at",
             sa.DateTime(timezone=True),

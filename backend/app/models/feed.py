@@ -173,7 +173,10 @@ class FeedItem(BaseModel):
         nullable=False,
         index=True,
     )
-    dedup_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    # ``Text`` (not ``String(N)``) because Prowlarr download URLs embed a
+    # base64-encoded ``link=`` parameter that routinely pushes the URL —
+    # and therefore the URL-derived dedup_key — past 255 characters.
+    dedup_key: Mapped[str] = mapped_column(Text, nullable=False)
 
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
