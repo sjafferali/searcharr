@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -65,9 +65,10 @@ import {
 import { cn, formatAge, formatBytes, formatDateTime, formatRelative } from '../utils'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
-const DEFAULT_PAGE_SIZE = 50
+const DEFAULT_PAGE_SIZE = 25
 const SIDEBAR_STATE_KEY = 'feeds.sidebarCollapsed'
 const PAGE_SIZE_STATE_KEY = 'feeds.pageSize'
+const LAST_VIEWED_KEY_PREFIX = 'feeds.lastViewed.'
 
 type SortableColumnKey = FeedItemSortBy
 
@@ -159,6 +160,47 @@ function formatHoursDuration(seconds: number | null): string {
   if (hours < 24) return `${hours}h`
   const days = Math.round(seconds / 86400)
   return `${days}d`
+}
+
+/**
+ * Returns the "new since" baseline timestamp for the given feed, captured at
+ * mount or whenever ``feedId`` changes. Writes a fresh ``Date.now()`` to
+ * localStorage on unmount or feed-switch so the next viewing session uses an
+ * up-to-date baseline.
+ *
+ * The baseline intentionally stays fixed for the lifetime of the current
+ * viewing — items that arrive while the user is sitting on the page stay
+ * marked NEW until they leave and come back.
+ */
+function useLastViewedBaseline(feedId: number | null): number | null {
+  const [baseline, setBaseline] = useState<number | null>(null)
+  const feedIdRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (feedId === null) {
+      setBaseline(null)
+      feedIdRef.current = null
+      return
+    }
+    const key = `${LAST_VIEWED_KEY_PREFIX}${feedId}`
+    const stored = window.localStorage.getItem(key)
+    const parsed = stored ? Number(stored) : 0
+    setBaseline(Number.isFinite(parsed) && parsed > 0 ? parsed : 0)
+    feedIdRef.current = feedId
+    // Capture the feedId for the cleanup below; if the user navigates away
+    // we want to mark *that* feed as freshly viewed, not whatever they switched to.
+    const closingFeedId = feedId
+    return () => {
+      try {
+        window.localStorage.setItem(`${LAST_VIEWED_KEY_PREFIX}${closingFeedId}`, String(Date.now()))
+      } catch {
+        // ignore quota / private-mode failures
+      }
+    }
+  }, [feedId])
+
+  return baseline
 }
 
 function nextPollLabel(nextPollAt: string | null, pollingEnabled: boolean): string | null {
@@ -298,6 +340,7 @@ export function FeedsPage() {
   const itemsQuery = useFeedItems(selectedFeedId, itemsParams)
   const entries = itemsQuery.data?.entries ?? []
   const total = itemsQuery.data?.total ?? 0
+  const lastViewedBaseline = useLastViewedBaseline(selectedFeedId)
   const lastPolledAt = itemsQuery.data?.last_polled_at ?? selectedFeed?.last_polled_at ?? null
   const nextPollAt = itemsQuery.data?.next_poll_at ?? null
   const staleAfterSeconds =
@@ -881,6 +924,10 @@ export function FeedsPage() {
                           const isDead = result.seeders === 0
                           const isBookmarked = bookmarkIdByResultId[result.id] !== undefined
                           const stale = isStale(result, staleAfterSeconds)
+                          const isNew =
+                            lastViewedBaseline !== null &&
+                            lastViewedBaseline > 0 &&
+                            new Date(result.first_seen_at).getTime() > lastViewedBaseline
                           return (
                             <tr
                               key={result.dedup_key}
@@ -944,6 +991,15 @@ export function FeedsPage() {
                                       </p>
                                     )}
                                     <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                      {isNew && (
+                                        <span
+                                          className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-cyan-400/50 bg-gradient-to-r from-cyan-500/25 to-blue-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.35)]"
+                                          title={`First added ${formatRelative(result.first_seen_at)} — appeared since your last visit`}
+                                        >
+                                          <Sparkles className="h-3 w-3" />
+                                          New
+                                        </span>
+                                      )}
                                       {matchesByResultId[result.id] && (
                                         <DownloadedBadge match={matchesByResultId[result.id]} />
                                       )}
