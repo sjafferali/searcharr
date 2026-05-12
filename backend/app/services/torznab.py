@@ -21,7 +21,7 @@ present.
 import hashlib
 import logging
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -29,6 +29,31 @@ import httpx
 from app.schemas.search import SearchResult
 
 logger = logging.getLogger(__name__)
+
+# Lower bound for a believable torrent ``pubDate``. BitTorrent itself only
+# dates to 2001, and any tracker that could index a release postdates that
+# comfortably, so anything earlier is synthetic — typically an indexer that
+# derived the date from a broken "X ago" relative string (we've seen years
+# like 1084). Such dates are dropped so the feed shows "no date" rather than
+# a nonsense "936 years ago".
+_MIN_PLAUSIBLE_PUB_YEAR = 2000
+# Indexers with a misconfigured timezone routinely report dates a few hours
+# (occasionally a day) in the future; that's surfaced as-is. Anything beyond
+# this is treated as garbage instead.
+_MAX_PUB_FUTURE = timedelta(days=366)
+
+# Accepted ``pubDate`` shapes, tried in order. ``%z`` matches ``Z``, ``+00:00``
+# and ``+0000`` (Python 3.7+); the ``.%f`` variants cover feeds that include
+# fractional seconds; the trailing tz-less forms are normalized to UTC below.
+_PUB_DATE_FORMATS = (
+    "%a, %d %b %Y %H:%M:%S %z",
+    "%a, %d %b %Y %H:%M:%S",
+    "%Y-%m-%dT%H:%M:%S.%f%z",
+    "%Y-%m-%dT%H:%M:%S%z",
+    "%Y-%m-%dT%H:%M:%S.%f",
+    "%Y-%m-%dT%H:%M:%S",
+    "%Y-%m-%d %H:%M:%S",
+)
 
 TORZNAB_NS = {"torznab": "http://torznab.com/schemas/2015/feed"}
 
@@ -254,16 +279,21 @@ def _extract_pub_date(item: Any) -> datetime | None:
     pub_date_str = item.findtext("pubDate")
     if not pub_date_str:
         return None
-    for fmt in (
-        "%a, %d %b %Y %H:%M:%S %z",
-        "%Y-%m-%dT%H:%M:%S%z",
-        "%Y-%m-%d %H:%M:%S",
-    ):
+    pub_date_str = pub_date_str.strip()
+    parsed: datetime | None = None
+    for fmt in _PUB_DATE_FORMATS:
         try:
-            return datetime.strptime(pub_date_str.strip(), fmt)
+            parsed = datetime.strptime(pub_date_str, fmt)
+            break
         except ValueError:
             continue
-    return None
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    if parsed.year < _MIN_PLAUSIBLE_PUB_YEAR or parsed > datetime.now(UTC) + _MAX_PUB_FUTURE:
+        return None
+    return parsed
 
 
 def _format_size(size_bytes: int) -> str:

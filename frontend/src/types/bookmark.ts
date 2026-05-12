@@ -43,6 +43,10 @@ export interface BookmarkLookupItem {
   info_url?: string | null
   torrent_url?: string | null
   magnet_link?: string | null
+  source_instance_name?: string | null
+  indexer?: string | null
+  title?: string | null
+  size_bytes?: number | null
 }
 
 export interface BookmarkLookupRequest {

@@ -19,8 +19,9 @@ class Bookmark(Base):  # type: ignore[misc]
     instance and indexer are denormalized for the same reason.
 
     ``dedup_key`` is a normalized stable identity (see ``compute_dedup_key``)
-    derived from the magnet info-hash, torrent URL, or info URL — used to
-    detect "is this current search result already bookmarked?"
+    derived from the magnet info-hash, a content signature of the release, or
+    a normalized URL — used to detect "is this current search result already
+    bookmarked?"
     """
 
     __tablename__ = "bookmarks"
@@ -47,7 +48,9 @@ class Bookmark(Base):  # type: ignore[misc]
     category: Mapped[str | None] = mapped_column(String(64), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    dedup_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    # ``Text`` (not ``String(N)``) because the content-signature form of the
+    # key embeds the release title, and proxied URL forms can run long.
+    dedup_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
 
     def __repr__(self) -> str:
         return f"<Bookmark(id={self.id}, title='{self.title[:40]}')>"

@@ -9,10 +9,18 @@ export function computeDedupKey({
   magnet_link,
   torrent_url,
   info_url,
+  source,
+  indexer,
+  title,
+  size,
 }: {
   magnet_link?: string | null
   torrent_url?: string | null
   info_url?: string | null
+  source?: string | null
+  indexer?: string | null
+  title?: string | null
+  size?: number | null
 }): string | null {
   if (magnet_link) {
     const m = magnet_link.match(/urn:bt[mi]h:([0-9a-fA-F]{32,64})/)
@@ -26,6 +34,16 @@ export function computeDedupKey({
     } catch {
       // ignore parse errors
     }
+  }
+
+  const titleS = (title ?? '').trim()
+  const sourceS = (source ?? '').trim()
+  const indexerS = (indexer ?? '').trim()
+  if (titleS && sourceS && indexerS) {
+    const sizePart = Number.isInteger(size) ? String(size) : '0'
+    // Title comes last because it's the only part that may itself contain a
+    // '|' — keeping it at the end keeps the field boundaries unambiguous.
+    return `sig:${sizePart}|${sourceS}|${indexerS}|${titleS}`
   }
 
   const normalize = (raw: string): string | null => {
@@ -42,12 +60,12 @@ export function computeDedupKey({
     }
   }
 
-  if (torrent_url) {
-    const k = normalize(torrent_url)
-    if (k) return k
-  }
   if (info_url) {
     const k = normalize(info_url)
+    if (k) return k
+  }
+  if (torrent_url) {
+    const k = normalize(torrent_url)
     if (k) return k
   }
   return null

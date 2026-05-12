@@ -1,5 +1,5 @@
 """
-Helpers for bookmark de-duplication and persistence.
+Helpers for bookmark and feed-item de-duplication.
 """
 
 import re
@@ -13,6 +13,10 @@ def compute_dedup_key(
     magnet_link: str | None,
     torrent_url: str | None,
     info_url: str | None,
+    source: str | None = None,
+    indexer: str | None = None,
+    title: str | None = None,
+    size: int | None = None,
 ) -> str | None:
     """
     Derive a stable identity for a search result.
@@ -20,8 +24,15 @@ def compute_dedup_key(
     Preference order:
     1. ``magnet:?xt=urn:btih:HASH`` info-hash (lowercased) — the canonical
        BitTorrent identity, identical across trackers and indexers.
-    2. ``torrent_url`` — direct .torrent URL, normalized to lowercase scheme/host.
-    3. ``info_url`` — same normalization.
+    2. ``sig:SIZE|SOURCE|INDEXER|TITLE`` — a content signature derived from the
+       release's own metadata. Stable across polls even when the indexer wraps
+       its download/details links in single-use tokens (Jackett's encrypted
+       ``path=`` blob, Prowlarr's ``link=`` blob, per-request session keys),
+       which makes the URL forms below change on every fetch.
+    3. ``info_url`` — the details/comments page, normalized to lowercase
+       scheme/host. Usually the most stable URL an item carries.
+    4. ``torrent_url`` — the (often proxied, often single-use) download URL,
+       same normalization. Last resort.
 
     Returns ``None`` when none of the inputs yield a usable identity.
     """
@@ -39,13 +50,22 @@ def compute_dedup_key(
         except Exception:
             pass
 
-    if torrent_url:
-        normalized = _normalize_url(torrent_url)
-        if normalized:
-            return f"url:{normalized}"
+    title_s = (title or "").strip()
+    source_s = (source or "").strip()
+    indexer_s = (indexer or "").strip()
+    if title_s and source_s and indexer_s:
+        size_part = str(int(size)) if isinstance(size, int) else "0"
+        # Title comes last because it's the only part that may itself contain a
+        # ``|`` — keeping it at the end keeps the field boundaries unambiguous.
+        return f"sig:{size_part}|{source_s}|{indexer_s}|{title_s}"
 
     if info_url:
         normalized = _normalize_url(info_url)
+        if normalized:
+            return f"url:{normalized}"
+
+    if torrent_url:
+        normalized = _normalize_url(torrent_url)
         if normalized:
             return f"url:{normalized}"
 

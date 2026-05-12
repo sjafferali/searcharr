@@ -77,6 +77,10 @@ export function useBookmarkLookup(results: SearchResult[]) {
         magnet_link: r.magnet_link,
         torrent_url: r.torrent_url,
         info_url: r.info_url,
+        source_instance_name: r.source,
+        indexer: r.indexer,
+        title: r.title,
+        size_bytes: r.size,
       })),
     [results],
   )
@@ -84,7 +88,11 @@ export function useBookmarkLookup(results: SearchResult[]) {
   const fingerprint = useMemo(
     () =>
       items
-        .map((i) => `${i.magnet_link ?? ''}|${i.torrent_url ?? ''}|${i.info_url ?? ''}`)
+        .map(
+          (i) =>
+            `${i.magnet_link ?? ''}|${i.torrent_url ?? ''}|${i.info_url ?? ''}` +
+            `|${i.source_instance_name ?? ''}|${i.indexer ?? ''}|${i.title ?? ''}|${i.size_bytes ?? ''}`,
+        )
         .join('\n'),
     [items],
   )
@@ -105,6 +113,10 @@ export function useBookmarkLookup(results: SearchResult[]) {
         magnet_link: result.magnet_link,
         torrent_url: result.torrent_url,
         info_url: result.info_url,
+        source: result.source,
+        indexer: result.indexer,
+        title: result.title,
+        size: result.size,
       })
       if (key && data.matches[key] !== undefined) {
         map[result.id] = data.matches[key]
@@ -142,6 +154,10 @@ export function useToggleResultBookmark() {
             magnet_link: result.magnet_link,
             torrent_url: result.torrent_url,
             info_url: result.info_url,
+            source: result.source,
+            indexer: result.indexer,
+            title: result.title,
+            size: result.size,
           })
           if (key) removeByKey.mutate(key)
         }

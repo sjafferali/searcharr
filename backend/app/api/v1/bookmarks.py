@@ -92,11 +92,15 @@ async def create_bookmark(
         magnet_link=payload.magnet_link,
         torrent_url=payload.torrent_url,
         info_url=payload.info_url,
+        source=payload.source_instance_name,
+        indexer=payload.indexer,
+        title=payload.title,
+        size=payload.size_bytes,
     )
     if not dedup_key:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot bookmark a result without a magnet link, torrent URL, or info URL.",
+            detail="Cannot derive a stable identity for this result.",
         )
 
     existing_result = await db.execute(select(Bookmark).where(Bookmark.dedup_key == dedup_key))
@@ -173,6 +177,10 @@ async def lookup_bookmarks(
             magnet_link=item.magnet_link,
             torrent_url=item.torrent_url,
             info_url=item.info_url,
+            source=item.source_instance_name,
+            indexer=item.indexer,
+            title=item.title,
+            size=item.size_bytes,
         )
         if key:
             keys.append(key)

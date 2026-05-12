@@ -9,6 +9,8 @@ Covers the two upstream conventions for indexer name and tag emission:
   ``<torznab:attr name="tag" value="…"/>`` per flag
 """
 
+from datetime import UTC, datetime, timedelta
+
 import httpx
 from app.services.torznab import http_error_message, parse_torznab_error, parse_torznab_response
 
@@ -182,6 +184,52 @@ class TestRobustness:
         )
         results = parse_torznab_response(xml, instance_name="x", source_type="jackett")
         assert results[0].size == 123_456_789
+
+
+class TestPubDate:
+    @staticmethod
+    def _parse_date(pub_date_value: str | None):
+        inner = f"<pubDate>{pub_date_value}</pubDate>" if pub_date_value is not None else ""
+        xml = _wrap(f"<item><title>x</title><size>1</size>{inner}</item>")
+        results = parse_torznab_response(xml, instance_name="x", source_type="jackett")
+        assert len(results) == 1
+        return results[0].date
+
+    def test_parses_rfc822_with_offset(self):
+        d = self._parse_date("Wed, 14 Mar 2018 09:30:00 -0500")
+        assert d is not None
+        assert d.utcoffset() == timedelta(hours=-5)
+        assert d.astimezone(UTC) == datetime(2018, 3, 14, 14, 30, 0, tzinfo=UTC)
+
+    def test_parses_iso_with_fractional_seconds(self):
+        d = self._parse_date("2020-06-01T12:00:00.123456+00:00")
+        assert d is not None
+        assert (d.year, d.month, d.day) == (2020, 6, 1)
+        assert d.tzinfo is not None
+
+    def test_naive_datetime_is_assumed_utc(self):
+        d = self._parse_date("2021-01-02 03:04:05")
+        assert d == datetime(2021, 1, 2, 3, 4, 5, tzinfo=UTC)
+
+    def test_implausibly_old_date_is_dropped(self):
+        # Indexers occasionally synthesize a date from a broken "X ago" string.
+        assert self._parse_date("Tue, 22 Feb 1949 08:31:09 -0800") is None
+        assert self._parse_date("1084-06-03T15:21:31Z") is None
+
+    def test_far_future_date_is_dropped(self):
+        far = (datetime.now(UTC) + timedelta(days=800)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        assert self._parse_date(far) is None
+
+    def test_slightly_future_date_is_kept(self):
+        # Cardigann timezone misparses push dates a few hours ahead; keep those.
+        soon = (datetime.now(UTC) + timedelta(hours=6)).strftime("%a, %d %b %Y %H:%M:%S %z")
+        assert self._parse_date(soon) is not None
+
+    def test_missing_pubdate_is_none(self):
+        assert self._parse_date(None) is None
+
+    def test_unparseable_pubdate_is_none(self):
+        assert self._parse_date("yesterday-ish") is None
 
 
 class TestErrorParsing:

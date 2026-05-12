@@ -70,6 +70,12 @@ class BookmarkLookupItem(BaseSchema):
     info_url: str | None = None
     torrent_url: str | None = None
     magnet_link: str | None = None
+    # Identity fields for the content-signature dedup key. Optional so older
+    # clients that only send the URL fields still get a (less robust) match.
+    source_instance_name: str | None = None
+    indexer: str | None = None
+    title: str | None = None
+    size_bytes: int | None = None
 
 
 class BookmarkLookupRequest(BaseSchema):

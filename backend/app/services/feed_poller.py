@@ -136,8 +136,9 @@ class FeedPoller:
         Insert new rows and refresh mutable fields on existing rows.
 
         Returns ``(inserted, updated)`` for caller logging/tests. Items that
-        don't yield a ``dedup_key`` (no magnet/torrent/info URL) are skipped
-        because there's no stable identity to upsert against.
+        don't yield a ``dedup_key`` (no magnet, no title/source/indexer, no
+        torrent/info URL) are skipped because there's no stable identity to
+        upsert against.
         """
         if not results:
             return 0, 0
@@ -152,6 +153,10 @@ class FeedPoller:
                 magnet_link=result.magnet_link,
                 torrent_url=result.torrent_url,
                 info_url=result.info_url,
+                source=result.source,
+                indexer=result.indexer,
+                title=result.title,
+                size=result.size,
             )
             if not dedup_key:
                 continue

@@ -156,8 +156,8 @@ class TestUpsertItems:
         feed_id = await _make_feed(poller_engine)
         poller = FeedPoller(poller_engine)
         results = [
-            _result(id_="a", torrent_url="http://a.example/x.torrent"),
-            _result(id_="b", torrent_url="http://b.example/x.torrent"),
+            _result(id_="a", title="Release A", torrent_url="http://a.example/x.torrent"),
+            _result(id_="b", title="Release B", torrent_url="http://b.example/x.torrent"),
         ]
         async with poller_engine() as session:
             inserted, updated = await poller._upsert_items(session, feed_id, results)
@@ -176,8 +176,18 @@ class TestUpsertItems:
     async def test_skips_items_without_dedup_key(self, poller_engine):
         feed_id = await _make_feed(poller_engine)
         poller = FeedPoller(poller_engine)
+        # No magnet, no usable URLs, and no identity fields for a content
+        # signature => nothing stable to key on.
         results = [
-            _result(id_="a", magnet_link=None, torrent_url=None, info_url=None),
+            _result(
+                id_="a",
+                title="",
+                source="",
+                indexer="",
+                magnet_link=None,
+                torrent_url=None,
+                info_url=None,
+            ),
         ]
         async with poller_engine() as session:
             inserted, updated = await poller._upsert_items(session, feed_id, results)
@@ -222,10 +232,11 @@ class TestUpsertItems:
     async def test_duplicate_dedup_keys_in_same_batch_collapse(self, poller_engine):
         feed_id = await _make_feed(poller_engine)
         poller = FeedPoller(poller_engine)
-        # Two results pointing at the same torrent URL: dedup keys collide.
+        # Two results for the same release (same title/source/indexer/size):
+        # their content-signature dedup keys collide.
         results = [
-            _result(id_="a", torrent_url="http://same/x.torrent"),
-            _result(id_="b", torrent_url="http://same/x.torrent"),
+            _result(id_="a", torrent_url="http://same/x.torrent?token=1"),
+            _result(id_="b", torrent_url="http://same/x.torrent?token=2"),
         ]
         async with poller_engine() as session:
             inserted, updated = await poller._upsert_items(session, feed_id, results)

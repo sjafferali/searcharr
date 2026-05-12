@@ -55,12 +55,14 @@ class TestBookmarks:
         assert second.json()["title"] == "Original"
 
     @pytest.mark.asyncio
-    async def test_create_rejects_payload_with_no_identity(self, client: AsyncClient):
+    async def test_create_uses_content_signature_when_no_urls_or_magnet(self, client: AsyncClient):
         response = await client.post(
             "/api/v1/bookmarks",
             json=_payload(magnet=None, torrent_url=None, info_url=None),
         )
-        assert response.status_code == 400
+        assert response.status_code == 201
+        dedup_key = response.json()["dedup_key"]
+        assert dedup_key == "sig:4700000000|Test Jackett|rarbg|Ubuntu 24.04 LTS"
 
     @pytest.mark.asyncio
     async def test_list_bookmarks_returns_in_recent_order(self, client: AsyncClient):
@@ -121,6 +123,34 @@ class TestBookmarks:
         assert response.status_code == 200
         matches = response.json()["matches"]
         assert "btih:abcdef1234567890abcdef1234567890abcdef12" in matches
+        assert len(matches) == 1
+
+    @pytest.mark.asyncio
+    async def test_lookup_matches_by_content_signature(self, client: AsyncClient):
+        # A bookmark saved without a magnet/URL is keyed by its content
+        # signature; a lookup carrying the same identity fields finds it even
+        # though the search result's download URL has since rotated.
+        await client.post(
+            "/api/v1/bookmarks",
+            json=_payload(magnet=None, torrent_url=None, info_url=None),
+        )
+        response = await client.post(
+            "/api/v1/bookmarks/lookup",
+            json={
+                "items": [
+                    {
+                        "torrent_url": "http://prowlarr:9696/21/download?link=NEW_BLOB",
+                        "source_instance_name": "Test Jackett",
+                        "indexer": "rarbg",
+                        "title": "Ubuntu 24.04 LTS",
+                        "size_bytes": 4_700_000_000,
+                    }
+                ]
+            },
+        )
+        assert response.status_code == 200
+        matches = response.json()["matches"]
+        assert "sig:4700000000|Test Jackett|rarbg|Ubuntu 24.04 LTS" in matches
         assert len(matches) == 1
 
     @pytest.mark.asyncio
