@@ -163,40 +163,46 @@ function formatHoursDuration(seconds: number | null): string {
 }
 
 /**
- * Returns the "new since" baseline timestamp for the given feed, captured at
- * mount or whenever ``feedId`` changes. Writes a fresh ``Date.now()`` to
- * localStorage on unmount or feed-switch so the next viewing session uses an
- * up-to-date baseline.
+ * Returns the "new since" baseline timestamp for the given feed: the moment the
+ * user last opened this feed. Items whose ``first_seen_at`` is newer than the
+ * baseline are flagged NEW.
  *
- * The baseline intentionally stays fixed for the lifetime of the current
- * viewing — items that arrive while the user is sitting on the page stay
- * marked NEW until they leave and come back.
+ * When a feed is opened, the previously-stored "last opened" value becomes the
+ * baseline for this session, and ``Date.now()`` is persisted immediately as
+ * the new "last opened" — eagerly, not in an effect cleanup, so it survives a
+ * full page reload or tab close (where React cleanups never run). A per-feed
+ * cache keeps the baseline stable across StrictMode's dev double-mount and
+ * across switching away from and back to the same feed within one session.
  */
 function useLastViewedBaseline(feedId: number | null): number | null {
   const [baseline, setBaseline] = useState<number | null>(null)
-  const feedIdRef = useRef<number | null>(null)
+  const baselineCache = useRef<Map<number, number>>(new Map())
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (feedId === null) {
+    if (typeof window === 'undefined' || feedId === null) {
       setBaseline(null)
-      feedIdRef.current = null
+      return
+    }
+    const cached = baselineCache.current.get(feedId)
+    if (cached !== undefined) {
+      setBaseline(cached)
       return
     }
     const key = `${LAST_VIEWED_KEY_PREFIX}${feedId}`
-    const stored = window.localStorage.getItem(key)
-    const parsed = stored ? Number(stored) : 0
-    setBaseline(Number.isFinite(parsed) && parsed > 0 ? parsed : 0)
-    feedIdRef.current = feedId
-    // Capture the feedId for the cleanup below; if the user navigates away
-    // we want to mark *that* feed as freshly viewed, not whatever they switched to.
-    const closingFeedId = feedId
-    return () => {
-      try {
-        window.localStorage.setItem(`${LAST_VIEWED_KEY_PREFIX}${closingFeedId}`, String(Date.now()))
-      } catch {
-        // ignore quota / private-mode failures
-      }
+    let stored = 0
+    try {
+      const raw = window.localStorage.getItem(key)
+      const parsed = raw ? Number(raw) : 0
+      if (Number.isFinite(parsed) && parsed > 0) stored = parsed
+    } catch {
+      // ignore read failures (private mode, disabled storage)
+    }
+    baselineCache.current.set(feedId, stored)
+    setBaseline(stored)
+    try {
+      window.localStorage.setItem(key, String(Date.now()))
+    } catch {
+      // ignore quota / private-mode failures
     }
   }, [feedId])
 
