@@ -19,7 +19,7 @@ class TestSearch:
         assert data["query"] == "ubuntu"
         assert data["total_results"] == 0
         assert data["sources_queried"] == 0
-        assert "No instances configured" in data["errors"]
+        assert any("No instances configured" in e["message"] for e in data["errors"])
 
     @pytest.mark.asyncio
     async def test_search_validation_empty_query(self, client: AsyncClient):
@@ -118,7 +118,7 @@ class TestSearch:
         data = response.json()
         # No instances searched
         assert data["sources_queried"] == 0
-        assert "No instances configured" in data["errors"]
+        assert any("No instances configured" in e["message"] for e in data["errors"])
 
     @pytest.mark.asyncio
     async def test_search_with_indexer_filter(

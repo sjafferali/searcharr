@@ -9,7 +9,7 @@ import pytest
 import pytest_asyncio
 from app.core.database import Base
 from app.models import Feed, FeedIndexer, FeedItem
-from app.schemas.search import SearchResult
+from app.schemas.search import IndexerError, SearchResult
 from app.services.feed_poller import FeedPoller
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -307,7 +307,51 @@ class TestRefreshNow:
         poller = FeedPoller(poller_engine)
         inserted, updated, errors = await poller.refresh_now(99999)
         assert (inserted, updated) == (0, 0)
-        assert errors and "not found" in errors[0].lower()
+        assert errors and "not found" in errors[0].message.lower()
+
+    @pytest.mark.asyncio
+    async def test_refresh_now_persists_source_errors(self, poller_engine, monkeypatch):
+        feed_id = await _make_feed(poller_engine)
+        poller = FeedPoller(poller_engine)
+
+        async def fake_fetch(self, feed):
+            return (
+                [_result(id_="a")],
+                [
+                    IndexerError(
+                        source="Prowlarr",
+                        source_type="prowlarr",
+                        indexer="BrokenTracker",
+                        message="Disabled by Prowlarr after repeated failures",
+                    )
+                ],
+                1,
+            )
+
+        monkeypatch.setattr("app.services.feed_poller.FeedService.fetch", fake_fetch)
+        _inserted, _updated, errors = await poller.refresh_now(feed_id)
+        assert [e.indexer for e in errors] == ["BrokenTracker"]
+
+        async with poller_engine() as session:
+            feed = (await session.execute(select(Feed).where(Feed.id == feed_id))).scalar_one()
+        assert feed.last_poll_errors == [
+            {
+                "source": "Prowlarr",
+                "message": "Disabled by Prowlarr after repeated failures",
+                "source_type": "prowlarr",
+                "indexer": "BrokenTracker",
+            }
+        ]
+
+        # A clean follow-up poll clears the stored errors.
+        async def clean_fetch(self, feed):
+            return [_result(id_="a")], [], 1
+
+        monkeypatch.setattr("app.services.feed_poller.FeedService.fetch", clean_fetch)
+        await poller.refresh_now(feed_id)
+        async with poller_engine() as session:
+            feed = (await session.execute(select(Feed).where(Feed.id == feed_id))).scalar_one()
+        assert feed.last_poll_errors is None
 
 
 class TestPollerSchedulerIntegration:

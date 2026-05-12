@@ -12,8 +12,19 @@ from urllib.parse import urljoin
 
 import httpx
 
-from app.schemas.search import CATEGORY_MAPPINGS, IndexerInfo, SearchCategory, SearchResult
-from app.services.torznab import parse_torznab_response
+from app.schemas.search import (
+    CATEGORY_MAPPINGS,
+    IndexerError,
+    IndexerInfo,
+    SearchCategory,
+    SearchResult,
+)
+from app.services.torznab import (
+    http_error_message,
+    parse_torznab_error,
+    parse_torznab_response,
+    rate_limit_message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -178,14 +189,14 @@ class JackettService:
         instance_name: str = "Jackett",
         indexer_ids: list[str] | None = None,
         category: SearchCategory = SearchCategory.ALL,
-    ) -> list[SearchResult]:
+    ) -> tuple[list[SearchResult], list[IndexerError]]:
         """
         Fetch the latest releases from one or more indexers.
 
         Implemented as a Torznab ``t=search&q=`` call (empty query), which is
         the same path Jackett uses for its RSS feed. Indexers that don't
         support browsing return an empty list; indexers that do return their
-        most recent releases.
+        most recent releases. Returns ``(results, errors)`` — see ``search``.
         """
         return await self.search(
             query="",
@@ -200,7 +211,7 @@ class JackettService:
         category: SearchCategory = SearchCategory.ALL,
         instance_name: str = "Jackett",
         indexer_ids: list[str] | None = None,
-    ) -> list[SearchResult]:
+    ) -> tuple[list[SearchResult], list[IndexerError]]:
         """
         Search for torrents across all configured indexers, or a specific subset.
 
@@ -212,7 +223,11 @@ class JackettService:
                          When None or empty, searches all configured indexers ("all").
 
         Returns:
-            List of SearchResult objects
+            ``(results, errors)``. ``errors`` carries one ``IndexerError`` per
+            indexer query that failed (HTTP 429 rate limit, a Torznab
+            ``<error>`` body, a timeout, ...). When a specific indexer slug was
+            requested its error's ``indexer`` field holds that slug; an "all
+            indexers" query that fails reports ``indexer=None``.
         """
         # When specific indexers are selected, fan out one request per indexer.
         # Jackett's torznab endpoint accepts a single indexer slug per call.
@@ -223,12 +238,17 @@ class JackettService:
             ]
             grouped = await asyncio.gather(*tasks, return_exceptions=True)
             aggregated: list[SearchResult] = []
-            for group in grouped:
-                if isinstance(group, list):
-                    aggregated.extend(group)
-            return aggregated
+            errors: list[IndexerError] = []
+            for outcome in grouped:
+                if isinstance(outcome, tuple):
+                    results, error = outcome
+                    aggregated.extend(results)
+                    if error is not None:
+                        errors.append(error)
+            return aggregated, errors
 
-        return await self._search_single_indexer("all", query, category, instance_name)
+        results, error = await self._search_single_indexer("all", query, category, instance_name)
+        return results, [error] if error is not None else []
 
     async def _search_single_indexer(
         self,
@@ -236,9 +256,27 @@ class JackettService:
         query: str,
         category: SearchCategory,
         instance_name: str,
-    ) -> list[SearchResult]:
-        """Run a search against a single Jackett indexer (or 'all')."""
+    ) -> tuple[list[SearchResult], IndexerError | None]:
+        """
+        Run a search against a single Jackett indexer (or 'all').
+
+        Returns ``(results, error)``. ``error`` is ``None`` on success; a
+        non-200 status, a Torznab ``<error>`` body (which is how Jackett
+        reports a tracker that's failing or unreachable), a 429, or a timeout
+        each produce an ``IndexerError``.
+        """
         results: list[SearchResult] = []
+        # "all" isn't a real indexer, so we can't attribute a failure to one.
+        indexer_label: str | None = None if indexer_slug == "all" else indexer_slug
+
+        def _err(message: str) -> IndexerError:
+            return IndexerError(
+                source=instance_name,
+                source_type="jackett",
+                indexer=indexer_label,
+                message=message,
+            )
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 url = self._get_api_url(f"indexers/{indexer_slug}/results/torznab/api")
@@ -254,12 +292,22 @@ class JackettService:
 
                 response = await client.get(url, params=params)
 
-                if response.status_code != 200:
+                if response.status_code == 429:
+                    retry_after = response.headers.get("Retry-After")
                     logger.warning(
-                        f"Jackett search failed for indexer '{indexer_slug}': "
-                        f"HTTP {response.status_code}"
+                        f"Jackett indexer '{indexer_slug}' rate-limited "
+                        f"(Retry-After: {retry_after or '?'})"
                     )
-                    return results
+                    return results, _err(rate_limit_message(retry_after))
+                if response.status_code != 200:
+                    message = http_error_message(response)
+                    logger.warning(f"Jackett search failed for indexer '{indexer_slug}': {message}")
+                    return results, _err(message)
+
+                torznab_error = parse_torznab_error(response.text)
+                if torznab_error:
+                    logger.warning(f"Jackett search for indexer '{indexer_slug}': {torznab_error}")
+                    return results, _err(torznab_error)
 
                 results = parse_torznab_response(
                     response.text,
@@ -268,6 +316,8 @@ class JackettService:
                 )
         except httpx.TimeoutException:
             logger.warning(f"Jackett search timed out for indexer '{indexer_slug}', query: {query}")
+            return results, _err("Request timed out")
         except Exception as e:
             logger.exception(f"Error searching Jackett indexer '{indexer_slug}': {e}")
-        return results
+            return results, _err(str(e) or e.__class__.__name__)
+        return results, None

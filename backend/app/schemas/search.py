@@ -81,6 +81,25 @@ class SearchResult(BaseSchema):
     )
 
 
+class IndexerError(BaseSchema):
+    """
+    A failure encountered while querying a specific indexer (or instance).
+
+    Surfaced so the UI can tell the user *why* an indexer they selected
+    returned nothing — a rate limit (HTTP 429), an upstream indexer that
+    Prowlarr/Jackett has disabled after repeated failures, a timeout, an
+    auth error, etc. — rather than the search/feed silently showing zero
+    results.
+    """
+
+    source: str = Field(..., description="Instance name the failure came from (empty if app-level)")
+    message: str = Field(..., description="Human-readable description of the failure")
+    # jackett, prowlarr, or "" for app-level messages
+    source_type: str = ""
+    # Indexer name/id, or None when the failure is instance- or app-level
+    indexer: str | None = None
+
+
 class IndexerInfo(BaseSchema):
     """A single indexer configured on a Jackett or Prowlarr instance."""
 
@@ -109,7 +128,9 @@ class SearchResponse(BaseSchema):
     total_results: int = Field(..., description="Total number of results")
     results: list[SearchResult] = Field(..., description="List of search results")
     sources_queried: int = Field(..., description="Number of instances queried")
-    errors: list[str] = Field(default_factory=list, description="Errors encountered during search")
+    errors: list[IndexerError] = Field(
+        default_factory=list, description="Per-indexer / per-instance failures encountered"
+    )
 
 
 class CategoriesResponse(BaseSchema):

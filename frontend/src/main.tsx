@@ -26,20 +26,20 @@ createRoot(document.getElementById('root')!).render(
           toastOptions={{
             duration: 4000,
             style: {
-              background: '#1e293b',
-              color: '#e2e8f0',
-              border: '1px solid #334155',
+              background: 'rgb(var(--color-slate-900))',
+              color: 'rgb(var(--color-slate-200))',
+              border: '1px solid rgb(var(--color-slate-800))',
             },
             success: {
               iconTheme: {
-                primary: '#10b981',
-                secondary: '#1e293b',
+                primary: 'rgb(var(--color-emerald-500))',
+                secondary: 'rgb(var(--color-slate-900))',
               },
             },
             error: {
               iconTheme: {
-                primary: '#ef4444',
-                secondary: '#1e293b',
+                primary: 'rgb(var(--color-red-500))',
+                secondary: 'rgb(var(--color-slate-900))',
               },
             },
           }}

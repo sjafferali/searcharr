@@ -9,7 +9,8 @@ Covers the two upstream conventions for indexer name and tag emission:
   ``<torznab:attr name="tag" value="…"/>`` per flag
 """
 
-from app.services.torznab import parse_torznab_response
+import httpx
+from app.services.torznab import http_error_message, parse_torznab_error, parse_torznab_response
 
 
 def _wrap(item_xml: str, channel_title: str = "Test") -> str:
@@ -181,3 +182,31 @@ class TestRobustness:
         )
         results = parse_torznab_response(xml, instance_name="x", source_type="jackett")
         assert results[0].size == 123_456_789
+
+
+class TestErrorParsing:
+    def test_parses_error_document_with_description(self):
+        xml = '<?xml version="1.0"?><error code="201" description="Indexer is disabled"/>'
+        assert parse_torznab_error(xml) == "Indexer is disabled (code 201)"
+
+    def test_parses_error_document_without_code(self):
+        assert parse_torznab_error('<error description="bad creds"/>') == "bad creds"
+
+    def test_returns_none_for_regular_feed(self):
+        assert parse_torznab_error(_wrap("<item><title>x</title></item>")) is None
+
+    def test_returns_none_for_non_xml(self):
+        assert parse_torznab_error("<html>nope</html>") is None
+        assert parse_torznab_error("") is None
+
+    def test_http_error_message_prefers_torznab_description(self):
+        resp = httpx.Response(500, text='<error code="100" description="boom"/>')
+        assert http_error_message(resp) == "boom (code 100)"
+
+    def test_http_error_message_falls_back_to_json_message(self):
+        resp = httpx.Response(400, json={"message": "Bad indexer id"})
+        assert http_error_message(resp) == "Bad indexer id (HTTP 400)"
+
+    def test_http_error_message_falls_back_to_status(self):
+        resp = httpx.Response(503, text="Service Unavailable")
+        assert http_error_message(resp) == "HTTP 503"

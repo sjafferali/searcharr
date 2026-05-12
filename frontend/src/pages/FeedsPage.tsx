@@ -37,6 +37,7 @@ import {
   DownloadedBadge,
   EmptyState,
   FeedEditorModal,
+  IndexerErrorBanner,
   LoadingSpinner,
   SendToClientModal,
 } from '../components'
@@ -352,6 +353,7 @@ export function FeedsPage() {
   const staleAfterSeconds =
     itemsQuery.data?.stale_after_seconds ?? selectedFeed?.stale_after_seconds ?? 3600
   const pollingEnabled = itemsQuery.data?.polling_enabled ?? selectedFeed?.polling_enabled ?? true
+  const sourceErrors = itemsQuery.data?.source_errors ?? selectedFeed?.last_poll_errors ?? []
 
   const { matchesByResultId } = useHistoryLookup(entries)
   const { bookmarkIdByResultId } = useBookmarkLookup(entries)
@@ -729,6 +731,11 @@ export function FeedsPage() {
                 </div>
               </div>
             </header>
+
+            <IndexerErrorBanner
+              errors={sourceErrors}
+              title="The last poll hit errors on these indexers — items from them may be missing or stale:"
+            />
 
             {/* Filters bar */}
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/50 bg-slate-900/40 px-3 py-2 text-xs">

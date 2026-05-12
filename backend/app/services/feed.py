@@ -18,7 +18,7 @@ from sqlalchemy.future import select
 
 from app.models import Feed, FeedIndexer, JackettInstance, ProwlarrInstance
 from app.schemas.feed import FeedFilters, FeedSortStrategy
-from app.schemas.search import SearchCategory, SearchResult
+from app.schemas.search import IndexerError, SearchCategory, SearchResult
 from app.services.encryption import decrypt_credential
 from app.services.jackett import JackettService
 from app.services.prowlarr import ProwlarrService
@@ -36,16 +36,19 @@ class FeedService:
         self.db = db
         self.concurrent_limit = FEED_FETCH_CONCURRENT_LIMIT
 
-    async def fetch(self, feed: Feed) -> tuple[list[SearchResult], list[str], int]:
+    async def fetch(self, feed: Feed) -> tuple[list[SearchResult], list[IndexerError], int]:
         """
         Run the feed: fetch latest releases from each referenced instance,
         merge results, then apply the feed's filters.
 
         Returns:
-            Tuple of (filtered_results, errors, sources_queried).
+            Tuple of (filtered_results, errors, sources_queried). ``errors``
+            describes any indexer/instance that failed (rate limit, disabled
+            indexer, timeout, ...) so the feeds UI can explain a short or empty
+            result list instead of silently showing nothing.
         """
         if not feed.indexers:
-            return [], ["Feed has no indexers configured"], 0
+            return [], [IndexerError(source="", message="Feed has no indexers configured")], 0
 
         category = SearchCategory(feed.category)
 
@@ -62,39 +65,42 @@ class FeedService:
 
         sources_queried = len(jackett_instances) + len(prowlarr_instances)
         if sources_queried == 0:
-            return [], ["None of this feed's instances are still configured"], 0
+            return (
+                [],
+                [
+                    IndexerError(
+                        source="", message="None of this feed's instances are still configured"
+                    )
+                ],
+                0,
+            )
 
         semaphore = asyncio.Semaphore(self.concurrent_limit)
         tasks: list[asyncio.Task[Any]] = []
 
         for instance in jackett_instances:
             entries = jackett_groups.get(instance.id, [])
-            indexer_ids = [e.indexer_id for e in entries]
             tasks.append(
-                asyncio.create_task(self._fetch_jackett(semaphore, instance, indexer_ids, category))
+                asyncio.create_task(self._fetch_jackett(semaphore, instance, entries, category))
             )
 
         for instance in prowlarr_instances:
             entries = prowlarr_groups.get(instance.id, [])
-            indexer_ids = [e.indexer_id for e in entries]
             tasks.append(
-                asyncio.create_task(
-                    self._fetch_prowlarr(semaphore, instance, indexer_ids, category)
-                )
+                asyncio.create_task(self._fetch_prowlarr(semaphore, instance, entries, category))
             )
 
         task_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         all_results: list[SearchResult] = []
-        errors: list[str] = []
+        errors: list[IndexerError] = []
         for outcome in task_results:
             if isinstance(outcome, Exception):
-                errors.append(str(outcome))
+                errors.append(IndexerError(source="", message=str(outcome) or "Feed fetch failed"))
             elif isinstance(outcome, tuple):
-                results, err = outcome
+                results, errs = outcome
                 all_results.extend(results)
-                if err:
-                    errors.append(err)
+                errors.extend(errs)
 
         filters = FeedFilters(
             category=category,
@@ -127,7 +133,7 @@ class FeedService:
     def _apply_filters(
         results: list[SearchResult],
         filters: FeedFilters,
-        errors: list[str],
+        errors: list[IndexerError],
     ) -> list[SearchResult]:
         include_re: re.Pattern[str] | None = None
         exclude_re: re.Pattern[str] | None = None
@@ -136,12 +142,12 @@ class FeedService:
             try:
                 include_re = re.compile(filters.include_regex, re.IGNORECASE)
             except re.error as exc:
-                errors.append(f"Invalid include regex: {exc}")
+                errors.append(IndexerError(source="", message=f"Invalid include regex: {exc}"))
         if filters.exclude_regex:
             try:
                 exclude_re = re.compile(filters.exclude_regex, re.IGNORECASE)
             except re.error as exc:
-                errors.append(f"Invalid exclude regex: {exc}")
+                errors.append(IndexerError(source="", message=f"Invalid exclude regex: {exc}"))
 
         kept: list[SearchResult] = []
         for item in results:
@@ -176,44 +182,70 @@ class FeedService:
         )
         return list(result.scalars().all())
 
+    @staticmethod
+    def _name_indexer_errors(
+        errors: list[IndexerError], entries: list[FeedIndexer]
+    ) -> list[IndexerError]:
+        """
+        Rewrite each error's ``indexer`` from the raw id/slug the service
+        reported to the feed's stored display name when one is known.
+        """
+        names = {e.indexer_id: e.indexer_name for e in entries}
+        for err in errors:
+            if err.indexer is not None and err.indexer in names:
+                err.indexer = names[err.indexer]
+        return errors
+
     async def _fetch_jackett(
         self,
         semaphore: asyncio.Semaphore,
         instance: JackettInstance,
-        indexer_ids: list[str],
+        entries: list[FeedIndexer],
         category: SearchCategory,
-    ) -> tuple[list[SearchResult], str | None]:
+    ) -> tuple[list[SearchResult], list[IndexerError]]:
         async with semaphore:
             try:
                 api_key = decrypt_credential(instance.api_key)
                 service = JackettService(instance.url, api_key)
-                results = await service.get_latest(
+                results, errors = await service.get_latest(
                     instance_name=instance.name,
-                    indexer_ids=indexer_ids,
+                    indexer_ids=[e.indexer_id for e in entries],
                     category=category,
                 )
-                return results, None
+                return results, self._name_indexer_errors(errors, entries)
             except Exception as exc:
                 logger.exception(f"Error fetching latest from Jackett instance {instance.name}")
-                return [], f"{instance.name}: {exc}"
+                return [], [
+                    IndexerError(
+                        source=instance.name,
+                        source_type="jackett",
+                        message=str(exc) or exc.__class__.__name__,
+                    )
+                ]
 
     async def _fetch_prowlarr(
         self,
         semaphore: asyncio.Semaphore,
         instance: ProwlarrInstance,
-        indexer_ids: list[str],
+        entries: list[FeedIndexer],
         category: SearchCategory,
-    ) -> tuple[list[SearchResult], str | None]:
+    ) -> tuple[list[SearchResult], list[IndexerError]]:
         async with semaphore:
             try:
                 api_key = decrypt_credential(instance.api_key)
                 service = ProwlarrService(instance.url, api_key)
-                results = await service.get_latest(
+                results, errors = await service.get_latest(
                     instance_name=instance.name,
-                    indexer_ids=indexer_ids,
+                    indexer_ids=[e.indexer_id for e in entries],
                     category=category,
                 )
-                return results, None
+                return results, self._name_indexer_errors(errors, entries)
             except Exception as exc:
                 logger.exception(f"Error fetching latest from Prowlarr instance {instance.name}")
-                return [], f"{instance.name}: {exc}"
+                return [], [
+                    IndexerError(
+                        source=instance.name,
+                        source_type="prowlarr",
+                        message=str(exc) or exc.__class__.__name__,
+                    )
+                ]

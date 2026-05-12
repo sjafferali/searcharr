@@ -24,6 +24,7 @@ import {
 import {
   ColumnFilter,
   DownloadedBadge,
+  IndexerErrorBanner,
   IndexerPicker,
   LoadingSpinner,
   SendToClientModal,
@@ -116,6 +117,8 @@ export function SearchPage() {
     setResults,
     totalResults,
     setTotalResults,
+    searchErrors,
+    setSearchErrors,
     isFiltersExpanded,
     toggleFilters,
   } = useSearchStore()
@@ -262,14 +265,16 @@ export function SearchPage() {
 
       setResults(response.results)
       setTotalResults(response.total_results)
+      setSearchErrors(response.errors)
 
       if (response.errors.length > 0) {
-        toast.error(`Some sources had errors: ${response.errors.join(', ')}`)
+        const n = response.errors.length
+        toast.error(`${n} indexer${n === 1 ? '' : 's'} returned an error — see details below`)
       }
     } catch {
       // Error handled by mutation
     }
-  }, [query, filters, searchMutation, setResults, setTotalResults])
+  }, [query, filters, searchMutation, setResults, setTotalResults, setSearchErrors])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -479,6 +484,9 @@ export function SearchPage() {
           </div>
         )}
       </div>
+
+      {/* Indexer errors */}
+      <IndexerErrorBanner errors={searchErrors} />
 
       {/* Results */}
       <div className="space-y-3">

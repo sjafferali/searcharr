@@ -24,11 +24,75 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Any
 
+import httpx
+
 from app.schemas.search import SearchResult
 
 logger = logging.getLogger(__name__)
 
 TORZNAB_NS = {"torznab": "http://torznab.com/schemas/2015/feed"}
+
+
+def rate_limit_message(retry_after: str | None) -> str:
+    """Build a human-readable rate-limit message from a ``Retry-After`` header."""
+    if retry_after:
+        value = retry_after.strip()
+        suffix = "s" if value.isdigit() else ""
+        return f"Rate limited by the indexer — retry after {value}{suffix}"
+    return "Rate limited by the indexer"
+
+
+def http_error_message(response: httpx.Response) -> str:
+    """
+    Describe a non-2xx HTTP response as concisely as possible.
+
+    Prefers a Torznab ``<error description=.../>`` body or a JSON ``message``
+    field (Prowlarr's API error shape) over a bare status code.
+    """
+    body = response.text or ""
+    torznab_desc = parse_torznab_error(body)
+    if torznab_desc:
+        return torznab_desc
+    try:
+        payload = response.json()
+        if isinstance(payload, dict):
+            msg = payload.get("message") or payload.get("error")
+            if msg:
+                return f"{msg} (HTTP {response.status_code})"
+    except Exception:
+        pass
+    return f"HTTP {response.status_code}"
+
+
+def parse_torznab_error(xml_content: str) -> str | None:
+    """
+    Return the description of a Torznab/Newznab ``<error>`` document, if the
+    payload is one.
+
+    Both Jackett and Prowlarr answer a failing indexer query with a body like
+    ``<error code="100" description="Incorrect user credentials"/>`` (sometimes
+    with a 2xx status, sometimes a 4xx/5xx). When the indexer Prowlarr is
+    proxying has been auto-disabled after repeated failures, the description
+    typically reads something like "Indexer is disabled due to recent failures".
+
+    Returns ``None`` when the body isn't an error document (a normal RSS feed,
+    HTML, malformed XML, etc.).
+    """
+    if not xml_content:
+        return None
+    try:
+        root = ET.fromstring(xml_content)
+    except ET.ParseError:
+        return None
+    # Tag may be namespace-qualified ("{...}error"); match on the local name.
+    local_name = root.tag.rsplit("}", 1)[-1].lower()
+    if local_name != "error":
+        return None
+    description = root.get("description") or root.get("Description")
+    code = root.get("code") or root.get("Code")
+    if description:
+        return f"{description} (code {code})" if code else description
+    return f"Indexer error (code {code})" if code else "Unknown indexer error"
 
 
 def parse_torznab_response(

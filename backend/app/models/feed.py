@@ -8,8 +8,10 @@ that appear when the feed is fetched.
 """
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     DateTime,
@@ -69,6 +71,10 @@ class Feed(BaseModel):
         Boolean, nullable=False, default=True, server_default=true()
     )
     last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # List of ``IndexerError`` dicts recorded on the most recent poll (NULL when
+    # the last poll hit no indexer/instance failures). Lets the feeds UI surface
+    # "indexer X was rate-limited / disabled" without re-polling.
+    last_poll_errors: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
 
     indexers: Mapped[list["FeedIndexer"]] = relationship(
         "FeedIndexer",

@@ -1,4 +1,4 @@
-import { SearchCategory, SearchResult, SortOrder, SourceType } from './search'
+import { IndexerError, SearchCategory, SearchResult, SortOrder, SourceType } from './search'
 
 export interface FeedIndexerRef {
   source_type: SourceType
@@ -31,6 +31,7 @@ export interface Feed {
   retention_days: number
   polling_enabled: boolean
   last_polled_at: string | null
+  last_poll_errors: IndexerError[]
   stale_after_seconds: number
   created_at: string
   updated_at: string
@@ -70,7 +71,7 @@ export interface FeedFetchResponse {
   total_results: number
   results: SearchResult[]
   sources_queried: number
-  errors: string[]
+  errors: IndexerError[]
 }
 
 export type FeedItemSortBy = 'last_seen' | 'first_seen' | 'pub_date' | 'seeders' | 'size' | 'title'
@@ -104,4 +105,5 @@ export interface FeedItemListResponse {
   next_poll_at: string | null
   stale_after_seconds: number
   polling_enabled: boolean
+  source_errors: IndexerError[]
 }

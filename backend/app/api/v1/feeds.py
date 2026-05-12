@@ -24,6 +24,7 @@ from app.schemas import (
     FeedResponse,
     FeedSortStrategy,
     FeedUpdate,
+    IndexerError,
 )
 from app.schemas import (
     FeedItem as FeedItemSchema,
@@ -34,6 +35,20 @@ from app.services import FeedPoller, FeedService, format_size
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/feeds", tags=["feeds"])
+
+
+def _poll_errors(feed: Feed) -> list[IndexerError]:
+    """Decode the feed's stored ``last_poll_errors`` JSON into schema objects."""
+    raw = feed.last_poll_errors or []
+    decoded: list[IndexerError] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        try:
+            decoded.append(IndexerError(**entry))
+        except Exception:
+            logger.debug("Skipping malformed feed poll error entry: %r", entry)
+    return decoded
 
 
 def _serialize(feed: Feed) -> FeedResponse:
@@ -65,6 +80,7 @@ def _serialize(feed: Feed) -> FeedResponse:
         retention_days=feed.retention_days,
         polling_enabled=feed.polling_enabled,
         last_polled_at=feed.last_polled_at,
+        last_poll_errors=_poll_errors(feed),
         stale_after_seconds=feed.stale_after_seconds,
         created_at=feed.created_at,
         updated_at=feed.updated_at,
@@ -301,6 +317,7 @@ async def list_feed_items(
         next_poll_at=next_poll_at,
         stale_after_seconds=feed.stale_after_seconds,
         polling_enabled=feed.polling_enabled,
+        source_errors=_poll_errors(feed),
     )
 
 
@@ -319,7 +336,7 @@ async def _refresh_and_list(
     if errors and inserted == 0 and updated == 0:
         # Surface a 404 when the poller couldn't find the feed; other errors
         # are non-fatal (source-level failures) and we still return the list.
-        if any("not found" in e.lower() for e in errors):
+        if any("not found" in e.message.lower() for e in errors):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feed not found")
     return await list_feed_items(feed_id, db=db)
 

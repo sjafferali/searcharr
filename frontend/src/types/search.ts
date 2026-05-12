@@ -45,13 +45,25 @@ export interface IndexersResponse {
   indexers: IndexerInfo[]
 }
 
+/**
+ * A failure encountered while querying a specific indexer (or instance) — a
+ * rate limit, an upstream indexer disabled after repeated failures, a timeout,
+ * etc. Surfaced so the UI can explain a short/empty result list.
+ */
+export interface IndexerError {
+  source: string
+  message: string
+  source_type: string
+  indexer: string | null
+}
+
 export interface SearchResponse {
   query: string
   category: SearchCategory
   total_results: number
   results: SearchResult[]
   sources_queried: number
-  errors: string[]
+  errors: IndexerError[]
 }
 
 export interface SearchParams {

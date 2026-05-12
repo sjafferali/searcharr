@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Bookmark, Search, Server, HardDrive, Magnet, History, Rss } from 'lucide-react'
 import { cn } from '../utils'
 import { useInstancesStatus } from '../hooks'
+import { ThemeToggle } from './ThemeToggle'
 
 interface LayoutProps {
   children: ReactNode
@@ -85,11 +86,12 @@ export function Layout({ children }: LayoutProps) {
               </nav>
 
               {/* Quick Stats */}
-              <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-1.5">
                   <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                   <span className="text-slate-400">{onlineCount} sources online</span>
                 </div>
+                <ThemeToggle />
               </div>
             </div>
           </div>

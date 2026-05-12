@@ -115,6 +115,12 @@ export function useRefreshFeed() {
       queryClient.invalidateQueries({ queryKey: feedKeys.list() })
       const total = data.total
       toast.success(`Refreshed — ${total} item${total === 1 ? '' : 's'} in history`)
+      const errorCount = data.source_errors?.length ?? 0
+      if (errorCount > 0) {
+        toast.error(
+          `${errorCount} indexer${errorCount === 1 ? '' : 's'} returned an error — see details above`,
+        )
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Refresh failed')

@@ -1,5 +1,15 @@
 /** @type {import('tailwindcss').Config} */
+
+// Color shades are driven by CSS custom properties (see src/index.css) so the
+// same utility classes adapt to the active light/dark theme. Channels are stored
+// as space-separated RGB triplets to keep Tailwind's `/<alpha>` opacity syntax working.
+const cssVarColor = (name) => `rgb(var(--color-${name}) / <alpha-value>)`
+
+const themedScale = (color, shades) =>
+  Object.fromEntries(shades.map((shade) => [shade, cssVarColor(`${color}-${shade}`)]))
+
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
@@ -7,19 +17,12 @@ export default {
         mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace'],
       },
       colors: {
-        // Custom slate tones for the dark theme
-        slate: {
-          950: '#0f172a',
-          900: '#1e293b',
-          800: '#334155',
-          700: '#475569',
-          600: '#64748b',
-          500: '#94a3b8',
-          400: '#cbd5e1',
-          300: '#e2e8f0',
-          200: '#f1f5f9',
-          100: '#f8fafc',
-        },
+        slate: themedScale('slate', [950, 900, 800, 700, 600, 500, 400, 300, 200, 100]),
+        cyan: themedScale('cyan', [100, 200, 300, 400, 500, 600, 700, 800]),
+        blue: themedScale('blue', [100, 200, 300, 400, 500, 600, 700, 800]),
+        emerald: themedScale('emerald', [100, 200, 300, 400, 500, 600, 700, 800]),
+        amber: themedScale('amber', [100, 200, 300, 400, 500, 600, 700, 800]),
+        red: themedScale('red', [100, 200, 300, 400, 500, 600, 700, 800]),
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out forwards',

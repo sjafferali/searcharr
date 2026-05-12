@@ -9,7 +9,7 @@ from typing import Literal
 from pydantic import Field, field_validator
 
 from app.schemas.base import BaseSchema
-from app.schemas.search import SearchCategory, SearchResult
+from app.schemas.search import IndexerError, SearchCategory, SearchResult
 
 POLL_INTERVAL_MIN = 5
 POLL_INTERVAL_MAX = 1440
@@ -141,6 +141,10 @@ class FeedResponse(BaseSchema):
     retention_days: int
     polling_enabled: bool
     last_polled_at: datetime | None
+    last_poll_errors: list[IndexerError] = Field(
+        default_factory=list,
+        description="Per-indexer failures recorded on the feed's most recent poll",
+    )
     stale_after_seconds: int
     created_at: datetime
     updated_at: datetime
@@ -162,7 +166,7 @@ class FeedFetchResponse(BaseSchema):
     total_results: int
     results: list[SearchResult]
     sources_queried: int
-    errors: list[str] = Field(default_factory=list)
+    errors: list[IndexerError] = Field(default_factory=list)
 
 
 class FeedItemSortBy(str, Enum):
@@ -221,3 +225,7 @@ class FeedItemListResponse(BaseSchema):
     next_poll_at: datetime | None
     stale_after_seconds: int
     polling_enabled: bool
+    source_errors: list[IndexerError] = Field(
+        default_factory=list,
+        description="Per-indexer failures recorded on the feed's most recent poll",
+    )

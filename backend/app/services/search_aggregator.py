@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models import JackettInstance, ProwlarrInstance
-from app.schemas.search import SearchCategory, SearchResult, SortBy, SortOrder
+from app.schemas.search import IndexerError, SearchCategory, SearchResult, SortBy, SortOrder
 from app.services.encryption import decrypt_credential
 from app.services.jackett import JackettService
 from app.services.prowlarr import ProwlarrService
@@ -52,7 +52,7 @@ class SearchAggregator:
         exclusive_filter: bool = False,
         sort_by: SortBy = SortBy.SEEDERS,
         sort_order: SortOrder = SortOrder.DESC,
-    ) -> tuple[list[SearchResult], list[str], int]:
+    ) -> tuple[list[SearchResult], list[IndexerError], int]:
         """
         Execute a unified search across all selected instances.
 
@@ -89,7 +89,7 @@ class SearchAggregator:
         sources_queried = len(jackett_instances) + len(prowlarr_instances)
 
         if sources_queried == 0:
-            return [], ["No instances configured"], 0
+            return [], [IndexerError(source="", message="No instances configured")], 0
 
         jackett_filters = jackett_indexer_filters or {}
         prowlarr_filters = prowlarr_indexer_filters or {}
@@ -121,16 +121,15 @@ class SearchAggregator:
 
         # Aggregate results and collect errors
         all_results: list[SearchResult] = []
-        errors: list[str] = []
+        errors: list[IndexerError] = []
 
         for result in task_results:
             if isinstance(result, Exception):
-                errors.append(str(result))
+                errors.append(IndexerError(source="", message=str(result) or "Search task failed"))
             elif isinstance(result, tuple):
-                results, error = result
+                results, task_errors = result
                 all_results.extend(results)
-                if error:
-                    errors.append(error)
+                errors.extend(task_errors)
 
         sorted_results = self._sort_results(all_results, sort_by, sort_order)
 
@@ -163,7 +162,7 @@ class SearchAggregator:
         query: str,
         category: SearchCategory,
         indexer_ids: list[str] | None,
-    ) -> tuple[list[SearchResult], str | None]:
+    ) -> tuple[list[SearchResult], list[IndexerError]]:
         """Search a Jackett instance with concurrency control."""
         async with semaphore:
             return await self._search_jackett(instance, query, category, indexer_ids)
@@ -174,16 +173,21 @@ class SearchAggregator:
         query: str,
         category: SearchCategory,
         indexer_ids: list[str] | None,
-    ) -> tuple[list[SearchResult], str | None]:
+    ) -> tuple[list[SearchResult], list[IndexerError]]:
         """Search a single Jackett instance."""
         try:
             api_key = decrypt_credential(instance.api_key)
             service = JackettService(instance.url, api_key)
-            results = await service.search(query, category, instance.name, indexer_ids=indexer_ids)
-            return results, None
+            return await service.search(query, category, instance.name, indexer_ids=indexer_ids)
         except Exception as e:
             logger.exception(f"Error searching Jackett instance {instance.name}")
-            return [], f"Error searching {instance.name}: {str(e)}"
+            return [], [
+                IndexerError(
+                    source=instance.name,
+                    source_type="jackett",
+                    message=str(e) or e.__class__.__name__,
+                )
+            ]
 
     async def _search_prowlarr_with_semaphore(
         self,
@@ -192,7 +196,7 @@ class SearchAggregator:
         query: str,
         category: SearchCategory,
         indexer_ids: list[str] | None,
-    ) -> tuple[list[SearchResult], str | None]:
+    ) -> tuple[list[SearchResult], list[IndexerError]]:
         """Search a Prowlarr instance with concurrency control."""
         async with semaphore:
             return await self._search_prowlarr(instance, query, category, indexer_ids)
@@ -203,16 +207,21 @@ class SearchAggregator:
         query: str,
         category: SearchCategory,
         indexer_ids: list[str] | None,
-    ) -> tuple[list[SearchResult], str | None]:
+    ) -> tuple[list[SearchResult], list[IndexerError]]:
         """Search a single Prowlarr instance."""
         try:
             api_key = decrypt_credential(instance.api_key)
             service = ProwlarrService(instance.url, api_key)
-            results = await service.search(query, category, instance.name, indexer_ids=indexer_ids)
-            return results, None
+            return await service.search(query, category, instance.name, indexer_ids=indexer_ids)
         except Exception as e:
             logger.exception(f"Error searching Prowlarr instance {instance.name}")
-            return [], f"Error searching {instance.name}: {str(e)}"
+            return [], [
+                IndexerError(
+                    source=instance.name,
+                    source_type="prowlarr",
+                    message=str(e) or e.__class__.__name__,
+                )
+            ]
 
     def _sort_results(
         self,

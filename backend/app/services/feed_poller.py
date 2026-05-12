@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from app.models import Feed, FeedItem
-from app.schemas.search import SearchResult
+from app.schemas.search import IndexerError, SearchResult
 from app.services.bookmark import compute_dedup_key
 from app.services.feed import FeedService
 
@@ -105,10 +105,11 @@ class FeedPoller:
                             "FeedPoller feed %s: %d source errors: %s",
                             feed_id,
                             len(errors),
-                            errors[:3],
+                            [e.message for e in errors[:3]],
                         )
                     await self._upsert_items(session, feed_id, results)
                     feed.last_polled_at = datetime.now(UTC)
+                    feed.last_poll_errors = [e.model_dump() for e in errors] if errors else None
                     await session.commit()
                     logger.debug(
                         "FeedPoller polled feed %s: %d items from %d source(s)",
@@ -248,23 +249,25 @@ class FeedPoller:
             total_deleted += getattr(result, "rowcount", 0) or 0
         return total_deleted
 
-    async def refresh_now(self, feed_id: int) -> tuple[int, int, list[str]]:
+    async def refresh_now(self, feed_id: int) -> tuple[int, int, list[IndexerError]]:
         """
         Run one synchronous poll for a single feed.
 
         Used by ``POST /feeds/{id}/refresh``. Returns
         ``(inserted, updated, errors)`` so the API can surface any source
         errors. Bumps ``last_polled_at`` so the scheduled loop skips this
-        feed for its next normal interval.
+        feed for its next normal interval, and stores the errors on the feed
+        so subsequent ``GET /feeds/{id}/items`` calls report them too.
         """
         async with self._session_factory() as session:
             feed = await self._load_feed(session, feed_id)
             if feed is None:
-                return 0, 0, ["Feed not found"]
+                return 0, 0, [IndexerError(source="", message="Feed not found")]
             service = FeedService(session)
             results, errors, _sources = await service.fetch(feed)
             inserted, updated = await self._upsert_items(session, feed_id, results)
             feed.last_polled_at = datetime.now(UTC)
+            feed.last_poll_errors = [e.model_dump() for e in errors] if errors else None
             await session.commit()
             return inserted, updated, errors
 

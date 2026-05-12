@@ -1,0 +1,78 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - link "Searcharr Unified Search Aggregator" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - img [ref=e11]
+          - generic [ref=e16]:
+            - heading "Searcharr" [level=1] [ref=e17]
+            - paragraph [ref=e18]: Unified Search Aggregator
+        - navigation [ref=e19]:
+          - link "Search" [ref=e20] [cursor=pointer]:
+            - /url: /
+            - img [ref=e21]
+            - text: Search
+          - link "Feeds" [ref=e24] [cursor=pointer]:
+            - /url: /feeds
+            - img [ref=e25]
+            - text: Feeds
+          - link "Bookmarks" [ref=e29] [cursor=pointer]:
+            - /url: /bookmarks
+            - img [ref=e30]
+            - text: Bookmarks
+          - link "History" [ref=e32] [cursor=pointer]:
+            - /url: /history
+            - img [ref=e33]
+            - text: History
+          - link "Instances" [ref=e37] [cursor=pointer]:
+            - /url: /instances
+            - img [ref=e38]
+            - text: Instances
+          - link "Clients" [ref=e41] [cursor=pointer]:
+            - /url: /clients
+            - img [ref=e42]
+            - text: Clients
+        - generic [ref=e44]:
+          - generic [ref=e47]: 0 sources online
+          - button "Switch to light mode" [ref=e48] [cursor=pointer]:
+            - img [ref=e49]
+            - generic [ref=e51]: Dark
+    - main [ref=e52]:
+      - generic [ref=e53]:
+        - generic [ref=e55]:
+          - generic [ref=e58]:
+            - img [ref=e59]
+            - textbox "Search across all indexers..." [ref=e62]
+            - combobox [ref=e63] [cursor=pointer]:
+              - option "All" [selected]
+              - option "Movies"
+              - option "TV"
+              - option "Music"
+              - option "Software"
+              - option "Games"
+              - option "Books"
+              - option "Anime"
+              - option "Other"
+          - button "Search" [ref=e64] [cursor=pointer]:
+            - img [ref=e65]
+            - text: Search
+        - generic [ref=e68]:
+          - button "Sources" [ref=e69] [cursor=pointer]:
+            - generic [ref=e70]:
+              - img [ref=e71]
+              - text: Sources
+            - img [ref=e75]
+          - generic [ref=e78]:
+            - paragraph [ref=e79]: Searching every configured instance.
+            - paragraph [ref=e81]: No instances configured
+        - generic [ref=e82]:
+          - paragraph [ref=e84]: 0 results found
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - paragraph [ref=e89]: Enter a search query to find torrents
+            - paragraph [ref=e90]: Results will be aggregated from all configured sources
+  - generic [ref=e91]:
+    - img [ref=e93]
+    - button "Open Tanstack query devtools" [ref=e141] [cursor=pointer]:
+      - img [ref=e142]

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { SearchCategory, SortBy, SortOrder, SearchResult } from '../types'
+import { IndexerError, SearchCategory, SortBy, SortOrder, SearchResult } from '../types'
 
 interface SearchFilters {
   category: SearchCategory
@@ -44,6 +44,8 @@ interface SearchState {
   setResults: (results: SearchResult[]) => void
   totalResults: number
   setTotalResults: (total: number) => void
+  searchErrors: IndexerError[]
+  setSearchErrors: (errors: IndexerError[]) => void
 
   // UI State
   isFiltersExpanded: boolean
@@ -184,6 +186,8 @@ export const useSearchStore = create<SearchState>((set) => ({
   setResults: (results) => set({ results }),
   totalResults: 0,
   setTotalResults: (total) => set({ totalResults: total }),
+  searchErrors: [],
+  setSearchErrors: (errors) => set({ searchErrors: errors }),
 
   // UI State
   isFiltersExpanded: true,

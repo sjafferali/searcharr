@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 from app.models import Feed, FeedIndexer, JackettInstance, ProwlarrInstance
 from app.schemas.feed import FeedFilters, FeedSortStrategy
-from app.schemas.search import SearchCategory, SearchResult
+from app.schemas.search import IndexerError, SearchCategory, SearchResult
 from app.services.feed import FeedService
 
 
@@ -48,7 +48,7 @@ class TestFeedFilters:
             _result(id_="a", freeleech=True),
             _result(id_="b", freeleech=False),
         ]
-        errors: list[str] = []
+        errors: list[IndexerError] = []
         kept = FeedService._apply_filters(
             items,
             FeedFilters(category=SearchCategory.ALL, freeleech_only=True),
@@ -61,7 +61,7 @@ class TestFeedFilters:
             _result(id_="a", seeders=10),
             _result(id_="b", seeders=2),
         ]
-        errors: list[str] = []
+        errors: list[IndexerError] = []
         kept = FeedService._apply_filters(
             items,
             FeedFilters(category=SearchCategory.ALL, min_seeders=5),
@@ -75,7 +75,7 @@ class TestFeedFilters:
             _result(id_="ok", size=2_000_000),
             _result(id_="big", size=10_000_000),
         ]
-        errors: list[str] = []
+        errors: list[IndexerError] = []
         kept = FeedService._apply_filters(
             items,
             FeedFilters(
@@ -92,7 +92,7 @@ class TestFeedFilters:
             _result(id_="a", title="Some.Movie.2160p.BluRay.x265"),
             _result(id_="b", title="Some.Movie.1080p.WEB-DL.x264"),
         ]
-        errors: list[str] = []
+        errors: list[IndexerError] = []
         kept = FeedService._apply_filters(
             items,
             FeedFilters(category=SearchCategory.ALL, include_regex=r"2160P"),
@@ -105,7 +105,7 @@ class TestFeedFilters:
             _result(id_="a", title="Album [FLAC]"),
             _result(id_="b", title="Album (Remix) [FLAC]"),
         ]
-        errors: list[str] = []
+        errors: list[IndexerError] = []
         kept = FeedService._apply_filters(
             items,
             FeedFilters(category=SearchCategory.ALL, exclude_regex=r"remix"),
@@ -115,7 +115,7 @@ class TestFeedFilters:
 
     def test_invalid_regex_is_recorded_as_error_not_raised(self):
         items = [_result()]
-        errors: list[str] = []
+        errors: list[IndexerError] = []
         kept = FeedService._apply_filters(
             items,
             FeedFilters(category=SearchCategory.ALL, include_regex="["),
@@ -123,7 +123,7 @@ class TestFeedFilters:
         )
         # Invalid regex doesn't apply, so the item passes through
         assert len(kept) == 1
-        assert any("include regex" in e for e in errors)
+        assert any("include regex" in e.message for e in errors)
 
     def test_filters_compose(self):
         items = [
@@ -132,7 +132,7 @@ class TestFeedFilters:
             _result(id_="c", title="Ubuntu Server", seeders=100, freeleech=False),
             _result(id_="d", title="Other Distro", seeders=100, freeleech=True),
         ]
-        errors: list[str] = []
+        errors: list[IndexerError] = []
         kept = FeedService._apply_filters(
             items,
             FeedFilters(
@@ -161,7 +161,7 @@ class TestSortStrategy:
             return [
                 _result(id_="old-from-jackett", date=old),
                 _result(id_="new-from-jackett", date=recent),
-            ], None
+            ], []
 
         service = self._service_with_jackett(fake_jackett)
         results, _, sources = await service.fetch(feed)
@@ -182,7 +182,7 @@ class TestSortStrategy:
             return [
                 _result(id_="first-from-source", date=old),
                 _result(id_="second-from-source", date=recent),
-            ], None
+            ], []
 
         service = self._service_with_jackett(fake_jackett)
         results, _, sources = await service.fetch(feed)
@@ -227,11 +227,11 @@ class TestSortStrategy:
 
         async def fake_jackett(*args, **kwargs):
             # Jackett returns the OLDER item.
-            return [_result(id_="from-jackett", date=old)], None
+            return [_result(id_="from-jackett", date=old)], []
 
         async def fake_prowlarr(*args, **kwargs):
             # Prowlarr returns the NEWER item.
-            return [_result(id_="from-prowlarr", date=recent)], None
+            return [_result(id_="from-prowlarr", date=recent)], []
 
         service = FeedService(db=None)  # type: ignore[arg-type]
         service._load_jackett_instances = AsyncMock(  # type: ignore[method-assign]

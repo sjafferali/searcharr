@@ -27,6 +27,9 @@ export {
 
 export { useCategories, useSearch, searchKeys } from './useSearch'
 
+export { useTheme } from './useTheme'
+export type { Theme } from './useTheme'
+
 export { useSendToClient } from './useDownload'
 
 export {

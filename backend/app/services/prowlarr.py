@@ -8,14 +8,25 @@ PVR apps and supports management of both torrent and usenet indexers.
 import asyncio
 import hashlib
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urljoin
 
 import httpx
 
-from app.schemas.search import CATEGORY_MAPPINGS, IndexerInfo, SearchCategory, SearchResult
-from app.services.torznab import parse_torznab_response
+from app.schemas.search import (
+    CATEGORY_MAPPINGS,
+    IndexerError,
+    IndexerInfo,
+    SearchCategory,
+    SearchResult,
+)
+from app.services.torznab import (
+    http_error_message,
+    parse_torznab_error,
+    parse_torznab_response,
+    rate_limit_message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +162,7 @@ class ProwlarrService:
         instance_name: str = "Prowlarr",
         indexer_ids: list[str] | None = None,
         category: SearchCategory = SearchCategory.ALL,
-    ) -> list[SearchResult]:
+    ) -> tuple[list[SearchResult], list[IndexerError]]:
         """
         Fetch the latest releases from a set of indexers.
 
@@ -172,14 +183,19 @@ class ProwlarrService:
 
         ``indexer_ids`` must contain numeric Prowlarr indexer IDs; non-numeric
         entries are dropped (Prowlarr's route is ``{id:int}``). When the
-        list is empty after filtering, an empty list is returned.
+        list is empty after filtering, ``([], [])`` is returned.
+
+        Returns ``(results, errors)`` where ``errors`` lists per-indexer
+        failures (rate limits, disabled indexers, timeouts, ...). Each error's
+        ``indexer`` field holds the numeric Prowlarr id as a string; callers
+        with the friendly display name should map it for presentation.
         """
         if not indexer_ids:
-            return []
+            return [], []
 
         numeric_ids = [int(idx) for idx in indexer_ids if str(idx).isdigit()]
         if not numeric_ids:
-            return []
+            return [], []
 
         tasks = [
             self._fetch_latest_one_indexer(idx, category, instance_name) for idx in numeric_ids
@@ -187,19 +203,39 @@ class ProwlarrService:
         grouped = await asyncio.gather(*tasks, return_exceptions=True)
 
         aggregated: list[SearchResult] = []
-        for group in grouped:
-            if isinstance(group, list):
-                aggregated.extend(group)
-        return aggregated
+        errors: list[IndexerError] = []
+        for outcome in grouped:
+            if isinstance(outcome, tuple):
+                results, error = outcome
+                aggregated.extend(results)
+                if error is not None:
+                    errors.append(error)
+        return aggregated, errors
 
     async def _fetch_latest_one_indexer(
         self,
         indexer_id: int,
         category: SearchCategory,
         instance_name: str,
-    ) -> list[SearchResult]:
-        """Hit Prowlarr's per-indexer Newznab passthrough for a single indexer."""
+    ) -> tuple[list[SearchResult], IndexerError | None]:
+        """
+        Hit Prowlarr's per-indexer Newznab passthrough for a single indexer.
+
+        Returns ``(results, error)`` — ``error`` is ``None`` on success, or an
+        ``IndexerError`` describing why this indexer produced nothing (HTTP 429
+        rate limit, an indexer Prowlarr has disabled after repeated failures —
+        which surfaces as a Torznab ``<error>`` body — a timeout, etc.).
+        """
         results: list[SearchResult] = []
+
+        def _err(message: str) -> IndexerError:
+            return IndexerError(
+                source=instance_name,
+                source_type="prowlarr",
+                indexer=str(indexer_id),
+                message=message,
+            )
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 url = urljoin(self.base_url, f"/{indexer_id}/api")
@@ -216,18 +252,25 @@ class ProwlarrService:
                 response = await client.get(url, params=params)
 
                 if response.status_code == 429:
-                    retry_after = response.headers.get("Retry-After", "?")
+                    retry_after = response.headers.get("Retry-After")
                     logger.warning(
                         f"Prowlarr indexer {indexer_id} rate-limited "
-                        f"(Retry-After: {retry_after}s)"
+                        f"(Retry-After: {retry_after or '?'})"
                     )
-                    return results
+                    return results, _err(rate_limit_message(retry_after))
                 if response.status_code != 200:
+                    message = http_error_message(response)
                     logger.warning(
-                        f"Prowlarr Newznab passthrough for indexer {indexer_id} "
-                        f"returned HTTP {response.status_code}"
+                        f"Prowlarr Newznab passthrough for indexer {indexer_id}: {message}"
                     )
-                    return results
+                    return results, _err(message)
+
+                torznab_error = parse_torznab_error(response.text)
+                if torznab_error:
+                    logger.warning(
+                        f"Prowlarr Newznab passthrough for indexer {indexer_id}: {torznab_error}"
+                    )
+                    return results, _err(torznab_error)
 
                 results = parse_torznab_response(
                     response.text,
@@ -237,9 +280,11 @@ class ProwlarrService:
                 )
         except httpx.TimeoutException:
             logger.warning(f"Prowlarr Newznab passthrough timed out for indexer {indexer_id}")
-        except Exception:
+            return results, _err("Request timed out")
+        except Exception as exc:
             logger.exception(f"Error fetching latest from Prowlarr indexer {indexer_id}")
-        return results
+            return results, _err(str(exc) or exc.__class__.__name__)
+        return results, None
 
     async def search(
         self,
@@ -247,7 +292,7 @@ class ProwlarrService:
         category: SearchCategory = SearchCategory.ALL,
         instance_name: str = "Prowlarr",
         indexer_ids: list[str] | None = None,
-    ) -> list[SearchResult]:
+    ) -> tuple[list[SearchResult], list[IndexerError]]:
         """
         Search for torrents across all configured indexers, or a specific subset.
 
@@ -258,9 +303,19 @@ class ProwlarrService:
             indexer_ids: Optional list of Prowlarr indexer IDs to limit the search to.
 
         Returns:
-            List of SearchResult objects
+            ``(results, errors)``. ``errors`` carries instance-level failures
+            (HTTP 429 on the unified endpoint, timeouts, connection errors) plus
+            one entry per requested indexer Prowlarr has auto-disabled — the
+            unified ``/api/v1/search`` silently omits disabled indexers, so we
+            cross-reference ``/api/v1/indexerstatus`` to surface them.
         """
         results: list[SearchResult] = []
+        errors: list[IndexerError] = []
+
+        def _instance_err(message: str) -> IndexerError:
+            return IndexerError(
+                source=instance_name, source_type="prowlarr", indexer=None, message=message
+            )
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -285,20 +340,114 @@ class ProwlarrService:
                     params=params,
                 )
 
+                if response.status_code == 429:
+                    retry_after = response.headers.get("Retry-After")
+                    logger.warning(
+                        f"Prowlarr search rate-limited (Retry-After: {retry_after or '?'})"
+                    )
+                    return results, [_instance_err(rate_limit_message(retry_after))]
                 if response.status_code != 200:
-                    logger.warning(f"Prowlarr search failed: HTTP {response.status_code}")
-                    return results
+                    message = http_error_message(response)
+                    logger.warning(f"Prowlarr search failed: {message}")
+                    return results, [_instance_err(message)]
 
                 # Parse JSON response
                 data = response.json()
                 results = self._parse_search_response(data, instance_name)
 
+                try:
+                    errors.extend(
+                        await self._collect_disabled_indexer_errors(
+                            client, instance_name, indexer_ids
+                        )
+                    )
+                except Exception:
+                    logger.debug("Prowlarr indexer-status check failed", exc_info=True)
+
         except httpx.TimeoutException:
             logger.warning(f"Prowlarr search timed out for query: {query}")
+            return results, [_instance_err("Request timed out")]
         except Exception as e:
             logger.exception(f"Error searching Prowlarr: {e}")
+            return results, [_instance_err(str(e) or e.__class__.__name__)]
 
-        return results
+        return results, errors
+
+    async def _collect_disabled_indexer_errors(
+        self,
+        client: httpx.AsyncClient,
+        instance_name: str,
+        indexer_ids: list[str] | None,
+    ) -> list[IndexerError]:
+        """
+        Return an ``IndexerError`` for each indexer Prowlarr currently has
+        backed off (``disabledTill`` in the future).
+
+        When ``indexer_ids`` is given, only those indexers are reported;
+        otherwise every currently-disabled indexer is reported, since any of
+        them would silently shrink an "all indexers" search.
+        """
+        status_resp = await client.get(
+            self._get_api_url("indexerstatus"), headers=self._get_headers()
+        )
+        if status_resp.status_code != 200:
+            return []
+        statuses = status_resp.json()
+        if not isinstance(statuses, list) or not statuses:
+            return []
+
+        now = datetime.now(UTC)
+        disabled_ids: list[int] = []
+        for entry in statuses:
+            if not isinstance(entry, dict):
+                continue
+            idx_id = entry.get("indexerId")
+            disabled_till = entry.get("disabledTill")
+            if idx_id is None or not disabled_till:
+                continue
+            try:
+                until = datetime.fromisoformat(str(disabled_till).replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if until.tzinfo is None:
+                until = until.replace(tzinfo=UTC)
+            if until <= now:
+                continue
+            disabled_ids.append(int(idx_id))
+
+        if not disabled_ids:
+            return []
+
+        requested: set[int] | None = None
+        if indexer_ids:
+            requested = {int(i) for i in indexer_ids if str(i).isdigit()}
+        relevant_ids = [i for i in disabled_ids if requested is None or i in requested]
+        if not relevant_ids:
+            return []
+
+        names: dict[int, str] = {}
+        try:
+            ind_resp = await client.get(self._get_api_url("indexer"), headers=self._get_headers())
+            if ind_resp.status_code == 200:
+                for entry in ind_resp.json():
+                    if (
+                        isinstance(entry, dict)
+                        and entry.get("id") is not None
+                        and entry.get("name")
+                    ):
+                        names[int(entry["id"])] = str(entry["name"])
+        except Exception:
+            logger.debug("Prowlarr indexer-name lookup failed", exc_info=True)
+
+        return [
+            IndexerError(
+                source=instance_name,
+                source_type="prowlarr",
+                indexer=names.get(idx_id, str(idx_id)),
+                message="Disabled by Prowlarr after repeated failures",
+            )
+            for idx_id in relevant_ids
+        ]
 
     def _parse_search_response(
         self,

@@ -66,6 +66,7 @@ from app.schemas.instance import (
 from app.schemas.search import (
     CATEGORY_MAPPINGS,
     CategoriesResponse,
+    IndexerError,
     IndexerInfo,
     IndexersResponse,
     SearchCategory,
@@ -112,6 +113,7 @@ __all__ = [
     "SearchResult",
     "SearchResponse",
     "CategoriesResponse",
+    "IndexerError",
     "IndexerInfo",
     "IndexersResponse",
     # Download

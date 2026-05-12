@@ -421,7 +421,7 @@ class TestFeedsCRUD:
         assert response.status_code == 200
         data = response.json()
         assert data["sources_queried"] == 0
-        assert any("still configured" in e for e in data["errors"])
+        assert any("still configured" in e["message"] for e in data["errors"])
 
     @pytest.mark.asyncio
     async def test_create_feed_accepts_indexer_order_strategy(
@@ -868,6 +868,46 @@ class TestRefreshEndpoint:
             delattr(app.state, "feed_poller")
 
     @pytest.mark.asyncio
+    async def test_items_endpoint_surfaces_last_poll_errors(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        jackett_instance: JackettInstance,
+    ):
+        """``GET /feeds/{id}/items`` reports the errors recorded on the last poll."""
+        feed = Feed(
+            name="Errored feed",
+            description=None,
+            category="All",
+            freeleech_only=False,
+            min_seeders=0,
+            sort_strategy="date_desc",
+            poll_interval_minutes=15,
+            retention_days=30,
+            polling_enabled=True,
+            last_polled_at=datetime.now(UTC),
+            last_poll_errors=[
+                {
+                    "source": "Main Prowlarr",
+                    "message": "Rate limited by the indexer — retry after 297s",
+                    "source_type": "prowlarr",
+                    "indexer": "REDacted",
+                }
+            ],
+        )
+        db_session.add(feed)
+        await db_session.commit()
+
+        response = await client.get(f"/api/v1/feeds/{feed.id}/items")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["source_errors"]) == 1
+        err = data["source_errors"][0]
+        assert err["source"] == "Main Prowlarr"
+        assert err["indexer"] == "REDacted"
+        assert "rate limited" in err["message"].lower()
+
+    @pytest.mark.asyncio
     async def test_refresh_404_when_poller_reports_not_found(
         self,
         client: AsyncClient,
@@ -876,7 +916,9 @@ class TestRefreshEndpoint:
 
         class FakePoller:
             async def refresh_now(self, fid: int):
-                return (0, 0, ["Feed not found"])
+                from app.schemas import IndexerError
+
+                return (0, 0, [IndexerError(source="", message="Feed not found")])
 
         app.state.feed_poller = FakePoller()
 
