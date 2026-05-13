@@ -1,0 +1,60 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e7]:
+      - link "Searcharr Unified Search Aggregator" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - generic [ref=e16]:
+          - heading "Searcharr" [level=1] [ref=e17]
+          - paragraph [ref=e18]: Unified Search Aggregator
+      - navigation [ref=e19]:
+        - link "Search" [ref=e20] [cursor=pointer]:
+          - /url: /
+          - img [ref=e21]
+          - text: Search
+        - link "Feeds" [ref=e24] [cursor=pointer]:
+          - /url: /feeds
+          - img [ref=e25]
+          - text: Feeds
+        - link "Bookmarks" [ref=e29] [cursor=pointer]:
+          - /url: /bookmarks
+          - img [ref=e30]
+          - text: Bookmarks
+        - link "History" [ref=e32] [cursor=pointer]:
+          - /url: /history
+          - img [ref=e33]
+          - text: History
+        - link "Instances" [ref=e37] [cursor=pointer]:
+          - /url: /instances
+          - img [ref=e38]
+          - text: Instances
+        - link "Clients" [ref=e41] [cursor=pointer]:
+          - /url: /clients
+          - img [ref=e42]
+          - text: Clients
+      - generic [ref=e44]:
+        - generic [ref=e47]: 0 sources online
+        - button "Switch to light mode" [ref=e48] [cursor=pointer]:
+          - img [ref=e49]
+          - generic [ref=e51]: Dark
+  - main [ref=e52]:
+    - generic [ref=e53]:
+      - complementary [ref=e54]:
+        - generic [ref=e55]:
+          - heading "Feeds" [level=2] [ref=e56]:
+            - img [ref=e57]
+            - text: Feeds
+          - generic [ref=e61]:
+            - button "New" [ref=e62] [cursor=pointer]:
+              - img [ref=e63]
+              - text: New
+            - button "Collapse feeds sidebar" [ref=e64] [cursor=pointer]:
+              - img [ref=e65]
+        - generic [ref=e67]:
+          - img [ref=e68]
+          - generic [ref=e70]: Loading feeds…
+      - generic [ref=e72]:
+        - img [ref=e74]
+        - paragraph [ref=e78]: No feed selected
+        - paragraph [ref=e79]: Create a feed to start collecting a polled history of indexer releases.
+        - button "Create a feed" [ref=e80] [cursor=pointer]

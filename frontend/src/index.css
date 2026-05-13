@@ -81,10 +81,16 @@
   html.light {
     color-scheme: light;
 
-    --color-slate-950: 255 255 255;
-    --color-slate-900: 241 245 249;
-    --color-slate-800: 226 232 240;
-    --color-slate-700: 203 213 225;
+    /*
+     * The page sits on a soft cool-grey while panels resolve to white, so cards
+     * and tables visibly lift off the background. The border/surface greys are
+     * deepened from a straight inversion so utilities like `border-slate-800/50`
+     * and `divide-slate-800/30` still read once composited over white.
+     */
+    --color-slate-950: 235 238 244;
+    --color-slate-900: 255 255 255;
+    --color-slate-800: 199 209 221;
+    --color-slate-700: 168 180 198;
     --color-slate-600: 148 163 184;
     --color-slate-500: 100 116 139;
     --color-slate-400: 71 85 105;
@@ -229,6 +235,34 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /*
+   * Light-mode refinements. White panels on a soft-grey page get a hint of
+   * elevation from the sticky header, and every row in the dense result / feed
+   * / history tables gets a quiet divider, a faint alternating shade and a
+   * clearer hover fill — so entries read as distinct rows rather than one
+   * undifferentiated block. (`!important` overrides the `divide-*` and
+   * `hover:bg-*` utilities, whose colours wash out over white.)
+   */
+  html.light .bg-ambient {
+    background-image: radial-gradient(ellipse at top, rgb(241 244 249), rgb(231 235 242));
+  }
+
+  html.light .glass {
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+  }
+
+  html.light tbody > tr {
+    border-top-color: rgb(15 23 42 / 0.09) !important;
+  }
+
+  html.light tbody > tr:nth-child(even):not(:hover) {
+    background-color: rgb(15 23 42 / 0.025);
+  }
+
+  html.light tbody > tr:hover {
+    background-color: rgb(15 23 42 / 0.06) !important;
   }
 }
 

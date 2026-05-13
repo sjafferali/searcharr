@@ -3,7 +3,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import toast from 'react-hot-toast'
 import { feedsApi } from '../api'
 import { Feed, FeedCreate, FeedItemListParams, FeedUpdate } from '../types'
-import { getFeedLastViewed, subscribeFeedLastViewed } from '../utils'
+import { getFeedNewBaseline, subscribeFeedLastViewed } from '../utils'
 
 export const feedKeys = {
   all: ['feeds'] as const,
@@ -112,19 +112,19 @@ export function useFeedItems(id: number | null, params: FeedItemListParams) {
 /**
  * Returns, keyed by feed id, the number of items first seen since the user
  * last opened that feed — the value rendered as a "NEW" badge in the feeds
- * sidebar. Feeds the user has never opened are omitted (no badge). Re-runs
- * whenever a feed is opened so its badge clears immediately, and polls in the
- * background so badges grow as the FeedPoller brings in new items.
+ * sidebar, matching the rows the feed table flags NEW. Feeds the user has
+ * never opened are omitted (no badge). Polls in the background so badges grow
+ * as the FeedPoller brings in new items.
  */
 export function useFeedNewCounts(feeds: Feed[]): Record<number, number> {
-  // Bump a counter whenever a feed is opened so the `since` cutoffs below are
-  // recomputed from the freshly-persisted "last viewed" timestamps.
+  // Re-render when a feed is opened so any feed that just acquired a session
+  // baseline picks it up.
   const [, setRevision] = useState(0)
   useEffect(() => subscribeFeedLastViewed(() => setRevision((r) => r + 1)), [])
 
   const results = useQueries({
     queries: feeds.map((feed) => {
-      const since = getFeedLastViewed(feed.id)
+      const since = getFeedNewBaseline(feed.id)
       return {
         queryKey: feedKeys.newCount(feed.id, since),
         queryFn: () =>

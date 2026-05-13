@@ -588,7 +588,7 @@ export function FeedsPage() {
                         {newCount > 0 && (
                           <span
                             className="flex flex-shrink-0 items-center gap-1 rounded-full border border-cyan-400/50 bg-gradient-to-r from-cyan-500/25 to-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.3)]"
-                            title={`${newCount.toLocaleString()} new item${newCount === 1 ? '' : 's'} since you last opened this feed`}
+                            title={`${newCount.toLocaleString()} new item${newCount === 1 ? '' : 's'} since your last visit`}
                           >
                             <Sparkles className="h-2.5 w-2.5" />
                             {newCount > 99 ? '99+' : newCount}
@@ -837,9 +837,7 @@ export function FeedsPage() {
               <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
                 <Sparkles className="mx-auto mb-4 h-12 w-12 text-slate-600" />
                 <p className="text-slate-400">You're all caught up</p>
-                <p className="mt-1 text-sm text-slate-500">
-                  No new items since you last opened this feed.
-                </p>
+                <p className="mt-1 text-sm text-slate-500">No new items since your last visit.</p>
                 <button
                   onClick={() => setShowNewOnly(false)}
                   className="mt-3 text-xs font-medium text-cyan-400 hover:underline"

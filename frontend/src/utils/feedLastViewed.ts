@@ -43,6 +43,19 @@ export function getFeedLastViewed(feedId: number): number {
 }
 
 /**
+ * The baseline a feed's items are judged "new" against — the same value the
+ * feed table uses to flag NEW rows. Once a feed has been opened this session
+ * it's the session baseline (the timestamp from *before* the open bumped it),
+ * so the count stays put while the feed is being viewed; otherwise it's the
+ * persisted "last opened" value. Returns 0 when the feed has never been
+ * opened, since there's no reference point to call anything new.
+ */
+export function getFeedNewBaseline(feedId: number): number {
+  const session = sessionBaselines.get(feedId)
+  return session !== undefined ? session : getFeedLastViewed(feedId)
+}
+
+/**
  * Records that the feed has just been opened: persists ``Date.now()`` and
  * notifies subscribers. Returns the session baseline — the value that was
  * stored the first time this feed was opened this session — which the feed
