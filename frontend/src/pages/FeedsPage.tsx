@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -46,6 +46,7 @@ import {
   useClientsStatus,
   useDeleteFeed,
   useFeedItems,
+  useFeedNewCounts,
   useFeeds,
   useHistoryLookup,
   useInstancesStatus,
@@ -63,13 +64,19 @@ import {
   SearchResult,
   SortOrder,
 } from '../types'
-import { cn, formatAge, formatBytes, formatDateTime, formatRelative } from '../utils'
+import {
+  cn,
+  formatAge,
+  formatBytes,
+  formatDateTime,
+  formatRelative,
+  markFeedViewed,
+} from '../utils'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
 const DEFAULT_PAGE_SIZE = 25
 const SIDEBAR_STATE_KEY = 'feeds.sidebarCollapsed'
 const PAGE_SIZE_STATE_KEY = 'feeds.pageSize'
-const LAST_VIEWED_KEY_PREFIX = 'feeds.lastViewed.'
 
 type SortableColumnKey = FeedItemSortBy
 
@@ -164,47 +171,25 @@ function formatHoursDuration(seconds: number | null): string {
 }
 
 /**
- * Returns the "new since" baseline timestamp for the given feed: the moment the
- * user last opened this feed. Items whose ``first_seen_at`` is newer than the
+ * Returns the "new since" baseline timestamp for the given feed: the moment
+ * the user last opened it. Items whose ``first_seen_at`` is newer than the
  * baseline are flagged NEW.
  *
- * When a feed is opened, the previously-stored "last opened" value becomes the
- * baseline for this session, and ``Date.now()`` is persisted immediately as
- * the new "last opened" — eagerly, not in an effect cleanup, so it survives a
- * full page reload or tab close (where React cleanups never run). A per-feed
- * cache keeps the baseline stable across StrictMode's dev double-mount and
- * across switching away from and back to the same feed within one session.
+ * Opening a feed records the current time as its new "last opened" value
+ * (persisted eagerly so the NEW state survives a reload) and notifies the
+ * feeds sidebar so the feed's NEW-count badge clears. The returned baseline
+ * is captured once per feed per session so flagged rows stay flagged while
+ * the feed is being viewed. See {@link markFeedViewed}.
  */
 function useLastViewedBaseline(feedId: number | null): number | null {
   const [baseline, setBaseline] = useState<number | null>(null)
-  const baselineCache = useRef<Map<number, number>>(new Map())
 
   useEffect(() => {
-    if (typeof window === 'undefined' || feedId === null) {
+    if (feedId === null) {
       setBaseline(null)
       return
     }
-    const cached = baselineCache.current.get(feedId)
-    if (cached !== undefined) {
-      setBaseline(cached)
-      return
-    }
-    const key = `${LAST_VIEWED_KEY_PREFIX}${feedId}`
-    let stored = 0
-    try {
-      const raw = window.localStorage.getItem(key)
-      const parsed = raw ? Number(raw) : 0
-      if (Number.isFinite(parsed) && parsed > 0) stored = parsed
-    } catch {
-      // ignore read failures (private mode, disabled storage)
-    }
-    baselineCache.current.set(feedId, stored)
-    setBaseline(stored)
-    try {
-      window.localStorage.setItem(key, String(Date.now()))
-    } catch {
-      // ignore quota / private-mode failures
-    }
+    setBaseline(markFeedViewed(feedId))
   }, [feedId])
 
   return baseline
@@ -228,6 +213,7 @@ export function FeedsPage() {
   const refreshFeed = useRefreshFeed()
 
   const feeds = useMemo(() => feedsData?.entries ?? [], [feedsData])
+  const newCounts = useFeedNewCounts(feeds)
 
   const [selectedFeedId, setSelectedFeedId] = useState<number | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
@@ -264,6 +250,7 @@ export function FeedsPage() {
   const [seenWithinHours, setSeenWithinHours] = useState<number | null>(null)
   const [firstSeenWithinHours, setFirstSeenWithinHours] = useState<number | null>(null)
   const [hideStale, setHideStale] = useState(false)
+  const [showNewOnly, setShowNewOnly] = useState(false)
   const [offset, setOffset] = useState(0)
 
   // Auto-select first feed when feeds load and none is selected; clear on delete.
@@ -281,6 +268,11 @@ export function FeedsPage() {
     [feeds, selectedFeedId],
   )
 
+  const lastViewedBaseline = useLastViewedBaseline(selectedFeedId)
+  // "New" is meaningful only once a prior visit has been recorded; until then
+  // there's nothing to compare against, so the "new only" filter is hidden.
+  const canFilterNew = lastViewedBaseline !== null && lastViewedBaseline > 0
+
   // Resetting filters when the selected feed changes keeps the UX coherent —
   // a saved feed's own filters already shape what's persisted; transient UI
   // filters here are layered on top and shouldn't leak between feeds.
@@ -293,6 +285,7 @@ export function FeedsPage() {
     setSeenWithinHours(null)
     setFirstSeenWithinHours(null)
     setHideStale(false)
+    setShowNewOnly(false)
     setOffset(0)
   }, [selectedFeedId])
 
@@ -308,6 +301,7 @@ export function FeedsPage() {
     seenWithinHours,
     firstSeenWithinHours,
     hideStale,
+    showNewOnly,
     pageSize,
   ])
 
@@ -318,6 +312,13 @@ export function FeedsPage() {
     }
     return undefined
   }, [seenWithinHours, hideStale, selectedFeed])
+
+  // When the "new only" filter is active, ask the server for items first seen
+  // after the visit baseline — matching the rows the table flags NEW.
+  const newOnlyCutoff = useMemo(() => {
+    if (!showNewOnly || !canFilterNew) return undefined
+    return new Date(lastViewedBaseline as number).toISOString()
+  }, [showNewOnly, canFilterNew, lastViewedBaseline])
 
   const itemsParams: FeedItemListParams = useMemo(
     () => ({
@@ -330,6 +331,7 @@ export function FeedsPage() {
       max_size_bytes: maxSizeFilter ?? undefined,
       seen_within_hours: effectiveSeenWithin,
       first_seen_within_hours: firstSeenWithinHours ?? undefined,
+      first_seen_after: newOnlyCutoff,
     }),
     [
       pageSize,
@@ -341,13 +343,13 @@ export function FeedsPage() {
       maxSizeFilter,
       effectiveSeenWithin,
       firstSeenWithinHours,
+      newOnlyCutoff,
     ],
   )
 
   const itemsQuery = useFeedItems(selectedFeedId, itemsParams)
   const entries = itemsQuery.data?.entries ?? []
   const total = itemsQuery.data?.total ?? 0
-  const lastViewedBaseline = useLastViewedBaseline(selectedFeedId)
   const lastPolledAt = itemsQuery.data?.last_polled_at ?? selectedFeed?.last_polled_at ?? null
   const nextPollAt = itemsQuery.data?.next_poll_at ?? null
   const staleAfterSeconds =
@@ -486,6 +488,7 @@ export function FeedsPage() {
         {sidebarCollapsed ? (
           <CollapsedFeedRail
             feeds={feeds}
+            newCounts={newCounts}
             selectedFeedId={selectedFeedId}
             onSelect={setSelectedFeedId}
             onCreate={openCreate}
@@ -543,6 +546,7 @@ export function FeedsPage() {
                 {feeds.map((feed) => {
                   const isActive = feed.id === selectedFeedId
                   const indexerCount = feed.indexers.length
+                  const newCount = newCounts[feed.id] ?? 0
                   return (
                     <button
                       key={feed.id}
@@ -581,6 +585,15 @@ export function FeedsPage() {
                             )}
                           </p>
                         </div>
+                        {newCount > 0 && (
+                          <span
+                            className="flex flex-shrink-0 items-center gap-1 rounded-full border border-cyan-400/50 bg-gradient-to-r from-cyan-500/25 to-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.3)]"
+                            title={`${newCount.toLocaleString()} new item${newCount === 1 ? '' : 's'} since you last opened this feed`}
+                          >
+                            <Sparkles className="h-2.5 w-2.5" />
+                            {newCount > 99 ? '99+' : newCount}
+                          </span>
+                        )}
                       </div>
                     </button>
                   )
@@ -740,6 +753,27 @@ export function FeedsPage() {
             {/* Filters bar */}
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/50 bg-slate-900/40 px-3 py-2 text-xs">
               <div className="flex flex-wrap items-center gap-3">
+                {canFilterNew && (
+                  <label
+                    className={cn(
+                      'flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-0.5 transition-colors',
+                      showNewOnly
+                        ? 'border-cyan-400/50 bg-cyan-500/15 text-cyan-200'
+                        : 'border-transparent text-slate-300 hover:text-cyan-200',
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={showNewOnly}
+                      onChange={(e) => setShowNewOnly(e.target.checked)}
+                      className="h-3.5 w-3.5 cursor-pointer accent-cyan-500"
+                    />
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-cyan-400" />
+                      New only
+                    </span>
+                  </label>
+                )}
                 <label className="flex cursor-pointer items-center gap-1.5 text-slate-300">
                   <input
                     type="checkbox"
@@ -797,6 +831,20 @@ export function FeedsPage() {
                   className="mt-3 text-xs font-medium text-cyan-400 hover:underline"
                 >
                   Try again
+                </button>
+              </div>
+            ) : showNewOnly && entries.length === 0 ? (
+              <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
+                <Sparkles className="mx-auto mb-4 h-12 w-12 text-slate-600" />
+                <p className="text-slate-400">You're all caught up</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  No new items since you last opened this feed.
+                </p>
+                <button
+                  onClick={() => setShowNewOnly(false)}
+                  className="mt-3 text-xs font-medium text-cyan-400 hover:underline"
+                >
+                  Show all items
                 </button>
               </div>
             ) : entries.length === 0 && total === 0 ? (
@@ -1234,6 +1282,7 @@ interface SortableThProps {
 
 interface CollapsedFeedRailProps {
   feeds: Feed[]
+  newCounts: Record<number, number>
   selectedFeedId: number | null
   onSelect: (id: number) => void
   onCreate: () => void
@@ -1251,6 +1300,7 @@ function feedInitials(name: string): string {
 
 function CollapsedFeedRail({
   feeds,
+  newCounts,
   selectedFeedId,
   onSelect,
   onCreate,
@@ -1281,12 +1331,13 @@ function CollapsedFeedRail({
       ) : (
         feeds.map((feed) => {
           const isActive = feed.id === selectedFeedId
+          const newCount = newCounts[feed.id] ?? 0
           return (
             <button
               key={feed.id}
               onClick={() => onSelect(feed.id)}
-              title={feed.name}
-              aria-label={feed.name}
+              title={newCount > 0 ? `${feed.name} — ${newCount.toLocaleString()} new` : feed.name}
+              aria-label={newCount > 0 ? `${feed.name}, ${newCount} new items` : feed.name}
               className={cn(
                 'relative flex h-9 w-9 items-center justify-center rounded-lg border text-[11px] font-semibold transition-all',
                 isActive
@@ -1295,11 +1346,17 @@ function CollapsedFeedRail({
               )}
             >
               {feedInitials(feed.name)}
-              {feed.filters.freeleech_only && (
-                <span
-                  className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-slate-950 bg-emerald-400 shadow-[0_0_4px_rgba(16,185,129,0.7)]"
-                  aria-hidden
-                />
+              {newCount > 0 ? (
+                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full border border-slate-950 bg-gradient-to-r from-cyan-400 to-blue-500 px-1 text-[9px] font-bold leading-none text-slate-950 shadow-[0_0_6px_rgba(34,211,238,0.6)]">
+                  {newCount > 99 ? '99+' : newCount}
+                </span>
+              ) : (
+                feed.filters.freeleech_only && (
+                  <span
+                    className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-slate-950 bg-emerald-400 shadow-[0_0_4px_rgba(16,185,129,0.7)]"
+                    aria-hidden
+                  />
+                )
               )}
               {!feed.polling_enabled && (
                 <span

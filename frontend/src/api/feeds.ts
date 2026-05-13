@@ -33,6 +33,9 @@ function buildItemQuery(params: FeedItemListParams): string {
   if (params.first_seen_within_hours !== undefined && params.first_seen_within_hours !== null) {
     qs.set('first_seen_within_hours', String(params.first_seen_within_hours))
   }
+  if (params.first_seen_after !== undefined && params.first_seen_after !== null) {
+    qs.set('first_seen_after', params.first_seen_after)
+  }
   return qs.toString()
 }
 

@@ -267,6 +267,7 @@ async def list_feed_items(
     max_size_bytes: Annotated[int | None, Query(ge=0)] = None,
     seen_within_hours: Annotated[int | None, Query(ge=1)] = None,
     first_seen_within_hours: Annotated[int | None, Query(ge=1)] = None,
+    first_seen_after: Annotated[datetime | None, Query()] = None,
     db: AsyncSession = Depends(get_db),
 ) -> FeedItemListResponse:
     """List persisted items for a feed, with pagination and filtering."""
@@ -289,6 +290,10 @@ async def list_feed_items(
     if first_seen_within_hours is not None:
         cutoff = now - timedelta(hours=first_seen_within_hours)
         base = base.where(FeedItem.first_seen_at >= cutoff)
+    if first_seen_after is not None:
+        if first_seen_after.tzinfo is None:
+            first_seen_after = first_seen_after.replace(tzinfo=UTC)
+        base = base.where(FeedItem.first_seen_at > first_seen_after)
 
     total_q = select(func.count()).select_from(base.subquery())
     total = (await db.execute(total_q)).scalar_one()

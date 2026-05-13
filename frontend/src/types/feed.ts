@@ -94,6 +94,8 @@ export interface FeedItemListParams {
   max_size_bytes?: number
   seen_within_hours?: number
   first_seen_within_hours?: number
+  /** ISO-8601 timestamp; only items first seen strictly after it are returned. */
+  first_seen_after?: string
 }
 
 export interface FeedItemListResponse {

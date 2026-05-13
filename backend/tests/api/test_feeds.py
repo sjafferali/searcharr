@@ -766,6 +766,24 @@ class TestFeedItemsListing:
         assert {e["title"] for e in data["entries"]} == {"Alpha 4K", "Charlie 720p"}
 
     @pytest.mark.asyncio
+    async def test_list_items_first_seen_after(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        jackett_instance: JackettInstance,
+    ):
+        feed_id = await self._seed(db_session, jackett_instance)
+        # "Alpha 4K" was first seen 2d ago, "Bravo 1080p" 1d ago, "Charlie 720p" 4h ago.
+        cutoff = (datetime.now(UTC) - timedelta(hours=36)).isoformat()
+        response = await client.get(
+            f"/api/v1/feeds/{feed_id}/items", params={"first_seen_after": cutoff}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 2
+        assert {e["title"] for e in data["entries"]} == {"Bravo 1080p", "Charlie 720p"}
+
+    @pytest.mark.asyncio
     async def test_list_items_404_unknown_feed(self, client: AsyncClient):
         response = await client.get("/api/v1/feeds/9999/items")
         assert response.status_code == 404

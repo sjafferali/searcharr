@@ -58,6 +58,7 @@ export {
   useDeleteFeed,
   useFeedFetch,
   useFeedItems,
+  useFeedNewCounts,
   useRefreshFeed,
   feedKeys,
 } from './useFeeds'
