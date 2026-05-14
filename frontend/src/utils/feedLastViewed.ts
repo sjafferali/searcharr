@@ -67,13 +67,27 @@ export function markFeedViewed(feedId: number): number {
     baseline = getFeedLastViewed(feedId)
     sessionBaselines.set(feedId, baseline)
   }
-  if (typeof window !== 'undefined') {
-    try {
-      window.localStorage.setItem(`${STORAGE_PREFIX}${feedId}`, String(Date.now()))
-    } catch {
-      // ignore quota / private-mode write failures
-    }
-  }
+  writeLastViewed(feedId)
   notify()
   return baseline
+}
+
+/**
+ * Advances the persisted "last viewed" stamp to ``Date.now()`` without
+ * disturbing the session baseline. Called whenever the items list refetches
+ * while the feed is on screen, so the persisted stamp keeps pace with what
+ * the user has actually seen — and the next session's baseline excludes
+ * items that arrived (and were viewed) during the prior visit.
+ */
+export function touchFeedLastViewed(feedId: number): void {
+  writeLastViewed(feedId)
+}
+
+function writeLastViewed(feedId: number): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(`${STORAGE_PREFIX}${feedId}`, String(Date.now()))
+  } catch {
+    // ignore quota / private-mode write failures
+  }
 }

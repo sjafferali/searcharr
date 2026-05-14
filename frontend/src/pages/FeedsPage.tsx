@@ -71,6 +71,7 @@ import {
   formatDateTime,
   formatRelative,
   markFeedViewed,
+  touchFeedLastViewed,
 } from '../utils'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
@@ -249,7 +250,8 @@ export function FeedsPage() {
   const [maxSizeFilter, setMaxSizeFilter] = useState<number | null>(null)
   const [seenWithinHours, setSeenWithinHours] = useState<number | null>(null)
   const [firstSeenWithinHours, setFirstSeenWithinHours] = useState<number | null>(null)
-  const [hideStale, setHideStale] = useState(false)
+  const [hideStale, setHideStale] = useState(true)
+  const [hideDead, setHideDead] = useState(true)
   const [showNewOnly, setShowNewOnly] = useState(true)
   const [offset, setOffset] = useState(0)
 
@@ -284,7 +286,8 @@ export function FeedsPage() {
     setMaxSizeFilter(null)
     setSeenWithinHours(null)
     setFirstSeenWithinHours(null)
-    setHideStale(false)
+    setHideStale(true)
+    setHideDead(true)
     setShowNewOnly(true)
     setOffset(0)
   }, [selectedFeedId])
@@ -301,6 +304,7 @@ export function FeedsPage() {
     seenWithinHours,
     firstSeenWithinHours,
     hideStale,
+    hideDead,
     showNewOnly,
     pageSize,
   ])
@@ -312,6 +316,13 @@ export function FeedsPage() {
     }
     return undefined
   }, [seenWithinHours, hideStale, selectedFeed])
+
+  // "Hide dead items" composes with the explicit min-seeders column filter:
+  // whichever floor is higher wins, so a user-set minimum is never lowered.
+  const effectiveMinSeeders = useMemo(() => {
+    const base = minSeedersFilter > 0 ? minSeedersFilter : 0
+    return hideDead ? Math.max(1, base) : base
+  }, [minSeedersFilter, hideDead])
 
   // When the "new only" filter is active, ask the server for items first seen
   // after the visit baseline — matching the rows the table flags NEW.
@@ -327,7 +338,7 @@ export function FeedsPage() {
       sort_by: sortBy,
       sort_order: sortOrder,
       freeleech_only: freeleechOnly || undefined,
-      min_seeders: minSeedersFilter > 0 ? minSeedersFilter : undefined,
+      min_seeders: effectiveMinSeeders > 0 ? effectiveMinSeeders : undefined,
       max_size_bytes: maxSizeFilter ?? undefined,
       seen_within_hours: effectiveSeenWithin,
       first_seen_within_hours: firstSeenWithinHours ?? undefined,
@@ -339,7 +350,7 @@ export function FeedsPage() {
       sortBy,
       sortOrder,
       freeleechOnly,
-      minSeedersFilter,
+      effectiveMinSeeders,
       maxSizeFilter,
       effectiveSeenWithin,
       firstSeenWithinHours,
@@ -349,6 +360,20 @@ export function FeedsPage() {
 
   const itemsQuery = useFeedItems(selectedFeedId, itemsParams)
   const entries = itemsQuery.data?.entries ?? []
+
+  // Each successful items fetch is the user "seeing" the current contents of
+  // the feed; advance the persisted last-viewed stamp so the next session's
+  // NEW baseline excludes items the user already saw via background polls.
+  // The in-session NEW flags don't move, since they read the frozen session
+  // baseline captured by markFeedViewed.
+  const itemsUpdatedAt = itemsQuery.dataUpdatedAt
+  useEffect(() => {
+    if (selectedFeedId === null) return
+    if (!itemsUpdatedAt) return
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+    touchFeedLastViewed(selectedFeedId)
+  }, [selectedFeedId, itemsUpdatedAt])
+
   const total = itemsQuery.data?.total ?? 0
   const lastPolledAt = itemsQuery.data?.last_polled_at ?? selectedFeed?.last_polled_at ?? null
   const nextPollAt = itemsQuery.data?.next_poll_at ?? null
@@ -782,6 +807,15 @@ export function FeedsPage() {
                     className="h-3.5 w-3.5 cursor-pointer accent-cyan-500"
                   />
                   <span>Show stale items</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-1.5 text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={hideDead}
+                    onChange={(e) => setHideDead(e.target.checked)}
+                    className="h-3.5 w-3.5 cursor-pointer accent-rose-500"
+                  />
+                  <span>Hide dead items</span>
                 </label>
                 <label className="flex cursor-pointer items-center gap-1.5 text-slate-300">
                   <input

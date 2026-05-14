@@ -102,6 +102,7 @@ export function SearchPage() {
     filters,
     setCategory,
     setMinSeeders,
+    setHideDead,
     setMaxSize,
     setSortBy,
     setSortOrder,
@@ -175,13 +176,19 @@ export function SearchPage() {
   )
   const maxSizeInvalid = !!filters.maxSize && maxSizeBytes === null
 
+  // "Hide dead" composes with the min-seeders column filter: whichever floor
+  // is higher wins, so a user-set minimum is never lowered.
+  const effectiveMinSeeders = filters.hideDead
+    ? Math.max(1, filters.minSeeders)
+    : filters.minSeeders
+
   const filteredResults = useMemo(() => {
     return results.filter((r) => {
-      if (filters.minSeeders > 0 && r.seeders < filters.minSeeders) return false
+      if (effectiveMinSeeders > 0 && r.seeders < effectiveMinSeeders) return false
       if (maxSizeBytes !== null && r.size > maxSizeBytes) return false
       return true
     })
-  }, [results, filters.minSeeders, maxSizeBytes])
+  }, [results, effectiveMinSeeders, maxSizeBytes])
 
   const sortedResults = useMemo(() => {
     const copy = [...filteredResults]
@@ -509,37 +516,48 @@ export function SearchPage() {
               </>
             )}
           </p>
-          {(filters.minSeeders > 0 || filters.maxSize) && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {filters.minSeeders > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setMinSeeders(0)}
-                  className="group/pill inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
-                  title="Clear filter"
-                >
-                  ≥ {filters.minSeeders} seeders
-                  <X className="h-3 w-3 opacity-60 transition-opacity group-hover/pill:opacity-100" />
-                </button>
-              )}
-              {filters.maxSize && (
-                <button
-                  type="button"
-                  onClick={() => setMaxSize('')}
-                  className={cn(
-                    'group/pill inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
-                    maxSizeInvalid
-                      ? 'border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20'
-                      : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20',
-                  )}
-                  title="Clear filter"
-                >
-                  ≤ {filters.maxSize}
-                  <X className="h-3 w-3 opacity-60 transition-opacity group-hover/pill:opacity-100" />
-                </button>
-              )}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-300">
+              <input
+                type="checkbox"
+                checked={filters.hideDead}
+                onChange={(e) => setHideDead(e.target.checked)}
+                className="h-3.5 w-3.5 cursor-pointer accent-rose-500"
+              />
+              <span>Hide dead items</span>
+            </label>
+            {(filters.minSeeders > 0 || filters.maxSize) && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {filters.minSeeders > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setMinSeeders(0)}
+                    className="group/pill inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                    title="Clear filter"
+                  >
+                    ≥ {filters.minSeeders} seeders
+                    <X className="h-3 w-3 opacity-60 transition-opacity group-hover/pill:opacity-100" />
+                  </button>
+                )}
+                {filters.maxSize && (
+                  <button
+                    type="button"
+                    onClick={() => setMaxSize('')}
+                    className={cn(
+                      'group/pill inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                      maxSizeInvalid
+                        ? 'border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20'
+                        : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20',
+                    )}
+                    title="Clear filter"
+                  >
+                    ≤ {filters.maxSize}
+                    <X className="h-3 w-3 opacity-60 transition-opacity group-hover/pill:opacity-100" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Results Table */}

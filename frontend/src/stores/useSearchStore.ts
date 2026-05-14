@@ -4,6 +4,7 @@ import { IndexerError, SearchCategory, SortBy, SortOrder, SearchResult } from '.
 interface SearchFilters {
   category: SearchCategory
   minSeeders: number
+  hideDead: boolean
   maxSize: string
   sortBy: SortBy
   sortOrder: SortOrder
@@ -24,6 +25,7 @@ interface SearchState {
   filters: SearchFilters
   setCategory: (category: SearchCategory) => void
   setMinSeeders: (minSeeders: number) => void
+  setHideDead: (hideDead: boolean) => void
   setMaxSize: (maxSize: string) => void
   setSortBy: (sortBy: SortBy) => void
   setSortOrder: (sortOrder: SortOrder) => void
@@ -57,6 +59,7 @@ interface SearchState {
 const defaultFilters: SearchFilters = {
   category: 'All',
   minSeeders: 0,
+  hideDead: true,
   maxSize: '',
   sortBy: 'seeders',
   sortOrder: 'desc',
@@ -75,6 +78,7 @@ export const useSearchStore = create<SearchState>((set) => ({
   filters: { ...defaultFilters },
   setCategory: (category) => set((state) => ({ filters: { ...state.filters, category } })),
   setMinSeeders: (minSeeders) => set((state) => ({ filters: { ...state.filters, minSeeders } })),
+  setHideDead: (hideDead) => set((state) => ({ filters: { ...state.filters, hideDead } })),
   setMaxSize: (maxSize) => set((state) => ({ filters: { ...state.filters, maxSize } })),
   setSortBy: (sortBy) => set((state) => ({ filters: { ...state.filters, sortBy } })),
   setSortOrder: (sortOrder) => set((state) => ({ filters: { ...state.filters, sortOrder } })),

@@ -4,6 +4,7 @@ export {
   getFeedNewBaseline,
   markFeedViewed,
   subscribeFeedLastViewed,
+  touchFeedLastViewed,
 } from './feedLastViewed'
 export {
   formatAge,
