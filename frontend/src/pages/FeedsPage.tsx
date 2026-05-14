@@ -250,7 +250,7 @@ export function FeedsPage() {
   const [seenWithinHours, setSeenWithinHours] = useState<number | null>(null)
   const [firstSeenWithinHours, setFirstSeenWithinHours] = useState<number | null>(null)
   const [hideStale, setHideStale] = useState(false)
-  const [showNewOnly, setShowNewOnly] = useState(false)
+  const [showNewOnly, setShowNewOnly] = useState(true)
   const [offset, setOffset] = useState(0)
 
   // Auto-select first feed when feeds load and none is selected; clear on delete.
@@ -285,7 +285,7 @@ export function FeedsPage() {
     setSeenWithinHours(null)
     setFirstSeenWithinHours(null)
     setHideStale(false)
-    setShowNewOnly(false)
+    setShowNewOnly(true)
     setOffset(0)
   }, [selectedFeedId])
 
