@@ -298,6 +298,14 @@ async def list_feed_items(
     total_q = select(func.count()).select_from(base.subquery())
     total = (await db.execute(total_q)).scalar_one()
 
+    total_in_history = (
+        await db.execute(
+            select(func.count()).select_from(
+                select(FeedItem.id).where(FeedItem.feed_id == feed_id).subquery()
+            )
+        )
+    ).scalar_one()
+
     sort_col = _SORT_COLUMNS[sort_by]
     ordered = sort_col.asc() if sort_order == SortOrder.ASC else sort_col.desc()  # type: ignore[attr-defined]
     # Stable tiebreaker by id keeps pagination deterministic when many rows
@@ -315,6 +323,7 @@ async def list_feed_items(
 
     return FeedItemListResponse(
         total=total,
+        total_in_history=total_in_history,
         entries=[_serialize_item(r) for r in rows],
         feed_id=feed.id,
         feed_name=feed.name,

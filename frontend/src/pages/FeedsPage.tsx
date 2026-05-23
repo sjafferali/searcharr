@@ -309,27 +309,37 @@ export function FeedsPage() {
     pageSize,
   ])
 
+  // "New only" is the user's primary intent when active and takes precedence
+  // over the implicit stale/dead filters, so every row the table flags NEW —
+  // and that the sidebar badge counts — is visible. Explicit per-column filters
+  // (a user-set min_seeders, or a chosen "seen within" window) still apply on
+  // top so manual narrowing is never suppressed.
+  const newOnlyActive = showNewOnly && canFilterNew
+
   const effectiveSeenWithin = useMemo(() => {
     if (seenWithinHours !== null) return seenWithinHours
+    if (newOnlyActive) return undefined
     if (hideStale && selectedFeed) {
       return Math.max(1, Math.ceil(selectedFeed.stale_after_seconds / 3600))
     }
     return undefined
-  }, [seenWithinHours, hideStale, selectedFeed])
+  }, [seenWithinHours, hideStale, selectedFeed, newOnlyActive])
 
   // "Hide dead items" composes with the explicit min-seeders column filter:
   // whichever floor is higher wins, so a user-set minimum is never lowered.
   const effectiveMinSeeders = useMemo(() => {
     const base = minSeedersFilter > 0 ? minSeedersFilter : 0
-    return hideDead ? Math.max(1, base) : base
-  }, [minSeedersFilter, hideDead])
+    if (base > 0) return base
+    if (newOnlyActive) return 0
+    return hideDead ? 1 : 0
+  }, [minSeedersFilter, hideDead, newOnlyActive])
 
   // When the "new only" filter is active, ask the server for items first seen
   // after the visit baseline — matching the rows the table flags NEW.
   const newOnlyCutoff = useMemo(() => {
-    if (!showNewOnly || !canFilterNew) return undefined
+    if (!newOnlyActive) return undefined
     return new Date(lastViewedBaseline as number).toISOString()
-  }, [showNewOnly, canFilterNew, lastViewedBaseline])
+  }, [newOnlyActive, lastViewedBaseline])
 
   const itemsParams: FeedItemListParams = useMemo(
     () => ({
@@ -375,6 +385,7 @@ export function FeedsPage() {
   }, [selectedFeedId, itemsUpdatedAt])
 
   const total = itemsQuery.data?.total ?? 0
+  const totalInHistory = itemsQuery.data?.total_in_history ?? 0
   const lastPolledAt = itemsQuery.data?.last_polled_at ?? selectedFeed?.last_polled_at ?? null
   const nextPollAt = itemsQuery.data?.next_poll_at ?? null
   const staleAfterSeconds =
@@ -764,8 +775,12 @@ export function FeedsPage() {
                   )}
                 </div>
                 <div className="text-slate-300 sm:justify-self-end">
-                  <span className="font-medium text-slate-200">{total.toLocaleString()}</span>{' '}
-                  <span className="text-slate-500">item{total === 1 ? '' : 's'} in history</span>
+                  <span className="font-medium text-slate-200">
+                    {totalInHistory.toLocaleString()}
+                  </span>{' '}
+                  <span className="text-slate-500">
+                    item{totalInHistory === 1 ? '' : 's'} in history
+                  </span>
                 </div>
               </div>
             </header>
@@ -799,21 +814,43 @@ export function FeedsPage() {
                     </span>
                   </label>
                 )}
-                <label className="flex cursor-pointer items-center gap-1.5 text-slate-300">
+                <label
+                  className={cn(
+                    'flex cursor-pointer items-center gap-1.5',
+                    newOnlyActive ? 'text-slate-500' : 'text-slate-300',
+                  )}
+                  title={
+                    newOnlyActive
+                      ? "Disabled while 'New only' is active — every NEW item is shown regardless of staleness."
+                      : undefined
+                  }
+                >
                   <input
                     type="checkbox"
                     checked={!hideStale}
                     onChange={(e) => setHideStale(!e.target.checked)}
-                    className="h-3.5 w-3.5 cursor-pointer accent-cyan-500"
+                    disabled={newOnlyActive}
+                    className="h-3.5 w-3.5 cursor-pointer accent-cyan-500 disabled:cursor-not-allowed"
                   />
                   <span>Show stale items</span>
                 </label>
-                <label className="flex cursor-pointer items-center gap-1.5 text-slate-300">
+                <label
+                  className={cn(
+                    'flex cursor-pointer items-center gap-1.5',
+                    newOnlyActive ? 'text-slate-500' : 'text-slate-300',
+                  )}
+                  title={
+                    newOnlyActive
+                      ? "Disabled while 'New only' is active — every NEW item is shown regardless of seeders."
+                      : undefined
+                  }
+                >
                   <input
                     type="checkbox"
                     checked={hideDead}
                     onChange={(e) => setHideDead(e.target.checked)}
-                    className="h-3.5 w-3.5 cursor-pointer accent-rose-500"
+                    disabled={newOnlyActive}
+                    className="h-3.5 w-3.5 cursor-pointer accent-rose-500 disabled:cursor-not-allowed"
                   />
                   <span>Hide dead items</span>
                 </label>

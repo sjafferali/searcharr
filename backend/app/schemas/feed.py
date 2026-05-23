@@ -218,6 +218,12 @@ class FeedItemListResponse(BaseSchema):
     """Paged listing of persisted feed items for one feed."""
 
     total: int
+    total_in_history: int = Field(
+        description=(
+            "Total number of persisted items for this feed regardless of the "
+            "request's filters — what UIs label 'items in history'."
+        ),
+    )
     entries: list[FeedItem]
     feed_id: int
     feed_name: str

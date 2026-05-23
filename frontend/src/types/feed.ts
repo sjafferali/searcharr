@@ -100,6 +100,8 @@ export interface FeedItemListParams {
 
 export interface FeedItemListResponse {
   total: number
+  /** Count of every persisted item for this feed, ignoring request filters. */
+  total_in_history: number
   entries: FeedItem[]
   feed_id: number
   feed_name: string
