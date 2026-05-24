@@ -309,11 +309,10 @@ export function FeedsPage() {
     pageSize,
   ])
 
-  // "New only" is the user's primary intent when active and takes precedence
-  // over the implicit stale/dead filters, so every row the table flags NEW —
-  // and that the sidebar badge counts — is visible. Explicit per-column filters
-  // (a user-set min_seeders, or a chosen "seen within" window) still apply on
-  // top so manual narrowing is never suppressed.
+  // "New only" takes precedence over the implicit staleness window so every
+  // row the table flags NEW — and that the sidebar badge counts — is visible.
+  // Explicit per-column filters (a user-set min_seeders, or a chosen "seen
+  // within" window) still apply on top so manual narrowing is never suppressed.
   const newOnlyActive = showNewOnly && canFilterNew
 
   const effectiveSeenWithin = useMemo(() => {
@@ -328,11 +327,9 @@ export function FeedsPage() {
   // "Hide dead items" composes with the explicit min-seeders column filter:
   // whichever floor is higher wins, so a user-set minimum is never lowered.
   const effectiveMinSeeders = useMemo(() => {
-    const base = minSeedersFilter > 0 ? minSeedersFilter : 0
-    if (base > 0) return base
-    if (newOnlyActive) return 0
+    if (minSeedersFilter > 0) return minSeedersFilter
     return hideDead ? 1 : 0
-  }, [minSeedersFilter, hideDead, newOnlyActive])
+  }, [minSeedersFilter, hideDead])
 
   // When the "new only" filter is active, ask the server for items first seen
   // after the visit baseline — matching the rows the table flags NEW.
@@ -834,23 +831,12 @@ export function FeedsPage() {
                   />
                   <span>Show stale items</span>
                 </label>
-                <label
-                  className={cn(
-                    'flex cursor-pointer items-center gap-1.5',
-                    newOnlyActive ? 'text-slate-500' : 'text-slate-300',
-                  )}
-                  title={
-                    newOnlyActive
-                      ? "Disabled while 'New only' is active — every NEW item is shown regardless of seeders."
-                      : undefined
-                  }
-                >
+                <label className="flex cursor-pointer items-center gap-1.5 text-slate-300">
                   <input
                     type="checkbox"
                     checked={hideDead}
                     onChange={(e) => setHideDead(e.target.checked)}
-                    disabled={newOnlyActive}
-                    className="h-3.5 w-3.5 cursor-pointer accent-rose-500 disabled:cursor-not-allowed"
+                    className="h-3.5 w-3.5 cursor-pointer accent-rose-500"
                   />
                   <span>Hide dead items</span>
                 </label>
