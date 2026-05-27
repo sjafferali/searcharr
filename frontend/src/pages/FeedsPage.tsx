@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -366,7 +366,81 @@ export function FeedsPage() {
   )
 
   const itemsQuery = useFeedItems(selectedFeedId, itemsParams)
-  const entries = itemsQuery.data?.entries ?? []
+
+  // Stable key identifying the current view (feed + filters + sort + page).
+  // Used to recognise when the user has explicitly navigated to a new view
+  // (sync immediately, no banner) vs. when a background poll has merely
+  // produced fresh data for the current view (freeze + offer the banner).
+  const viewKey = useMemo(
+    () => JSON.stringify({ feedId: selectedFeedId, ...itemsParams }),
+    [selectedFeedId, itemsParams],
+  )
+
+  // Snapshot of the rows actually rendered in the table. Held in local state
+  // so background refetches don't reorder rows under the user's cursor. The
+  // "Load new items" banner surfaces incoming changes and swaps them in only
+  // when the user opts in.
+  const [displayed, setDisplayed] = useState<{
+    entries: FeedItem[]
+    total: number
+    key: string
+  } | null>(null)
+
+  // Set when the user explicitly clicks "Refresh now" so the next data update
+  // is accepted without forcing them through the banner.
+  const refreshAcceptRef = useRef(false)
+
+  const incomingEntries = useMemo(() => itemsQuery.data?.entries ?? [], [itemsQuery.data])
+  const incomingTotal = itemsQuery.data?.total ?? 0
+  const hasIncoming = itemsQuery.data !== undefined
+  const isPlaceholderData = itemsQuery.isPlaceholderData
+
+  useEffect(() => {
+    if (!hasIncoming) return
+    if (isPlaceholderData) return
+    if (!displayed || displayed.key !== viewKey) {
+      setDisplayed({ entries: incomingEntries, total: incomingTotal, key: viewKey })
+      return
+    }
+    if (refreshAcceptRef.current) {
+      refreshAcceptRef.current = false
+      setDisplayed({ entries: incomingEntries, total: incomingTotal, key: viewKey })
+    }
+  }, [hasIncoming, isPlaceholderData, viewKey, incomingEntries, incomingTotal, displayed])
+
+  // Diff against the frozen snapshot. Returns null when there's nothing to
+  // surface — identical contents, or the incoming data belongs to a different
+  // view (mid-transition placeholder).
+  const pendingChange = useMemo(() => {
+    if (!hasIncoming || isPlaceholderData) return null
+    if (!displayed || displayed.key !== viewKey) return null
+    const displayedKeys = new Set(displayed.entries.map((e) => e.dedup_key))
+    const incomingKeys = new Set(incomingEntries.map((e) => e.dedup_key))
+    let added = 0
+    let removed = 0
+    incomingEntries.forEach((e) => {
+      if (!displayedKeys.has(e.dedup_key)) added++
+    })
+    displayed.entries.forEach((e) => {
+      if (!incomingKeys.has(e.dedup_key)) removed++
+    })
+    if (added === 0 && removed === 0 && displayed.total === incomingTotal) {
+      return null
+    }
+    return { added, removed, totalDelta: incomingTotal - displayed.total }
+  }, [hasIncoming, isPlaceholderData, displayed, viewKey, incomingEntries, incomingTotal])
+
+  const acceptPending = useCallback(() => {
+    if (!itemsQuery.data) return
+    setDisplayed({
+      entries: itemsQuery.data.entries,
+      total: itemsQuery.data.total,
+      key: viewKey,
+    })
+  }, [itemsQuery.data, viewKey])
+
+  const entries = displayed?.entries ?? []
+  const total = displayed?.total ?? 0
 
   // Each successful items fetch is the user "seeing" the current contents of
   // the feed; advance the persisted last-viewed stamp so the next session's
@@ -381,7 +455,6 @@ export function FeedsPage() {
     touchFeedLastViewed(selectedFeedId)
   }, [selectedFeedId, itemsUpdatedAt])
 
-  const total = itemsQuery.data?.total ?? 0
   const totalInHistory = itemsQuery.data?.total_in_history ?? 0
   const lastPolledAt = itemsQuery.data?.last_polled_at ?? selectedFeed?.last_polled_at ?? null
   const nextPollAt = itemsQuery.data?.next_poll_at ?? null
@@ -398,6 +471,7 @@ export function FeedsPage() {
 
   const handleRefresh = useCallback(() => {
     if (selectedFeedId === null) return
+    refreshAcceptRef.current = true
     refreshFeed.mutate(selectedFeedId)
   }, [selectedFeedId, refreshFeed])
 
@@ -781,6 +855,8 @@ export function FeedsPage() {
                 </div>
               </div>
             </header>
+
+            {pendingChange && <NewItemsBanner change={pendingChange} onLoad={acceptPending} />}
 
             <IndexerErrorBanner
               errors={sourceErrors}
@@ -1318,6 +1394,50 @@ export function FeedsPage() {
         confirmLabel="Delete feed"
         isLoading={deleteFeed.isPending}
       />
+    </div>
+  )
+}
+
+interface NewItemsBannerProps {
+  change: { added: number; removed: number; totalDelta: number }
+  onLoad: () => void
+}
+
+function NewItemsBanner({ change, onLoad }: NewItemsBannerProps) {
+  const { added, removed } = change
+  let headline: string
+  if (added > 0 && removed > 0) {
+    headline = `${added} new • ${removed} dropped`
+  } else if (added > 0) {
+    headline = `${added.toLocaleString()} new item${added === 1 ? '' : 's'} available`
+  } else if (removed > 0) {
+    headline = `${removed.toLocaleString()} item${removed === 1 ? '' : 's'} dropped from view`
+  } else {
+    headline = 'Updates available'
+  }
+  return (
+    <div className="animate-fade-in" role="status" aria-live="polite">
+      <button
+        onClick={onLoad}
+        className="group flex w-full items-center justify-between gap-3 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-500/15 via-cyan-500/10 to-blue-500/10 px-4 py-2.5 text-left text-sm text-cyan-100 shadow-[0_0_24px_-6px_rgba(34,211,238,0.45)] transition-all hover:border-cyan-400/60 hover:from-cyan-500/20 hover:to-blue-500/15 hover:shadow-[0_0_28px_-4px_rgba(34,211,238,0.55)] focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+      >
+        <span className="flex min-w-0 items-center gap-2.5">
+          <span className="relative flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-cyan-400/40 bg-cyan-500/15">
+            <Sparkles className="h-3.5 w-3.5 text-cyan-200" />
+            <span className="absolute inset-0 animate-ping rounded-full border border-cyan-400/40" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-semibold text-cyan-100">{headline}</span>
+            <span className="block text-[11px] text-cyan-300/80">
+              Background poll brought updates — load to refresh this view.
+            </span>
+          </span>
+        </span>
+        <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-md border border-cyan-400/50 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-cyan-100 transition-colors group-hover:bg-cyan-500/30">
+          <RefreshCw className="h-3.5 w-3.5" />
+          Load
+        </span>
+      </button>
     </div>
   )
 }

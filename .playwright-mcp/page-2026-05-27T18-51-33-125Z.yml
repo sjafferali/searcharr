@@ -1,0 +1,6 @@
+- generic [ref=e4]:
+  - img "No Found" [ref=e6]
+  - generic [ref=e60]: "404"
+  - generic [ref=e61]: Sorry, the page you visited does not exist.
+  - button "Back to Dashboard" [ref=e63] [cursor=pointer]:
+    - generic [ref=e64]: Back to Dashboard
