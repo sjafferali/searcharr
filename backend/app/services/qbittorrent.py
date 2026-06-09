@@ -74,17 +74,31 @@ class QBittorrentService:
     @staticmethod
     def _interpret_add_response(response: httpx.Response) -> tuple[bool, str]:
         """Translate a torrents/add response into a (success, message) tuple."""
-        # Success returns 200 with the body "Ok." or 204 with no body. A 200
-        # body of "Fails." means qBittorrent rejected every supplied torrent.
-        if response.status_code == 204:
-            return True, "Torrent added successfully"
-        if response.status_code == 200:
-            if response.text.strip().lower() == "ok.":
-                return True, "Torrent added successfully"
-            return False, f"Failed to add torrent: {response.text}"
         if response.status_code == 415:
             return False, "Torrent file is not valid"
-        return False, f"Failed to add torrent: HTTP {response.status_code}"
+        if response.status_code not in (200, 204):
+            return False, f"Failed to add torrent: HTTP {response.status_code}"
+
+        # A 204 carries no body. A 200 carries either the plain text "Ok." /
+        # "Fails." or a JSON summary like
+        # {"added_torrent_ids": [...], "failure_count": 0, "success_count": 1}.
+        if response.status_code == 204:
+            return True, "Torrent added successfully"
+
+        body = response.text.strip()
+        if body.lower() == "ok.":
+            return True, "Torrent added successfully"
+        if body.lower() == "fails.":
+            return False, "Failed to add torrent"
+
+        try:
+            summary = response.json()
+        except ValueError:
+            return False, f"Failed to add torrent: {body}"
+
+        if isinstance(summary, dict) and summary.get("failure_count", 0) == 0:
+            return True, "Torrent added successfully"
+        return False, f"Failed to add torrent: {body}"
 
     async def test_connection(self) -> tuple[bool, str]:
         """
