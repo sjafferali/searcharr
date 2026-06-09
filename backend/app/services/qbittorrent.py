@@ -32,7 +32,6 @@ class QBittorrentService:
         self.username = username
         self.password = password
         self.timeout = QBITTORRENT_TIMEOUT
-        self._session_cookie: str | None = None
 
     def _get_api_url(self, endpoint: str) -> str:
         """Build the full API URL for an endpoint."""
@@ -40,7 +39,10 @@ class QBittorrentService:
 
     async def _login(self, client: httpx.AsyncClient) -> bool:
         """
-        Authenticate with qBittorrent and get session cookie.
+        Authenticate with qBittorrent.
+
+        On success, the session cookie is stored in the client's cookie jar and
+        sent automatically on subsequent requests made with the same client.
 
         Returns:
             True if login successful, False otherwise
@@ -55,21 +57,34 @@ class QBittorrentService:
                 },
             )
 
-            if response.status_code == 200:
-                # qBittorrent returns "Ok." on successful login
-                if response.text.strip().lower() == "ok.":
-                    # Get the session cookie
-                    self._session_cookie = response.cookies.get("SID")
-                    return True
-                elif "Fails" in response.text:
+            # A successful login returns 200 with the body "Ok." or 204 with no
+            # body. Invalid credentials return 200 with the body "Fails.".
+            if response.status_code in (200, 204):
+                if "fails" in response.text.strip().lower():
                     logger.warning("qBittorrent login failed: invalid credentials")
                     return False
+                return True
 
             return False
 
         except Exception as e:
             logger.exception(f"Error during qBittorrent login: {e}")
             return False
+
+    @staticmethod
+    def _interpret_add_response(response: httpx.Response) -> tuple[bool, str]:
+        """Translate a torrents/add response into a (success, message) tuple."""
+        # Success returns 200 with the body "Ok." or 204 with no body. A 200
+        # body of "Fails." means qBittorrent rejected every supplied torrent.
+        if response.status_code == 204:
+            return True, "Torrent added successfully"
+        if response.status_code == 200:
+            if response.text.strip().lower() == "ok.":
+                return True, "Torrent added successfully"
+            return False, f"Failed to add torrent: {response.text}"
+        if response.status_code == 415:
+            return False, "Torrent file is not valid"
+        return False, f"Failed to add torrent: HTTP {response.status_code}"
 
     async def test_connection(self) -> tuple[bool, str]:
         """
@@ -86,10 +101,7 @@ class QBittorrentService:
 
                 # Verify we can access the API
                 url = self._get_api_url("app/version")
-                response = await client.get(
-                    url,
-                    cookies={"SID": self._session_cookie} if self._session_cookie else None,
-                )
+                response = await client.get(url)
 
                 if response.status_code == 200:
                     version = response.text.strip()
@@ -128,22 +140,8 @@ class QBittorrentService:
                 data: dict[str, str] = {"urls": magnet_link}
                 if category:
                     data["category"] = category
-                response = await client.post(
-                    url,
-                    data=data,
-                    cookies={"SID": self._session_cookie} if self._session_cookie else None,
-                )
-
-                if response.status_code == 200:
-                    # qBittorrent returns "Ok." on success
-                    if response.text.strip().lower() == "ok.":
-                        return True, "Torrent added successfully"
-                    else:
-                        return False, f"Failed to add torrent: {response.text}"
-                elif response.status_code == 415:
-                    return False, "Torrent file is not valid"
-                else:
-                    return False, f"Failed to add torrent: HTTP {response.status_code}"
+                response = await client.post(url, data=data)
+                return self._interpret_add_response(response)
 
         except httpx.TimeoutException:
             return False, "Request timed out"
@@ -182,22 +180,8 @@ class QBittorrentService:
                 if category:
                     data["category"] = category
 
-                response = await client.post(
-                    url,
-                    files=files,
-                    data=data if data else None,
-                    cookies={"SID": self._session_cookie} if self._session_cookie else None,
-                )
-
-                if response.status_code == 200:
-                    if response.text.strip().lower() == "ok.":
-                        return True, "Torrent added successfully"
-                    else:
-                        return False, f"Failed to add torrent: {response.text}"
-                elif response.status_code == 415:
-                    return False, "Torrent file is not valid"
-                else:
-                    return False, f"Failed to add torrent: HTTP {response.status_code}"
+                response = await client.post(url, files=files, data=data if data else None)
+                return self._interpret_add_response(response)
 
         except httpx.TimeoutException:
             return False, "Request timed out"
@@ -249,22 +233,8 @@ class QBittorrentService:
                 if category:
                     data["category"] = category
 
-                response = await client.post(
-                    url,
-                    files=files,
-                    data=data if data else None,
-                    cookies={"SID": self._session_cookie} if self._session_cookie else None,
-                )
-
-                if response.status_code == 200:
-                    if response.text.strip().lower() == "ok.":
-                        return True, "Torrent added successfully"
-                    else:
-                        return False, f"Failed to add torrent: {response.text}"
-                elif response.status_code == 415:
-                    return False, "Torrent file is not valid"
-                else:
-                    return False, f"Failed to add torrent: HTTP {response.status_code}"
+                response = await client.post(url, files=files, data=data if data else None)
+                return self._interpret_add_response(response)
 
         except httpx.TimeoutException:
             return False, "Request timed out"
