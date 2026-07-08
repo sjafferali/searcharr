@@ -21,6 +21,9 @@ class JackettInstance(BaseModel):
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     url: Mapped[str] = mapped_column(String(500), nullable=False)
     api_key: Mapped[str] = mapped_column(Text, nullable=False)  # Encrypted
+    # JSON-encoded list of indexer IDs searched by default from the search page.
+    # NULL/empty means this instance has no default sources configured.
+    default_indexers: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     def __repr__(self) -> str:
         return f"<JackettInstance(id={self.id}, name='{self.name}', url='{self.url}')>"
@@ -39,6 +42,9 @@ class ProwlarrInstance(BaseModel):
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     url: Mapped[str] = mapped_column(String(500), nullable=False)
     api_key: Mapped[str] = mapped_column(Text, nullable=False)  # Encrypted
+    # JSON-encoded list of indexer IDs searched by default from the search page.
+    # NULL/empty means this instance has no default sources configured.
+    default_indexers: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     def __repr__(self) -> str:
         return f"<ProwlarrInstance(id={self.id}, name='{self.name}', url='{self.url}')>"

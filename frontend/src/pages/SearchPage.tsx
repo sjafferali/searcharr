@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, type ReactNode } from 'react'
+import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import {
   Search,
   Filter,
@@ -15,6 +15,7 @@ import {
   Bookmark,
   ExternalLink,
   Sparkles,
+  Star,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
@@ -40,7 +41,7 @@ import {
   useSendToClient,
   useToggleResultBookmark,
 } from '../hooks'
-import { useSearchStore } from '../stores'
+import { useSearchStore, type DefaultSourcesPayload } from '../stores'
 import { SearchResult, SearchCategory, SortBy, SortOrder } from '../types'
 import toast from 'react-hot-toast'
 
@@ -114,6 +115,8 @@ export function SearchPage() {
     setProwlarrIndexerSelection,
     clearJackettIndexerSelection,
     clearProwlarrIndexerSelection,
+    applyDefaultSources,
+    clearSourceSelections,
     results,
     setResults,
     totalResults,
@@ -218,12 +221,66 @@ export function SearchPage() {
   const { bookmarkIdByResultId } = useBookmarkLookup(sortedResults)
   const bookmarkToggle = useToggleResultBookmark()
 
-  const jackettInstances = instancesStatus?.jackett ?? []
-  const prowlarrInstances = instancesStatus?.prowlarr ?? []
+  const jackettInstances = useMemo(() => instancesStatus?.jackett ?? [], [instancesStatus])
+  const prowlarrInstances = useMemo(() => instancesStatus?.prowlarr ?? [], [instancesStatus])
   const allInstances = [
     ...jackettInstances.map((i) => ({ ...i, type: 'jackett' as const })),
     ...prowlarrInstances.map((i) => ({ ...i, type: 'prowlarr' as const })),
   ]
+
+  const defaultSourcesPayload = useMemo<DefaultSourcesPayload>(
+    () => ({
+      jackett: jackettInstances.map((i) => ({
+        id: i.id,
+        defaultIndexers: i.default_indexers ?? [],
+      })),
+      prowlarr: prowlarrInstances.map((i) => ({
+        id: i.id,
+        defaultIndexers: i.default_indexers ?? [],
+      })),
+    }),
+    [jackettInstances, prowlarrInstances],
+  )
+
+  const hasConfiguredDefaults =
+    defaultSourcesPayload.jackett.some((i) => i.defaultIndexers.length > 0) ||
+    defaultSourcesPayload.prowlarr.some((i) => i.defaultIndexers.length > 0)
+
+  // Pre-select the configured default sources the first time instance data
+  // arrives; the store skips this when the user already picked sources.
+  useEffect(() => {
+    if (!instancesStatus) return
+    applyDefaultSources(defaultSourcesPayload)
+  }, [instancesStatus, defaultSourcesPayload, applyDefaultSources])
+
+  const hasSourceSelection =
+    filters.selectedJackettIds.length > 0 || filters.selectedProwlarrIds.length > 0
+
+  const selectionMatchesDefaults = useMemo(() => {
+    if (!hasConfiguredDefaults) return false
+    const jackettDefaults = defaultSourcesPayload.jackett.filter(
+      (i) => i.defaultIndexers.length > 0,
+    )
+    const prowlarrDefaults = defaultSourcesPayload.prowlarr.filter(
+      (i) => i.defaultIndexers.length > 0,
+    )
+    return (
+      sameSet(
+        filters.selectedJackettIds,
+        jackettDefaults.map((i) => i.id),
+      ) &&
+      sameSet(
+        filters.selectedProwlarrIds,
+        prowlarrDefaults.map((i) => i.id),
+      ) &&
+      jackettDefaults.every((i) =>
+        sameSet(filters.jackettIndexerSelections[i.id] ?? [], i.defaultIndexers),
+      ) &&
+      prowlarrDefaults.every((i) =>
+        sameSet(filters.prowlarrIndexerSelections[i.id] ?? [], i.defaultIndexers),
+      )
+    )
+  }, [hasConfiguredDefaults, defaultSourcesPayload, filters])
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) {
@@ -389,6 +446,21 @@ export function SearchPage() {
           <span className="flex items-center gap-2">
             <Database className="h-4 w-4 text-cyan-400" />
             Sources
+            {selectionMatchesDefaults ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-300">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                Defaults
+              </span>
+            ) : hasSourceSelection ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-cyan-300">
+                <Filter className="h-3 w-3" />
+                Custom
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full border border-slate-700/50 bg-slate-800/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                All instances
+              </span>
+            )}
           </span>
           {isFiltersExpanded ? (
             <ChevronDown className="h-4 w-4" />
@@ -400,11 +472,39 @@ export function SearchPage() {
         {isFiltersExpanded && (
           <div className="space-y-4 border-t border-slate-800/50 px-4 pb-4">
             <div className="pt-4">
-              <p className="mb-3 text-[11px] text-slate-500">
-                {filters.selectedJackettIds.length === 0 && filters.selectedProwlarrIds.length === 0
-                  ? 'Searching every configured instance.'
-                  : 'Searching only the selected instances.'}
-              </p>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] text-slate-500">
+                  {!hasSourceSelection
+                    ? 'Searching every configured instance.'
+                    : selectionMatchesDefaults
+                      ? 'Searching your default sources.'
+                      : 'Searching only the selected instances.'}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  {hasConfiguredDefaults && !selectionMatchesDefaults && (
+                    <button
+                      type="button"
+                      onClick={() => applyDefaultSources(defaultSourcesPayload, { force: true })}
+                      className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300 transition-colors hover:bg-amber-500/20"
+                      title="Select the default sources configured on the Instances page"
+                    >
+                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      Use defaults
+                    </button>
+                  )}
+                  {hasSourceSelection && (
+                    <button
+                      type="button"
+                      onClick={clearSourceSelections}
+                      className="inline-flex items-center gap-1 rounded-md border border-slate-700/50 bg-slate-800/40 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:bg-slate-800/70"
+                      title="Clear the selection and search every configured instance"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear selection
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {allInstances.map((instance) => {
                   const isSelected =
@@ -895,6 +995,12 @@ export function SearchPage() {
       />
     </div>
   )
+}
+
+function sameSet<T>(a: T[], b: T[]): boolean {
+  if (a.length !== b.length) return false
+  const set = new Set(a)
+  return b.every((v) => set.has(v))
 }
 
 interface SortableThProps {

@@ -6,6 +6,7 @@ import {
   ConfirmDialog,
   AddInstanceModal,
   EditInstanceModal,
+  DefaultSourcesModal,
 } from '../components'
 import { LoadingSpinner } from '../components'
 import {
@@ -31,6 +32,10 @@ export function InstancesPage() {
     instance: JackettInstanceWithStatus | ProwlarrInstanceWithStatus
   } | null>(null)
   const [deleteInstance, setDeleteInstance] = useState<{
+    type: InstanceType
+    instance: JackettInstanceWithStatus | ProwlarrInstanceWithStatus
+  } | null>(null)
+  const [defaultsInstance, setDefaultsInstance] = useState<{
     type: InstanceType
     instance: JackettInstanceWithStatus | ProwlarrInstanceWithStatus
   } | null>(null)
@@ -128,6 +133,8 @@ export function InstancesPage() {
                 apiKey={instance.api_key}
                 status={instance.status}
                 indexerCount={instance.indexer_count}
+                defaultSourceCount={instance.default_indexers.length}
+                onConfigureDefaults={() => setDefaultsInstance({ type: 'jackett', instance })}
                 isTesting={testingJackettIds.has(instance.id)}
                 onTest={() => handleTestJackett(instance.id)}
                 onEdit={() => setEditInstance({ type: 'jackett', instance })}
@@ -182,6 +189,8 @@ export function InstancesPage() {
                 apiKey={instance.api_key}
                 status={instance.status}
                 indexerCount={instance.indexer_count}
+                defaultSourceCount={instance.default_indexers.length}
+                onConfigureDefaults={() => setDefaultsInstance({ type: 'prowlarr', instance })}
                 isTesting={testingProwlarrIds.has(instance.id)}
                 onTest={() => handleTestProwlarr(instance.id)}
                 onEdit={() => setEditInstance({ type: 'prowlarr', instance })}
@@ -213,6 +222,16 @@ export function InstancesPage() {
           onClose={() => setEditInstance(null)}
           type={editInstance.type}
           instance={editInstance.instance}
+        />
+      )}
+
+      {/* Default Sources Modal */}
+      {defaultsInstance && (
+        <DefaultSourcesModal
+          isOpen={true}
+          onClose={() => setDefaultsInstance(null)}
+          type={defaultsInstance.type}
+          instance={defaultsInstance.instance}
         />
       )}
 

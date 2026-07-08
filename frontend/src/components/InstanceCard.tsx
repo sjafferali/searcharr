@@ -28,6 +28,8 @@ interface InstanceCardProps extends BaseCardProps {
   type: InstanceType
   apiKey: string
   indexerCount: number | null
+  defaultSourceCount?: number
+  onConfigureDefaults?: () => void
 }
 
 interface ClientCardProps extends BaseCardProps {
@@ -42,6 +44,8 @@ export function InstanceCard({
   apiKey,
   status,
   indexerCount,
+  defaultSourceCount = 0,
+  onConfigureDefaults,
   onTest,
   onEdit,
   onDelete,
@@ -80,6 +84,24 @@ export function InstanceCard({
             <span>{indexerCount} indexers</span>
           </div>
         )}
+        {onConfigureDefaults && (
+          <div className="flex items-center gap-2 text-slate-400">
+            <Star
+              className={cn(
+                'h-3.5 w-3.5',
+                defaultSourceCount > 0 ? 'fill-amber-400 text-amber-400' : 'text-slate-500',
+              )}
+            />
+            {defaultSourceCount > 0 ? (
+              <span>
+                <span className="font-medium text-amber-300">{defaultSourceCount}</span> default
+                source{defaultSourceCount === 1 ? '' : 's'}
+              </span>
+            ) : (
+              <span>No default sources</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Actions */}
@@ -99,6 +121,21 @@ export function InstanceCard({
           <Settings className="h-3.5 w-3.5" />
           Edit
         </button>
+        {onConfigureDefaults && (
+          <button
+            onClick={onConfigureDefaults}
+            title="Choose which indexers are searched by default"
+            className={cn(
+              'flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors',
+              defaultSourceCount > 0
+                ? 'border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
+                : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700',
+            )}
+          >
+            <Star className={cn('h-3.5 w-3.5', defaultSourceCount > 0 && 'fill-amber-400')} />
+            Defaults
+          </button>
+        )}
         <button
           onClick={onDelete}
           className="flex items-center justify-center rounded bg-red-500/10 p-1.5 text-red-400 transition-colors hover:bg-red-500/20"

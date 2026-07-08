@@ -1,6 +1,16 @@
 import { create } from 'zustand'
 import { IndexerError, SearchCategory, SortBy, SortOrder, SearchResult } from '../types'
 
+export interface DefaultSourceEntry {
+  id: number
+  defaultIndexers: string[]
+}
+
+export interface DefaultSourcesPayload {
+  jackett: DefaultSourceEntry[]
+  prowlarr: DefaultSourceEntry[]
+}
+
 interface SearchFilters {
   category: SearchCategory
   minSeeders: number
@@ -39,6 +49,11 @@ interface SearchState {
   toggleProwlarrIndexer: (instanceId: number, indexerId: string) => void
   clearJackettIndexerSelection: (instanceId: number) => void
   clearProwlarrIndexerSelection: (instanceId: number) => void
+  // True once the configured default sources have been applied (or deliberately
+  // skipped because the user already had a selection) for this app session.
+  sourceDefaultsApplied: boolean
+  applyDefaultSources: (defaults: DefaultSourcesPayload, options?: { force?: boolean }) => void
+  clearSourceSelections: () => void
   resetFilters: () => void
 
   // Results
@@ -183,6 +198,61 @@ export const useSearchStore = create<SearchState>((set) => ({
       delete next[instanceId]
       return { filters: { ...state.filters, prowlarrIndexerSelections: next } }
     }),
+  sourceDefaultsApplied: false,
+  applyDefaultSources: (defaults, options) =>
+    set((state) => {
+      const hasExistingSelection =
+        state.filters.selectedJackettIds.length > 0 || state.filters.selectedProwlarrIds.length > 0
+
+      // Automatic application happens once per session and never clobbers a
+      // selection the user already made.
+      if (!options?.force && (state.sourceDefaultsApplied || hasExistingSelection)) {
+        return { sourceDefaultsApplied: true }
+      }
+
+      const jackettWithDefaults = defaults.jackett.filter((i) => i.defaultIndexers.length > 0)
+      const prowlarrWithDefaults = defaults.prowlarr.filter((i) => i.defaultIndexers.length > 0)
+
+      if (jackettWithDefaults.length === 0 && prowlarrWithDefaults.length === 0) {
+        // No defaults configured anywhere: search every instance.
+        if (!options?.force) return { sourceDefaultsApplied: true }
+        return {
+          sourceDefaultsApplied: true,
+          filters: {
+            ...state.filters,
+            selectedJackettIds: [],
+            selectedProwlarrIds: [],
+            jackettIndexerSelections: {},
+            prowlarrIndexerSelections: {},
+          },
+        }
+      }
+
+      return {
+        sourceDefaultsApplied: true,
+        filters: {
+          ...state.filters,
+          selectedJackettIds: jackettWithDefaults.map((i) => i.id),
+          selectedProwlarrIds: prowlarrWithDefaults.map((i) => i.id),
+          jackettIndexerSelections: Object.fromEntries(
+            jackettWithDefaults.map((i) => [i.id, [...i.defaultIndexers]]),
+          ),
+          prowlarrIndexerSelections: Object.fromEntries(
+            prowlarrWithDefaults.map((i) => [i.id, [...i.defaultIndexers]]),
+          ),
+        },
+      }
+    }),
+  clearSourceSelections: () =>
+    set((state) => ({
+      filters: {
+        ...state.filters,
+        selectedJackettIds: [],
+        selectedProwlarrIds: [],
+        jackettIndexerSelections: {},
+        prowlarrIndexerSelections: {},
+      },
+    })),
   resetFilters: () => set({ filters: { ...defaultFilters } }),
 
   // Results

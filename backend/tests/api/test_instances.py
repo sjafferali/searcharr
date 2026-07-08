@@ -99,6 +99,39 @@ class TestJackettInstances:
         assert data["url"] == "http://localhost:9117"  # Unchanged
 
     @pytest.mark.asyncio
+    async def test_update_jackett_default_indexers(
+        self, client: AsyncClient, jackett_instance: JackettInstance
+    ):
+        """Test setting and clearing default indexers on a Jackett instance."""
+        response = await client.put(
+            f"/api/v1/instances/jackett/{jackett_instance.id}",
+            json={"default_indexers": ["indexer-a", "indexer-b"]},
+        )
+        assert response.status_code == 200
+        assert response.json()["default_indexers"] == ["indexer-a", "indexer-b"]
+
+        # The value round-trips through the list endpoint
+        response = await client.get("/api/v1/instances/jackett")
+        assert response.status_code == 200
+        assert response.json()[0]["default_indexers"] == ["indexer-a", "indexer-b"]
+
+        # Omitting the field leaves the stored value untouched
+        response = await client.put(
+            f"/api/v1/instances/jackett/{jackett_instance.id}",
+            json={"name": "Renamed"},
+        )
+        assert response.status_code == 200
+        assert response.json()["default_indexers"] == ["indexer-a", "indexer-b"]
+
+        # An empty list clears the default sources
+        response = await client.put(
+            f"/api/v1/instances/jackett/{jackett_instance.id}",
+            json={"default_indexers": []},
+        )
+        assert response.status_code == 200
+        assert response.json()["default_indexers"] == []
+
+    @pytest.mark.asyncio
     async def test_update_jackett_instance_not_found(self, client: AsyncClient):
         """Test updating a non-existent Jackett instance."""
         response = await client.put(
@@ -190,6 +223,22 @@ class TestProwlarrInstances:
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Updated Prowlarr"
+
+    @pytest.mark.asyncio
+    async def test_update_prowlarr_default_indexers(
+        self, client: AsyncClient, prowlarr_instance: ProwlarrInstance
+    ):
+        """Test setting default indexers on a Prowlarr instance."""
+        response = await client.put(
+            f"/api/v1/instances/prowlarr/{prowlarr_instance.id}",
+            json={"default_indexers": ["12", "34"]},
+        )
+        assert response.status_code == 200
+        assert response.json()["default_indexers"] == ["12", "34"]
+
+        response = await client.get(f"/api/v1/instances/prowlarr/{prowlarr_instance.id}")
+        assert response.status_code == 200
+        assert response.json()["default_indexers"] == ["12", "34"]
 
     @pytest.mark.asyncio
     async def test_delete_prowlarr_instance(

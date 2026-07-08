@@ -2,6 +2,7 @@
 API endpoints for managing Jackett and Prowlarr instances.
 """
 
+import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -40,6 +41,27 @@ def mask_api_key(api_key: str) -> str:
     if len(api_key) <= 8:
         return "*" * len(api_key)
     return api_key[:4] + "..." + api_key[-4:]
+
+
+def decode_default_indexers(raw: str | None) -> list[str]:
+    """Decode the JSON-encoded default indexer list stored on an instance."""
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item) for item in parsed if isinstance(item, str) and item]
+
+
+def encode_default_indexers(indexer_ids: list[str]) -> str | None:
+    """Encode a default indexer list for storage; an empty list stores NULL."""
+    cleaned = [item for item in indexer_ids if item]
+    if not cleaned:
+        return None
+    return json.dumps(cleaned)
 
 
 async def get_instance_status(
@@ -87,6 +109,7 @@ async def list_jackett_instances(
             name=instance.name,
             url=instance.url,
             api_key=mask_api_key(decrypt_credential(instance.api_key)),
+            default_indexers=decode_default_indexers(instance.default_indexers),
             created_at=instance.created_at,
             updated_at=instance.updated_at,
         )
@@ -142,6 +165,7 @@ async def get_jackett_instance(
         name=instance.name,
         url=instance.url,
         api_key=mask_api_key(decrypt_credential(instance.api_key)),
+        default_indexers=decode_default_indexers(instance.default_indexers),
         created_at=instance.created_at,
         updated_at=instance.updated_at,
     )
@@ -167,6 +191,8 @@ async def update_jackett_instance(
         instance.url = data.url.rstrip("/")
     if data.api_key is not None:
         instance.api_key = encrypt_credential(data.api_key)
+    if data.default_indexers is not None:
+        instance.default_indexers = encode_default_indexers(data.default_indexers)
 
     await db.commit()
     await db.refresh(instance)
@@ -176,6 +202,7 @@ async def update_jackett_instance(
         name=instance.name,
         url=instance.url,
         api_key=mask_api_key(decrypt_credential(instance.api_key)),
+        default_indexers=decode_default_indexers(instance.default_indexers),
         created_at=instance.created_at,
         updated_at=instance.updated_at,
     )
@@ -270,6 +297,7 @@ async def list_prowlarr_instances(
             name=instance.name,
             url=instance.url,
             api_key=mask_api_key(decrypt_credential(instance.api_key)),
+            default_indexers=decode_default_indexers(instance.default_indexers),
             created_at=instance.created_at,
             updated_at=instance.updated_at,
         )
@@ -325,6 +353,7 @@ async def get_prowlarr_instance(
         name=instance.name,
         url=instance.url,
         api_key=mask_api_key(decrypt_credential(instance.api_key)),
+        default_indexers=decode_default_indexers(instance.default_indexers),
         created_at=instance.created_at,
         updated_at=instance.updated_at,
     )
@@ -350,6 +379,8 @@ async def update_prowlarr_instance(
         instance.url = data.url.rstrip("/")
     if data.api_key is not None:
         instance.api_key = encrypt_credential(data.api_key)
+    if data.default_indexers is not None:
+        instance.default_indexers = encode_default_indexers(data.default_indexers)
 
     await db.commit()
     await db.refresh(instance)
@@ -359,6 +390,7 @@ async def update_prowlarr_instance(
         name=instance.name,
         url=instance.url,
         api_key=mask_api_key(decrypt_credential(instance.api_key)),
+        default_indexers=decode_default_indexers(instance.default_indexers),
         created_at=instance.created_at,
         updated_at=instance.updated_at,
     )
@@ -472,6 +504,7 @@ async def get_all_instances_status(
                 name=instance.name,
                 url=instance.url,
                 api_key=mask_api_key(decrypt_credential(instance.api_key)),
+                default_indexers=decode_default_indexers(instance.default_indexers),
                 created_at=instance.created_at,
                 updated_at=instance.updated_at,
                 status=status,
@@ -490,6 +523,7 @@ async def get_all_instances_status(
                 name=instance.name,
                 url=instance.url,
                 api_key=mask_api_key(decrypt_credential(instance.api_key)),
+                default_indexers=decode_default_indexers(instance.default_indexers),
                 created_at=instance.created_at,
                 updated_at=instance.updated_at,
                 status=status,

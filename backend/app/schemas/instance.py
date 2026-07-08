@@ -35,6 +35,13 @@ class JackettInstanceUpdate(BaseSchema):
     )
     url: str | None = Field(None, description="Jackett server URL")
     api_key: str | None = Field(None, min_length=1, description="Jackett API key")
+    default_indexers: list[str] | None = Field(
+        None,
+        description=(
+            "Indexer IDs searched by default from the search page. "
+            "An empty list clears the default sources."
+        ),
+    )
 
 
 class JackettInstanceResponse(JackettInstanceBase, TimestampSchema):
@@ -42,6 +49,10 @@ class JackettInstanceResponse(JackettInstanceBase, TimestampSchema):
 
     id: int
     api_key: str = Field(..., description="Masked API key for display")
+    default_indexers: list[str] = Field(
+        default_factory=list,
+        description="Indexer IDs searched by default from the search page",
+    )
 
     @classmethod
     def mask_api_key(cls, api_key: str) -> str:
@@ -87,6 +98,13 @@ class ProwlarrInstanceUpdate(BaseSchema):
     )
     url: str | None = Field(None, description="Prowlarr server URL")
     api_key: str | None = Field(None, min_length=1, description="Prowlarr API key")
+    default_indexers: list[str] | None = Field(
+        None,
+        description=(
+            "Indexer IDs searched by default from the search page. "
+            "An empty list clears the default sources."
+        ),
+    )
 
 
 class ProwlarrInstanceResponse(ProwlarrInstanceBase, TimestampSchema):
@@ -94,6 +112,10 @@ class ProwlarrInstanceResponse(ProwlarrInstanceBase, TimestampSchema):
 
     id: int
     api_key: str = Field(..., description="Masked API key for display")
+    default_indexers: list[str] = Field(
+        default_factory=list,
+        description="Indexer IDs searched by default from the search page",
+    )
 
 
 class ProwlarrInstanceWithStatus(ProwlarrInstanceResponse):

@@ -6,6 +6,7 @@ export interface JackettInstance {
   name: string
   url: string
   api_key: string // Masked
+  default_indexers: string[]
   created_at: string
   updated_at: string
 }
@@ -25,6 +26,7 @@ export interface UpdateJackettInstance {
   name?: string
   url?: string
   api_key?: string
+  default_indexers?: string[]
 }
 
 // Prowlarr Instance Types
@@ -33,6 +35,7 @@ export interface ProwlarrInstance {
   name: string
   url: string
   api_key: string // Masked
+  default_indexers: string[]
   created_at: string
   updated_at: string
 }
@@ -52,6 +55,7 @@ export interface UpdateProwlarrInstance {
   name?: string
   url?: string
   api_key?: string
+  default_indexers?: string[]
 }
 
 // Combined status response
@@ -69,6 +73,7 @@ export interface Instance {
   name: string
   url: string
   api_key: string
+  default_indexers: string[]
   created_at: string
   updated_at: string
 }
