@@ -9,6 +9,10 @@ up to the page-size limit, which is plenty).
 
 Mirrors migration 009, which did the same for ``feed_items.dedup_key``.
 
+The type change runs through ``batch_alter_table`` so it works on SQLite
+(which cannot ALTER a column's type and needs a table rebuild) as well as
+Postgres, where it emits a plain ALTER COLUMN.
+
 Revision ID: 011_widen_bookmark_dedup_key
 Revises: 010_add_feed_last_poll_errors
 Create Date: 2026-05-12
@@ -41,22 +45,22 @@ def _column_type_is_text(table: str, column: str) -> bool:
 def upgrade() -> None:
     if _column_type_is_text("bookmarks", "dedup_key"):
         return
-    op.alter_column(
-        "bookmarks",
-        "dedup_key",
-        existing_type=sa.String(length=255),
-        type_=sa.Text(),
-        existing_nullable=False,
-    )
+    with op.batch_alter_table("bookmarks") as batch_op:
+        batch_op.alter_column(
+            "dedup_key",
+            existing_type=sa.String(length=255),
+            type_=sa.Text(),
+            existing_nullable=False,
+        )
 
 
 def downgrade() -> None:
     if _column_type_is_text("bookmarks", "dedup_key") is False:
         return
-    op.alter_column(
-        "bookmarks",
-        "dedup_key",
-        existing_type=sa.Text(),
-        type_=sa.String(length=255),
-        existing_nullable=False,
-    )
+    with op.batch_alter_table("bookmarks") as batch_op:
+        batch_op.alter_column(
+            "dedup_key",
+            existing_type=sa.Text(),
+            type_=sa.String(length=255),
+            existing_nullable=False,
+        )
