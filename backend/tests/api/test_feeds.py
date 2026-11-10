@@ -843,48 +843,81 @@ class TestFeedSeen:
         assert feed["seen_through"] is not None
         assert feed["seen_history"] == []
 
+    async def _visit(self, client: AsyncClient, feed_id: int) -> dict:
+        response = await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})
+        assert response.status_code == 200
+        return response.json()
+
     @pytest.mark.asyncio
-    async def test_new_visit_with_new_items_rotates_history(
+    async def test_reload_remembers_the_batch_it_hid(
         self, client: AsyncClient, db_session: AsyncSession
     ):
         earlier = datetime.now(UTC) - timedelta(hours=3)
         feed_id = await self._seed(db_session, seen_through=earlier)
         await self._add_item(db_session, feed_id, "url:http://new")
 
-        data = (await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})).json()
-        assert datetime.fromisoformat(data["baseline"]) == earlier
-        assert [datetime.fromisoformat(h) for h in data["seen_history"]] == [earlier]
-        assert datetime.fromisoformat(data["seen_through"]) > earlier
+        # The visit that shows the batch: nothing is hidden yet.
+        first = await self._visit(client, feed_id)
+        assert datetime.fromisoformat(first["baseline"]) == earlier
+        assert first["seen_history"] == []
 
-    @pytest.mark.asyncio
-    async def test_reload_without_new_items_keeps_history(
-        self, client: AsyncClient, db_session: AsyncSession
-    ):
-        """An accidental reload must not displace the batch it just hid."""
-        earlier = datetime.now(UTC) - timedelta(hours=3)
-        feed_id = await self._seed(db_session, seen_through=earlier)
-        await self._add_item(db_session, feed_id, "url:http://new")
+        # Reloading hides the batch, so its baseline becomes recoverable.
+        second = await self._visit(client, feed_id)
+        assert [datetime.fromisoformat(h) for h in second["seen_history"]] == [earlier]
+        assert datetime.fromisoformat(second["baseline"]) > earlier
 
-        first = (
-            await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})
-        ).json()
-        # Reload twice: nothing arrived in between, so history stays put while
-        # the baseline moves on to the previous call's seen_through.
+        # Further reloads hide nothing more and leave history alone.
         for _ in range(2):
-            again = (
-                await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})
-            ).json()
-            assert again["seen_history"] == first["seen_history"]
-        assert datetime.fromisoformat(again["baseline"]) > datetime.fromisoformat(first["baseline"])
+            again = await self._visit(client, feed_id)
+            assert again["seen_history"] == second["seen_history"]
 
         # The batch is still reachable through the remembered cutoff.
         items = (
             await client.get(
                 f"/api/v1/feeds/{feed_id}/items",
-                params={"first_seen_after": first["seen_history"][0]},
+                params={"first_seen_after": second["seen_history"][0]},
             )
         ).json()
         assert items["total"] == 1
+
+    @pytest.mark.asyncio
+    async def test_items_arriving_mid_visit_are_recoverable(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Items the in-visit touches carried past the marker can be brought back."""
+        feed_id = await self._seed(db_session, seen_through=datetime.now(UTC) - timedelta(hours=3))
+        # Two visits with nothing new: no history.
+        await self._visit(client, feed_id)
+        opened = await self._visit(client, feed_id)
+        assert opened["seen_history"] == []
+
+        # An item arrives while the feed is on screen and a touch moves the
+        # marker past it.
+        await self._add_item(db_session, feed_id, "url:http://mid-visit")
+        await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": False})
+
+        reloaded = await self._visit(client, feed_id)
+        assert reloaded["seen_history"] == [opened["baseline"]]
+        items = (
+            await client.get(
+                f"/api/v1/feeds/{feed_id}/items",
+                params={"first_seen_after": reloaded["seen_history"][0]},
+            )
+        ).json()
+        assert items["total"] == 1
+
+    @pytest.mark.asyncio
+    async def test_visit_without_hidden_items_adds_no_history(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """Items newer than the marker are simply NEW; there is nothing to recover."""
+        feed_id = await self._seed(db_session, seen_through=datetime.now(UTC) - timedelta(hours=3))
+        await self._visit(client, feed_id)
+        await self._visit(client, feed_id)
+        await self._add_item(db_session, feed_id, "url:http://after-leaving")
+
+        data = await self._visit(client, feed_id)
+        assert data["seen_history"] == []
 
     @pytest.mark.asyncio
     async def test_touch_advances_without_rotating(
@@ -893,22 +926,26 @@ class TestFeedSeen:
         earlier = datetime.now(UTC) - timedelta(hours=3)
         feed_id = await self._seed(db_session, seen_through=earlier)
         await self._add_item(db_session, feed_id, "url:http://new")
+        first = await self._visit(client, feed_id)
 
         # No body at all behaves like ``new_visit: false``.
         data = (await client.post(f"/api/v1/feeds/{feed_id}/seen")).json()
-        assert datetime.fromisoformat(data["baseline"]) == earlier
+        assert data["baseline"] == first["seen_through"]
         assert data["seen_history"] == []
         assert datetime.fromisoformat(data["seen_through"]) > earlier
+
+        # The touch didn't start a visit: the next one still judges the batch
+        # against the first visit's baseline.
+        second = await self._visit(client, feed_id)
+        assert [datetime.fromisoformat(h) for h in second["seen_history"]] == [earlier]
 
     @pytest.mark.asyncio
     async def test_history_is_capped(self, client: AsyncClient, db_session: AsyncSession):
         feed_id = await self._seed(db_session, seen_through=datetime.now(UTC) - timedelta(hours=1))
         data: dict = {}
-        for i in range(7):
+        for i in range(8):
             await self._add_item(db_session, feed_id, f"url:http://{i}")
-            data = (
-                await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})
-            ).json()
+            data = await self._visit(client, feed_id)
         history = [datetime.fromisoformat(h) for h in data["seen_history"]]
         assert len(history) == 5
         assert history == sorted(history, reverse=True)

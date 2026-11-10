@@ -406,26 +406,42 @@ async def mark_feed_seen(
     Returns the marker's previous value as ``baseline`` — the instant the
     caller should judge NEW items against for the rest of its visit.
 
-    With ``new_visit`` set, the previous marker is first pushed onto
-    ``seen_history`` — but only if items arrived after it. Visits that found
-    nothing new (an accidental reload, most commonly) therefore never displace
-    the history entry that brings the last real batch of new items back.
+    With ``new_visit`` set, the previous visit's baseline is first pushed onto
+    ``seen_history`` — but only if that visit hid something, i.e. items arrived
+    after its baseline and are now behind the marker. That covers both the
+    batch the visit opened with and items that arrived while the feed was on
+    screen (the marker advances throughout a visit). Visits that hid nothing
+    (a second reload in a row, most commonly) never displace the history entry
+    that brings the last real batch of new items back.
     """
     feed = await _load_feed(feed_id, db)
     now = datetime.now(UTC)
     baseline = _as_utc(feed.seen_through)
     history = _seen_history(feed)
+    values: dict[str, object] = {"seen_through": now}
 
-    if payload is not None and payload.new_visit and baseline is not None:
-        new_count = (
-            await db.execute(
-                select(func.count())
-                .select_from(FeedItem)
-                .where(FeedItem.feed_id == feed_id, FeedItem.first_seen_at > baseline)
-            )
-        ).scalar_one()
-        if new_count > 0:
-            history = [baseline, *history][:SEEN_HISTORY_MAX]
+    if payload is not None and payload.new_visit:
+        previous = _as_utc(feed.visit_baseline)
+        if (
+            previous is not None
+            and baseline is not None
+            and previous < baseline
+            and previous not in history
+        ):
+            hidden_count = (
+                await db.execute(
+                    select(func.count())
+                    .select_from(FeedItem)
+                    .where(
+                        FeedItem.feed_id == feed_id,
+                        FeedItem.first_seen_at > previous,
+                        FeedItem.first_seen_at <= baseline,
+                    )
+                )
+            ).scalar_one()
+            if hidden_count > 0:
+                history = [previous, *history][:SEEN_HISTORY_MAX]
+        values["visit_baseline"] = baseline
 
     # Core UPDATE with ``updated_at`` pinned: viewing a feed isn't an edit, so
     # it shouldn't trip the column's ``onupdate`` bump.
@@ -433,7 +449,7 @@ async def mark_feed_seen(
         update(Feed)
         .where(Feed.id == feed_id)
         .values(
-            seen_through=now,
+            **values,
             seen_history=[h.isoformat() for h in history],
             updated_at=Feed.updated_at,
         )

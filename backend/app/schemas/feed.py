@@ -154,7 +154,10 @@ class FeedResponse(BaseSchema):
     )
     seen_history: list[datetime] = Field(
         default_factory=list,
-        description="Earlier seen_through values, newest first, one per visit that had new items",
+        description=(
+            "Baselines of earlier visits, newest first, one per visit whose new items "
+            "have since been marked seen"
+        ),
     )
     created_at: datetime
     updated_at: datetime
@@ -166,9 +169,10 @@ class FeedSeenRequest(BaseSchema):
     new_visit: bool = Field(
         False,
         description=(
-            "True when the feed has just been opened. If items arrived since the "
-            "previous seen_through, that value is pushed onto seen_history before "
-            "the marker advances. False just advances the marker (same visit)."
+            "True when the feed has just been opened. If the previous visit hid any "
+            "items (they arrived after its baseline and are now behind seen_through), "
+            "that baseline is pushed onto seen_history before the marker advances. "
+            "False just advances the marker (same visit)."
         ),
     )
 

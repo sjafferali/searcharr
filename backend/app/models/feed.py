@@ -80,10 +80,16 @@ class Feed(BaseModel):
     # later than this are NEW. Stored server-side (not in the browser) so the
     # state is shared across devices. NULL until the feed is first opened.
     seen_through: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Earlier ``seen_through`` values (ISO-8601 strings, newest first, capped),
-    # one per visit that actually had new items. Lets the UI re-show a batch of
-    # items that was marked seen — e.g. after an accidental page reload.
+    # Baselines of earlier visits (ISO-8601 strings, newest first, capped), one
+    # per visit whose new items have since been marked seen. Lets the UI re-show
+    # a batch of items that was marked seen — e.g. after an accidental page reload.
     seen_history: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    # ``seen_through`` as it stood when the most recent visit began — the
+    # baseline that visit judged NEW against. ``seen_through`` itself keeps
+    # advancing while the feed is on screen, so this is what the next visit
+    # needs in order to tell whether the visit hid any items. NULL until the
+    # feed has been opened twice.
+    visit_baseline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     indexers: Mapped[list["FeedIndexer"]] = relationship(
         "FeedIndexer",
