@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
-  Activity,
   AlertTriangle,
   ArrowDown,
   ArrowUp,
@@ -10,25 +9,16 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Clock,
-  Database,
   Download,
-  Eye,
-  ExternalLink,
   FileDown,
   Filter as FilterIcon,
-  Layers,
   Magnet,
-  PauseCircle,
   Pencil,
   Plus,
   Radar,
   RefreshCw,
   Rss,
-  Sparkles,
   Trash2,
-  Users,
-  Zap,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -99,31 +89,31 @@ const titleColumn: SortableColumn = {
 const sizeColumn: SortableColumn = {
   key: 'size',
   label: 'Size',
-  align: 'left',
+  align: 'right',
   defaultOrder: 'desc',
 }
 const seedersColumn: SortableColumn = {
   key: 'seeders',
   label: 'S/L',
-  align: 'center',
+  align: 'right',
   defaultOrder: 'desc',
 }
 const pubDateColumn: SortableColumn = {
   key: 'pub_date',
   label: 'Age',
-  align: 'left',
+  align: 'right',
   defaultOrder: 'desc',
 }
 const lastSeenColumn: SortableColumn = {
   key: 'last_seen',
   label: 'Seen',
-  align: 'left',
+  align: 'right',
   defaultOrder: 'desc',
 }
 const firstSeenColumn: SortableColumn = {
   key: 'first_seen',
   label: 'Added',
-  align: 'left',
+  align: 'right',
   defaultOrder: 'desc',
 }
 
@@ -144,17 +134,6 @@ function filterChips(feed: Feed): { label: string; tone: 'normal' | 'highlight' 
   if (f.include_regex) chips.push({ label: `match /${f.include_regex}/`, tone: 'normal' })
   if (f.exclude_regex) chips.push({ label: `skip /${f.exclude_regex}/`, tone: 'normal' })
   return chips
-}
-
-function freshnessTone(item: FeedItem, staleAfterSeconds: number): string {
-  const ageSec = (Date.now() - new Date(item.last_seen_at).getTime()) / 1000
-  if (ageSec < 1800) {
-    return 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.7)]'
-  }
-  if (ageSec < staleAfterSeconds) {
-    return 'bg-slate-400'
-  }
-  return 'bg-slate-700'
 }
 
 function isStale(item: FeedItem, staleAfterSeconds: number): boolean {
@@ -650,7 +629,7 @@ export function FeedsPage() {
   return (
     <div
       className={cn(
-        'grid gap-5 transition-[grid-template-columns] duration-200 ease-out',
+        'grid gap-6',
         sidebarCollapsed ? 'lg:grid-cols-[56px_1fr]' : 'lg:grid-cols-[280px_1fr]',
       )}
     >
@@ -667,43 +646,39 @@ export function FeedsPage() {
           />
         ) : (
           <>
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-300">
-                <Rss className="h-4 w-4 text-cyan-400" />
-                Feeds
-              </h2>
-              <div className="flex items-center gap-1.5">
+            <div className="flex h-8 items-center justify-between gap-2">
+              <h2 className="text-sm font-medium text-slate-100">Feeds</h2>
+              <div className="flex items-center gap-1">
                 <button
                   onClick={openCreate}
-                  className="flex items-center gap-1 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                  className="btn-secondary flex h-8 items-center gap-2 px-3 text-xs"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-4 w-4" />
                   New
                 </button>
                 <button
                   onClick={() => setSidebarCollapsed(true)}
-                  className="rounded-lg border border-slate-700/60 bg-slate-800/40 p-1 text-slate-400 transition-colors hover:bg-slate-800/70 hover:text-slate-200"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100"
                   title="Collapse sidebar"
                   aria-label="Collapse feeds sidebar"
                 >
-                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
             {feedsLoading ? (
-              <div className="flex items-center justify-center rounded-lg border border-slate-800/50 bg-slate-900/40 py-8 text-slate-400">
+              <div className="flex items-center justify-center rounded-xl border border-slate-800 bg-slate-900 py-8 text-slate-400">
                 <LoadingSpinner size="sm" />
                 <span className="ml-2 text-xs">Loading feeds…</span>
               </div>
             ) : feedsError ? (
-              <p className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
-                Failed to load feeds.
+              <p className="rounded-lg border border-red-500/30 px-3 py-2 text-xs text-red-300">
+                Failed to load feeds
               </p>
             ) : feeds.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-700/60 bg-slate-900/30 p-4 text-center">
-                <Rss className="mx-auto mb-2 h-8 w-8 text-slate-600" />
-                <p className="text-xs text-slate-400">No feeds yet.</p>
+              <div className="rounded-xl border border-dashed border-slate-700 p-4 text-center">
+                <p className="text-xs text-slate-400">No feeds yet</p>
                 <button
                   onClick={openCreate}
                   className="mt-2 text-xs font-medium text-cyan-400 hover:underline"
@@ -712,7 +687,7 @@ export function FeedsPage() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-0.5">
                 {feeds.map((feed) => {
                   const isActive = feed.id === selectedFeedId
                   const indexerCount = feed.indexers.length
@@ -722,49 +697,32 @@ export function FeedsPage() {
                       key={feed.id}
                       onClick={() => setSelectedFeedId(feed.id)}
                       className={cn(
-                        'group block w-full rounded-lg border px-3 py-2.5 text-left transition-all',
+                        'flex h-11 w-full items-center justify-between gap-2 rounded-lg px-3 text-left transition-colors',
                         isActive
-                          ? 'border-cyan-500/40 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.15)]'
-                          : 'border-slate-800/50 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/70',
+                          ? 'bg-slate-800 text-slate-100'
+                          : 'text-slate-300 hover:bg-slate-800/50 hover:text-slate-100',
                       )}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p
-                            className={cn(
-                              'truncate text-sm font-medium',
-                              isActive ? 'text-cyan-100' : 'text-slate-200',
-                            )}
-                          >
-                            {feed.name}
-                          </p>
-                          <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
-                            <Layers className="h-3 w-3" />
-                            {indexerCount} indexer{indexerCount === 1 ? '' : 's'}
-                            {feed.filters.freeleech_only && (
-                              <span className="ml-1 inline-flex items-center gap-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-emerald-300">
-                                <Sparkles className="h-2.5 w-2.5" />
-                                FL
-                              </span>
-                            )}
-                            {!feed.polling_enabled && (
-                              <span className="ml-1 inline-flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-amber-300">
-                                <PauseCircle className="h-2.5 w-2.5" />
-                                Paused
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        {newCount > 0 && (
-                          <span
-                            className="flex flex-shrink-0 items-center gap-1 rounded-full border border-cyan-400/50 bg-gradient-to-r from-cyan-500/25 to-blue-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.3)]"
-                            title={`${newCount.toLocaleString()} new item${newCount === 1 ? '' : 's'} since your last visit`}
-                          >
-                            <Sparkles className="h-2.5 w-2.5" />
-                            {newCount > 99 ? '99+' : newCount}
-                          </span>
-                        )}
-                      </div>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{feed.name}</span>
+                        <span className="block truncate font-mono text-2xs text-slate-500">
+                          {indexerCount} indexer{indexerCount === 1 ? '' : 's'}
+                          {feed.filters.freeleech_only && (
+                            <span className="text-emerald-400"> · freeleech</span>
+                          )}
+                          {!feed.polling_enabled && (
+                            <span className="text-amber-400"> · paused</span>
+                          )}
+                        </span>
+                      </span>
+                      {newCount > 0 && (
+                        <span
+                          className="flex-shrink-0 font-mono text-xs text-cyan-400"
+                          title={`${newCount.toLocaleString()} new item${newCount === 1 ? '' : 's'} since your last visit`}
+                        >
+                          {newCount > 99 ? '99+' : newCount}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -777,146 +735,101 @@ export function FeedsPage() {
       <section className="min-w-0 space-y-4">
         {!selectedFeed ? (
           <EmptyState
-            icon={<Rss className="h-12 w-12" />}
+            icon={<Rss className="h-8 w-8" />}
             title="No feed selected"
-            description="Create a feed to start collecting a polled history of indexer releases."
+            description="Create a feed to start collecting a polled history of indexer releases"
             action={
               feeds.length === 0 ? { label: 'Create a feed', onClick: openCreate } : undefined
             }
           />
         ) : (
           <>
-            <header className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            <header className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-100">
-                    <Rss className="h-4 w-4 text-cyan-400" />
-                    {selectedFeed.name}
-                  </h2>
+                  <h2 className="text-base font-medium text-slate-100">{selectedFeed.name}</h2>
                   {selectedFeed.description && (
-                    <p className="mt-1 text-xs text-slate-400">{selectedFeed.description}</p>
+                    <p className="mt-1 text-sm text-slate-400">{selectedFeed.description}</p>
                   )}
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <div className="mt-3 flex flex-wrap items-center gap-1">
                     {filterChips(selectedFeed).map((chip) => (
                       <span
                         key={chip.label}
-                        className={cn(
-                          'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                          chip.tone === 'highlight'
-                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                            : 'border-slate-700/50 bg-slate-800/40 text-slate-300',
-                        )}
+                        className={cn('tag', chip.tone === 'highlight' && 'tag-good')}
                       >
-                        {chip.tone === 'highlight' && <Sparkles className="h-2.5 w-2.5" />}
                         {chip.label}
                       </span>
                     ))}
                     {filterChips(selectedFeed).length === 0 && (
-                      <span className="text-[11px] italic text-slate-500">
-                        No filters — every result passes through.
+                      <span className="text-xs text-slate-500">
+                        No filters — every result passes through
                       </span>
                     )}
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
                     {selectedFeed.indexers.slice(0, 6).map((idx) => (
                       <span
                         key={`${idx.source_type}-${idx.source_instance_id}-${idx.indexer_id}`}
-                        className={cn(
-                          'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium',
-                          idx.source_type === 'jackett'
-                            ? 'border-amber-500/20 bg-amber-500/5 text-amber-200'
-                            : 'border-cyan-500/20 bg-cyan-500/5 text-cyan-200',
-                        )}
+                        className="tag"
+                        title={idx.source_type === 'jackett' ? 'Jackett' : 'Prowlarr'}
                       >
-                        {idx.source_type === 'jackett' ? (
-                          <Zap className="h-2.5 w-2.5" />
-                        ) : (
-                          <Database className="h-2.5 w-2.5" />
-                        )}
                         {idx.indexer_name}
                       </span>
                     ))}
                     {selectedFeed.indexers.length > 6 && (
-                      <span className="rounded-md border border-slate-700/50 bg-slate-800/40 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
-                        +{selectedFeed.indexers.length - 6} more
-                      </span>
+                      <span className="tag">+{selectedFeed.indexers.length - 6} more</span>
                     )}
                   </div>
                 </div>
-                <div className="flex flex-shrink-0 items-center gap-2">
+                <div className="flex flex-shrink-0 items-center gap-1">
                   <button
                     onClick={handleRefresh}
                     disabled={isRefreshing}
-                    className="flex items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="btn-primary mr-1 flex h-8 items-center gap-2 px-3 text-xs"
                     title="Refresh this feed now"
                   >
-                    <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
+                    <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
                     Refresh now
                   </button>
                   <button
                     onClick={() => openEdit(selectedFeed)}
-                    className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-2 text-slate-300 transition-colors hover:bg-slate-800/70"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100"
                     title="Edit feed"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setPendingDelete(selectedFeed)}
-                    className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2 text-rose-300 transition-colors hover:bg-rose-500/20"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-500/10 hover:text-red-400"
                     title="Delete feed"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
-              {/* Polling status panel */}
-              <div
-                className={cn(
-                  'mt-3 grid gap-3 rounded-lg border bg-slate-950/40 p-3 text-[11px] sm:grid-cols-[auto_1fr_auto]',
-                  pollingEnabled ? 'border-slate-800/60' : 'border-amber-500/30 bg-amber-500/5',
+              {/* Polling status line */}
+              <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-800 pt-3 font-mono text-2xs text-slate-400">
+                <span className={pollingEnabled ? 'text-slate-200' : 'text-amber-300'}>
+                  {pollingEnabled
+                    ? `Polling every ${selectedFeed.poll_interval_minutes}m`
+                    : 'Polling paused'}
+                </span>
+                <span className="text-slate-600">·</span>
+                <span>
+                  {lastPolledAt ? `last poll ${formatRelative(lastPolledAt)}` : 'not yet polled'}
+                </span>
+                {pollingEnabled && nextPollAt && (
+                  <>
+                    <span className="text-slate-600">·</span>
+                    <span>next {nextPollLabel(nextPollAt, pollingEnabled)}</span>
+                  </>
                 )}
-              >
-                <div className="flex items-center gap-2">
-                  {pollingEnabled ? (
-                    <Radar
-                      className={cn('h-4 w-4 text-cyan-400', isRefreshing && 'animate-pulse')}
-                    />
-                  ) : (
-                    <PauseCircle className="h-4 w-4 text-amber-400" />
-                  )}
-                  <span
-                    className={cn(
-                      'font-semibold uppercase tracking-wider',
-                      pollingEnabled ? 'text-cyan-300' : 'text-amber-300',
-                    )}
-                  >
-                    {pollingEnabled
-                      ? `Polling every ${selectedFeed.poll_interval_minutes}m`
-                      : 'Polling paused'}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-400 sm:justify-self-center">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {lastPolledAt ? `Last poll ${formatRelative(lastPolledAt)}` : 'Not yet polled'}
-                  </span>
-                  {pollingEnabled && nextPollAt && (
-                    <span className="flex items-center gap-1">
-                      <ArrowDown className="h-3 w-3" />
-                      Next {nextPollLabel(nextPollAt, pollingEnabled)}
-                    </span>
-                  )}
-                </div>
-                <div className="text-slate-300 sm:justify-self-end">
-                  <span className="font-medium text-slate-200">
-                    {totalInHistory.toLocaleString()}
-                  </span>{' '}
-                  <span className="text-slate-500">
-                    item{totalInHistory === 1 ? '' : 's'} in history
-                  </span>
-                </div>
-              </div>
+                <span className="ml-auto">
+                  <span className="text-slate-200">{totalInHistory.toLocaleString()}</span> item
+                  {totalInHistory === 1 ? '' : 's'} in history
+                </span>
+              </p>
             </header>
 
             {pendingChange && <NewItemsBanner change={pendingChange} onLoad={acceptPending} />}
@@ -927,27 +840,22 @@ export function FeedsPage() {
             />
 
             {/* Filters bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/50 bg-slate-900/40 px-3 py-2 text-xs">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-900 px-4 py-2 text-xs">
+              <div className="flex flex-wrap items-center gap-4">
                 {canFilterNew && (
                   <label
                     className={cn(
-                      'flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-0.5 transition-colors',
-                      showNewOnly
-                        ? 'border-cyan-400/50 bg-cyan-500/15 text-cyan-200'
-                        : 'border-transparent text-slate-300 hover:text-cyan-200',
+                      'flex cursor-pointer items-center gap-2 transition-colors',
+                      showNewOnly ? 'text-slate-100' : 'text-slate-300 hover:text-slate-100',
                     )}
                   >
                     <input
                       type="checkbox"
                       checked={showNewOnly}
                       onChange={(e) => setShowNewOnly(e.target.checked)}
-                      className="h-3.5 w-3.5 cursor-pointer accent-cyan-500"
+                      className="h-4 w-4 cursor-pointer accent-cyan-500"
                     />
-                    <span className="flex items-center gap-1">
-                      <Sparkles className="h-3 w-3 text-cyan-400" />
-                      New only
-                    </span>
+                    <span>New only</span>
                   </label>
                 )}
                 {canFilterNew && olderCutoffs.length > 0 && (
@@ -957,10 +865,8 @@ export function FeedsPage() {
                     aria-label="Which visit items count as new since"
                     title="Bring back items that were new on an earlier visit — useful if the page reloaded before you finished reviewing them."
                     className={cn(
-                      'cursor-pointer rounded border bg-slate-800/50 px-1.5 py-0.5 text-[11px] focus:border-cyan-500/50 focus:outline-none',
-                      sinceOverride !== null
-                        ? 'border-cyan-400/50 text-cyan-200'
-                        : 'border-slate-700/60 text-slate-200',
+                      'h-6 cursor-pointer rounded-lg border bg-slate-800 px-2 text-2xs text-slate-200 focus:border-cyan-500 focus:outline-none',
+                      sinceOverride !== null ? 'border-cyan-500/50' : 'border-slate-700',
                     )}
                   >
                     <option value="">Since last visit</option>
@@ -974,12 +880,12 @@ export function FeedsPage() {
                 )}
                 <label
                   className={cn(
-                    'flex cursor-pointer items-center gap-1.5',
+                    'flex cursor-pointer items-center gap-2',
                     newOnlyActive ? 'text-slate-500' : 'text-slate-300',
                   )}
                   title={
                     newOnlyActive
-                      ? "Disabled while 'New only' is active — every NEW item is shown regardless of staleness."
+                      ? "Disabled while 'New only' is active — every new item is shown regardless of staleness"
                       : undefined
                   }
                 >
@@ -988,30 +894,27 @@ export function FeedsPage() {
                     checked={!hideStale}
                     onChange={(e) => setHideStale(!e.target.checked)}
                     disabled={newOnlyActive}
-                    className="h-3.5 w-3.5 cursor-pointer accent-cyan-500 disabled:cursor-not-allowed"
+                    className="h-4 w-4 cursor-pointer accent-cyan-500 disabled:cursor-not-allowed"
                   />
                   <span>Show stale items</span>
                 </label>
-                <label className="flex cursor-pointer items-center gap-1.5 text-slate-300">
+                <label className="flex cursor-pointer items-center gap-2 text-slate-300">
                   <input
                     type="checkbox"
                     checked={hideDead}
                     onChange={(e) => setHideDead(e.target.checked)}
-                    className="h-3.5 w-3.5 cursor-pointer accent-rose-500"
+                    className="h-4 w-4 cursor-pointer accent-cyan-500"
                   />
                   <span>Hide dead items</span>
                 </label>
-                <label className="flex cursor-pointer items-center gap-1.5 text-slate-300">
+                <label className="flex cursor-pointer items-center gap-2 text-slate-300">
                   <input
                     type="checkbox"
                     checked={freeleechOnly}
                     onChange={(e) => setFreeleechOnly(e.target.checked)}
-                    className="h-3.5 w-3.5 cursor-pointer accent-emerald-500"
+                    className="h-4 w-4 cursor-pointer accent-cyan-500"
                   />
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="h-3 w-3 text-emerald-400" />
-                    Freeleech only
-                  </span>
+                  <span>Freeleech only</span>
                 </label>
                 {activeFilterCount > 0 && (
                   <button
@@ -1022,13 +925,13 @@ export function FeedsPage() {
                       setSeenWithinHours(null)
                       setFirstSeenWithinHours(null)
                     }}
-                    className="text-[11px] font-medium text-cyan-400 hover:underline"
+                    className="text-xs font-medium text-cyan-400 hover:underline"
                   >
                     Clear {activeFilterCount} filter{activeFilterCount === 1 ? '' : 's'}
                   </button>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500">
+              <p className="font-mono text-2xs text-slate-500">
                 {itemsLoading
                   ? 'Loading…'
                   : `${total.toLocaleString()} item${total === 1 ? '' : 's'} match${total === 1 ? 'es' : ''}`}
@@ -1036,14 +939,14 @@ export function FeedsPage() {
             </div>
 
             {itemsLoading && entries.length === 0 ? (
-              <div className="flex items-center justify-center rounded-xl border border-slate-800/50 bg-slate-900/50 py-16">
+              <div className="flex items-center justify-center rounded-xl border border-slate-800 bg-slate-900 py-16">
                 <LoadingSpinner size="md" />
                 <span className="ml-3 text-sm text-slate-400">Loading feed history…</span>
               </div>
             ) : itemsQuery.isError ? (
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-6 text-center">
-                <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-rose-400" />
-                <p className="text-sm text-rose-200">Failed to load this feed.</p>
+              <div className="rounded-xl border border-red-500/30 bg-slate-900 p-6 text-center">
+                <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-red-400" />
+                <p className="text-sm text-red-300">Failed to load this feed</p>
                 <button
                   onClick={() => itemsQuery.refetch()}
                   className="mt-3 text-xs font-medium text-cyan-400 hover:underline"
@@ -1052,13 +955,12 @@ export function FeedsPage() {
                 </button>
               </div>
             ) : showNewOnly && entries.length === 0 ? (
-              <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
-                <Sparkles className="mx-auto mb-4 h-12 w-12 text-slate-600" />
-                <p className="text-slate-400">You're all caught up</p>
+              <div className="rounded-xl border border-slate-800 bg-slate-900 p-12 text-center">
+                <p className="text-sm text-slate-200">You're all caught up</p>
                 <p className="mt-1 text-sm text-slate-500">
                   {sinceOverride !== null
-                    ? `No new items since ${formatCutoff(sinceOverride)} match the current filters.`
-                    : 'No new items since your last visit.'}
+                    ? `No new items since ${formatCutoff(sinceOverride)} match the current filters`
+                    : 'No new items since your last visit'}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
                   {sinceOverride === null && olderCutoffs.length > 0 && (
@@ -1079,9 +981,9 @@ export function FeedsPage() {
                 </div>
               </div>
             ) : entries.length === 0 && total === 0 ? (
-              <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
-                <Radar className="mx-auto mb-4 h-12 w-12 text-slate-600" />
-                <p className="text-slate-400">No items yet</p>
+              <div className="rounded-xl border border-slate-800 bg-slate-900 p-12 text-center">
+                <Radar className="mx-auto mb-4 h-8 w-8 text-slate-600" />
+                <p className="text-sm text-slate-200">No items yet</p>
                 <p className="mt-1 text-sm text-slate-500">
                   {pollingEnabled
                     ? `History fills up automatically. The next poll is ${nextPollLabel(nextPollAt, pollingEnabled) ?? 'on its way'}.`
@@ -1090,28 +992,28 @@ export function FeedsPage() {
                 <button
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-cyan-400 hover:underline disabled:opacity-50"
+                  className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-cyan-400 hover:underline disabled:opacity-50"
                 >
-                  <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
+                  <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
                   Refresh now
                 </button>
               </div>
             ) : entries.length === 0 ? (
-              <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
-                <FilterIcon className="mx-auto mb-4 h-12 w-12 text-slate-600" />
-                <p className="text-slate-400">No items match these filters</p>
+              <div className="rounded-xl border border-slate-800 bg-slate-900 p-12 text-center">
+                <FilterIcon className="mx-auto mb-4 h-8 w-8 text-slate-600" />
+                <p className="text-sm text-slate-200">No items match these filters</p>
                 <p className="mt-1 text-sm text-slate-500">
                   History has {total.toLocaleString()} item{total === 1 ? '' : 's'}, but none pass
-                  the current filter selection.
+                  the current filter selection
                 </p>
               </div>
             ) : (
               <>
-                <div className="overflow-hidden rounded-xl border border-slate-800/50 bg-slate-900/50">
+                <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-[880px]">
                       <thead>
-                        <tr className="border-b border-slate-800/50">
+                        <tr className="border-b border-slate-800">
                           <SortableTh
                             column={titleColumn}
                             activeSortBy={sortBy}
@@ -1176,7 +1078,7 @@ export function FeedsPage() {
                               panel: (close) => (
                                 <HoursFilterPanel
                                   current={seenWithinHours}
-                                  hint="Hides items last seen earlier than this."
+                                  hint="Hides items last seen earlier than this"
                                   onSubmit={(hours) => {
                                     setSeenWithinHours(hours)
                                     close()
@@ -1197,7 +1099,7 @@ export function FeedsPage() {
                               panel: (close) => (
                                 <HoursFilterPanel
                                   current={firstSeenWithinHours}
-                                  hint="Only shows items first added within this window."
+                                  hint="Only shows items first added within this window"
                                   onSubmit={(hours) => {
                                     setFirstSeenWithinHours(hours)
                                     close()
@@ -1206,13 +1108,13 @@ export function FeedsPage() {
                               ),
                             }}
                           />
-                          <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
+                          <th className="px-4 py-2 text-right text-xs font-normal text-slate-500">
                             Actions
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/30">
-                        {entries.map((result, idx) => {
+                      <tbody>
+                        {entries.map((result) => {
                           const isDead = result.seeders === 0
                           const isBookmarked = bookmarkIdByResultId[result.id] !== undefined
                           const stale = isStale(result, staleAfterSeconds)
@@ -1224,14 +1126,12 @@ export function FeedsPage() {
                             <tr
                               key={result.dedup_key}
                               className={cn(
-                                'group animate-fade-in transition-all hover:bg-slate-800/30',
-                                stale && 'opacity-60 hover:opacity-100',
-                                isDead && !stale && 'opacity-60 hover:opacity-100',
+                                'group border-t border-slate-800 transition-colors first:border-t-0 hover:bg-slate-800/50',
+                                (stale || isDead) && 'opacity-60 hover:opacity-100',
                               )}
-                              style={{ animationDelay: `${Math.min(idx * 20, 600)}ms` }}
                             >
-                              <td className="px-4 py-3">
-                                <div className="flex items-start gap-3">
+                              <td className="w-full max-w-0 px-4 py-3">
+                                <div className="flex items-start gap-2">
                                   <button
                                     onClick={() =>
                                       bookmarkToggle.toggle({
@@ -1245,20 +1145,21 @@ export function FeedsPage() {
                                       isBookmarked ? 'Remove bookmark' : 'Bookmark this result'
                                     }
                                     className={cn(
-                                      'mt-0.5 rounded p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                                      '-ml-1 flex h-5 w-6 flex-shrink-0 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                                       isBookmarked
                                         ? 'text-amber-400 hover:text-amber-300'
-                                        : 'text-slate-600 hover:text-slate-400',
+                                        : 'text-slate-600 hover:text-slate-300',
                                     )}
                                   >
                                     <Bookmark
                                       className={cn('h-4 w-4', isBookmarked && 'fill-current')}
                                     />
                                   </button>
+                                  {/* Lamp: lit while the item is unseen since the last visit */}
                                   <span
                                     className={cn(
                                       'mt-1.5 h-2 w-2 flex-shrink-0 rounded-full',
-                                      freshnessTone(result, staleAfterSeconds),
+                                      isNew ? 'bg-cyan-400' : 'bg-slate-600',
                                     )}
                                     title={`Seen ${formatRelative(result.last_seen_at)} • First seen ${formatRelative(result.first_seen_at)}`}
                                   />
@@ -1268,27 +1169,25 @@ export function FeedsPage() {
                                         href={result.info_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="group/link block text-sm font-medium leading-snug text-slate-200 transition-colors [overflow-wrap:anywhere] hover:text-cyan-300"
+                                        className="block truncate text-sm text-slate-100 transition-colors hover:text-cyan-300"
                                         title={result.title}
                                       >
                                         {result.title}
-                                        <ExternalLink className="ml-1 inline-block h-3.5 w-3.5 -translate-y-px align-middle opacity-0 transition-opacity group-hover/link:opacity-100" />
                                       </a>
                                     ) : (
                                       <p
-                                        className="block text-sm font-medium leading-snug text-slate-200 [overflow-wrap:anywhere]"
+                                        className="truncate text-sm text-slate-100"
                                         title={result.title}
                                       >
                                         {result.title}
                                       </p>
                                     )}
-                                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <div className="mt-1 flex flex-wrap items-center gap-1">
                                       {isNew && (
                                         <span
-                                          className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-cyan-400/50 bg-gradient-to-r from-cyan-500/25 to-blue-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.35)]"
+                                          className="tag tag-accent"
                                           title={`First added ${formatRelative(result.first_seen_at)} — appeared since ${sinceOverride !== null ? formatCutoff(sinceOverride) : 'your last visit'}`}
                                         >
-                                          <Sparkles className="h-3 w-3" />
                                           New
                                         </span>
                                       )}
@@ -1297,19 +1196,17 @@ export function FeedsPage() {
                                       )}
                                       {isDead && (
                                         <span
-                                          className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-rose-400/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-300"
+                                          className="tag tag-bad"
                                           title="No seeders — this torrent is unlikely to download"
                                         >
-                                          <AlertTriangle className="h-3 w-3" />
                                           Dead
                                         </span>
                                       )}
                                       {result.freeleech && (
                                         <span
-                                          className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-emerald-400/40 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                                          className="tag tag-good"
                                           title="Freeleech — download does not count against ratio"
                                         >
-                                          <Sparkles className="h-3 w-3" />
                                           Freeleech
                                         </span>
                                       )}
@@ -1319,107 +1216,76 @@ export function FeedsPage() {
                                         result.download_volume_factor > 0 &&
                                         result.download_volume_factor < 1 && (
                                           <span
-                                            className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-teal-400/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-300"
+                                            className="tag"
                                             title={`Download counts at ${Math.round(
                                               result.download_volume_factor * 100,
                                             )}% of size`}
                                           >
-                                            <Sparkles className="h-3 w-3" />
                                             {Math.round(result.download_volume_factor * 100)}% leech
                                           </span>
                                         )}
                                       {stale && (
                                         <span
-                                          className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-slate-700/40 bg-slate-800/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400"
+                                          className="tag"
                                           title={`Last observed ${formatRelative(result.last_seen_at)} — freeleech / seeders may be stale`}
                                         >
-                                          <Clock className="h-3 w-3" />
                                           Stale
                                         </span>
                                       )}
-                                    </div>
-                                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                                       <span
-                                        className={cn(
-                                          'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium',
-                                          result.source_type === 'jackett'
-                                            ? 'border border-amber-500/20 bg-amber-500/10 text-amber-300'
-                                            : 'border border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
-                                        )}
+                                        className="tag"
                                         title={`${result.source} (${result.source_type})`}
                                       >
-                                        {result.source_type === 'jackett' ? (
-                                          <Zap className="h-2.5 w-2.5" />
-                                        ) : (
-                                          <Database className="h-2.5 w-2.5" />
-                                        )}
                                         {result.source}
                                       </span>
-                                      <span className="rounded bg-slate-700/50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                                        {result.category || '—'}
-                                      </span>
-                                      <span className="text-[10px] text-slate-500">
+                                      {result.category && (
+                                        <span className="tag">{result.category}</span>
+                                      )}
+                                      <span className="ml-1 text-2xs text-slate-500">
                                         {result.indexer}
                                       </span>
                                     </div>
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-4 py-3 font-mono text-sm text-slate-300">
+                              <td className="whitespace-nowrap px-3 py-3 text-right text-sm text-slate-300">
                                 {result.size_formatted}
                               </td>
-                              <td className="px-4 py-3 text-center">
-                                <div className="flex items-center justify-center gap-2 text-xs">
-                                  <span
-                                    className={cn(
-                                      'flex items-center gap-1 font-medium',
-                                      isDead ? 'text-rose-400' : 'text-emerald-400',
-                                    )}
-                                  >
-                                    <Users className="h-3 w-3" />
-                                    {result.seeders.toLocaleString()}
-                                  </span>
-                                  <span className="text-slate-600">/</span>
-                                  <span className="text-red-400">{result.leechers}</span>
-                                </div>
+                              <td className="whitespace-nowrap px-3 py-3 text-right text-sm">
+                                <span className={isDead ? 'text-red-400' : 'text-emerald-400'}>
+                                  {result.seeders.toLocaleString()}
+                                </span>
+                                <span className="text-slate-600"> / </span>
+                                <span className="text-red-400">{result.leechers}</span>
                               </td>
-                              <td className="px-4 py-3 text-sm text-slate-400">
-                                <div
-                                  className="flex items-center gap-1.5"
-                                  title={
-                                    result.date
-                                      ? `Indexer reported: ${formatDateTime(result.date)}`
-                                      : 'No date reported'
-                                  }
-                                >
-                                  <Clock className="h-3.5 w-3.5" />
-                                  {formatAge(result.date)}
-                                </div>
+                              <td
+                                className="whitespace-nowrap px-3 py-3 text-right text-sm text-slate-300"
+                                title={
+                                  result.date
+                                    ? `Indexer reported: ${formatDateTime(result.date)}`
+                                    : 'No date reported'
+                                }
+                              >
+                                {formatAge(result.date)}
                               </td>
-                              <td className="px-4 py-3 text-sm text-slate-400">
-                                <div
-                                  className="flex items-center gap-1.5"
-                                  title={`Last seen: ${formatDateTime(result.last_seen_at)}`}
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                  {formatAge(result.last_seen_at)}
-                                </div>
+                              <td
+                                className="whitespace-nowrap px-3 py-3 text-right text-sm text-slate-300"
+                                title={`Last seen: ${formatDateTime(result.last_seen_at)}`}
+                              >
+                                {formatAge(result.last_seen_at)}
                               </td>
-                              <td className="px-4 py-3 text-sm text-slate-400">
-                                <div
-                                  className="flex items-center gap-1.5"
-                                  title={`First seen: ${formatDateTime(result.first_seen_at)}`}
-                                >
-                                  <Activity className="h-3.5 w-3.5" />
-                                  {formatAge(result.first_seen_at)}
-                                </div>
+                              <td
+                                className="whitespace-nowrap px-3 py-3 text-right text-sm text-slate-300"
+                                title={`First seen: ${formatDateTime(result.first_seen_at)}`}
+                              >
+                                {formatAge(result.first_seen_at)}
                               </td>
                               <td className="px-4 py-3">
-                                <div className="flex items-center justify-end gap-2">
+                                <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() => copyMagnet(result)}
                                     disabled={!result.magnet_link}
-                                    className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                                     title="Copy magnet"
                                   >
                                     <Magnet className="h-4 w-4" />
@@ -1427,7 +1293,7 @@ export function FeedsPage() {
                                   <button
                                     onClick={() => downloadTorrent(result)}
                                     disabled={!result.torrent_url}
-                                    className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                                     title="Download .torrent"
                                   >
                                     <FileDown className="h-4 w-4" />
@@ -1438,7 +1304,7 @@ export function FeedsPage() {
                                       (!result.magnet_link && !result.torrent_url) ||
                                       sendToClient.isPending
                                     }
-                                    className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-3 py-2 text-xs font-medium text-emerald-400 transition-all hover:from-emerald-500/30 hover:to-green-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="btn-secondary ml-1 flex h-8 items-center gap-2 px-3 text-xs"
                                     title={
                                       !result.magnet_link && !result.torrent_url
                                         ? 'No magnet link or torrent file available'
@@ -1516,25 +1382,20 @@ function NewItemsBanner({ change, onLoad }: NewItemsBannerProps) {
     headline = 'Updates available'
   }
   return (
-    <div className="animate-fade-in" role="status" aria-live="polite">
+    <div role="status" aria-live="polite">
       <button
         onClick={onLoad}
-        className="group flex w-full items-center justify-between gap-3 rounded-xl border border-cyan-500/40 bg-gradient-to-r from-cyan-500/15 via-cyan-500/10 to-blue-500/10 px-4 py-2.5 text-left text-sm text-cyan-100 shadow-[0_0_24px_-6px_rgba(34,211,238,0.45)] transition-all hover:border-cyan-400/60 hover:from-cyan-500/20 hover:to-blue-500/15 hover:shadow-[0_0_28px_-4px_rgba(34,211,238,0.55)] focus:outline-none focus:ring-2 focus:ring-cyan-400/60"
+        className="group flex w-full items-center justify-between gap-4 rounded-xl border border-cyan-500/40 bg-slate-900 px-4 py-2 text-left text-sm transition-colors hover:border-cyan-500/60"
       >
-        <span className="flex min-w-0 items-center gap-2.5">
-          <span className="relative flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-cyan-400/40 bg-cyan-500/15">
-            <Sparkles className="h-3.5 w-3.5 text-cyan-200" />
-            <span className="absolute inset-0 animate-ping rounded-full border border-cyan-400/40" />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate font-semibold text-cyan-100">{headline}</span>
-            <span className="block text-[11px] text-cyan-300/80">
-              Background poll brought updates — load to refresh this view.
-            </span>
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-cyan-400" />
+          <span className="truncate font-mono text-sm text-slate-100">{headline}</span>
+          <span className="hidden truncate text-xs text-slate-500 sm:inline">
+            A background poll brought updates
           </span>
         </span>
-        <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-md border border-cyan-400/50 bg-cyan-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-cyan-100 transition-colors group-hover:bg-cyan-500/30">
-          <RefreshCw className="h-3.5 w-3.5" />
+        <span className="btn-secondary flex h-8 flex-shrink-0 items-center gap-2 px-3 text-xs group-hover:bg-slate-700">
+          <RefreshCw className="h-4 w-4" />
           Load
         </span>
       </button>
@@ -1586,7 +1447,7 @@ function CollapsedFeedRail({
     <div className="flex flex-col items-center gap-2">
       <button
         onClick={onExpand}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/40 text-slate-300 transition-colors hover:bg-slate-800/70 hover:text-cyan-300"
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100"
         title="Expand feeds"
         aria-label="Expand feeds sidebar"
       >
@@ -1594,13 +1455,13 @@ function CollapsedFeedRail({
       </button>
       <button
         onClick={onCreate}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 transition-colors hover:bg-cyan-500/20"
+        className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-slate-200 transition-colors hover:bg-slate-700"
         title="New feed"
         aria-label="Create a new feed"
       >
         <Plus className="h-4 w-4" />
       </button>
-      <div className="my-1 h-px w-6 bg-slate-800/80" />
+      <div className="my-1 h-px w-6 bg-slate-800" />
       {isLoading ? (
         <LoadingSpinner size="sm" />
       ) : (
@@ -1614,28 +1475,21 @@ function CollapsedFeedRail({
               title={newCount > 0 ? `${feed.name} — ${newCount.toLocaleString()} new` : feed.name}
               aria-label={newCount > 0 ? `${feed.name}, ${newCount} new items` : feed.name}
               className={cn(
-                'relative flex h-9 w-9 items-center justify-center rounded-lg border text-[11px] font-semibold transition-all',
+                'relative flex h-9 w-9 items-center justify-center rounded-lg border bg-slate-800 font-mono text-2xs font-medium transition-colors',
                 isActive
-                  ? 'border-cyan-500/50 bg-gradient-to-br from-cyan-500/20 to-blue-500/15 text-cyan-100 shadow-[0_0_0_1px_rgba(34,211,238,0.2)]'
-                  : 'border-slate-800/60 bg-slate-900/50 text-slate-300 hover:border-slate-700 hover:bg-slate-800/60',
+                  ? 'border-cyan-500/50 text-slate-100'
+                  : 'border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-slate-100',
               )}
             >
               {feedInitials(feed.name)}
-              {newCount > 0 ? (
-                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full border border-slate-950 bg-gradient-to-r from-cyan-400 to-blue-500 px-1 text-[9px] font-bold leading-none text-slate-950 shadow-[0_0_6px_rgba(34,211,238,0.6)]">
+              {newCount > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded bg-cyan-400 px-1 font-mono text-2xs leading-none text-slate-950">
                   {newCount > 99 ? '99+' : newCount}
                 </span>
-              ) : (
-                feed.filters.freeleech_only && (
-                  <span
-                    className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-slate-950 bg-emerald-400 shadow-[0_0_4px_rgba(16,185,129,0.7)]"
-                    aria-hidden
-                  />
-                )
               )}
               {!feed.polling_enabled && (
                 <span
-                  className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-slate-950 bg-amber-400"
+                  className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-slate-600"
                   aria-hidden
                 />
               )}
@@ -1697,22 +1551,22 @@ function PaginationFooter({
   const rangeEnd = offset + shownCount
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800/50 bg-slate-900/40 px-3 py-2 text-[11px] text-slate-400">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-xs text-slate-400">
       <div className="flex items-center gap-2">
         <span>
           Showing{' '}
-          <span className="font-medium text-slate-200">
+          <span className="font-mono text-slate-200">
             {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()}
           </span>{' '}
-          of <span className="font-medium text-slate-200">{total.toLocaleString()}</span>
+          of <span className="font-mono text-slate-200">{total.toLocaleString()}</span>
         </span>
-        <span className="hidden text-slate-700 sm:inline">•</span>
-        <label className="hidden items-center gap-1.5 sm:flex">
+        <span className="hidden text-slate-600 sm:inline">·</span>
+        <label className="hidden items-center gap-2 sm:flex">
           <span className="text-slate-500">Per page</span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="cursor-pointer rounded border border-slate-700/60 bg-slate-800/50 px-1.5 py-0.5 text-[11px] text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+            className="h-7 cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-2 font-mono text-2xs text-slate-200 focus:border-cyan-500 focus:outline-none"
           >
             {PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>
@@ -1728,27 +1582,27 @@ function PaginationFooter({
           <button
             onClick={() => goToPage(1)}
             disabled={onFirst}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 bg-slate-800/40 text-slate-300 transition-colors hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-30"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
             title="First page"
             aria-label="First page"
           >
-            <ChevronsLeft className="h-3.5 w-3.5" />
+            <ChevronsLeft className="h-4 w-4" />
           </button>
           <button
             onClick={() => goToPage(currentPage - 1)}
             disabled={onFirst}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 bg-slate-800/40 text-slate-300 transition-colors hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-30"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
             title="Previous page"
             aria-label="Previous page"
           >
-            <ChevronLeft className="h-3.5 w-3.5" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
-          <div className="mx-0.5 flex items-center gap-1">
+          <div className="flex items-center gap-1">
             {pages.map((p, idx) =>
               p === 'ellipsis' ? (
                 <span
                   key={`e-${idx}`}
-                  className="inline-flex h-7 w-7 items-center justify-center text-slate-600"
+                  className="inline-flex h-8 w-8 items-center justify-center text-slate-600"
                   aria-hidden
                 >
                   …
@@ -1759,10 +1613,10 @@ function PaginationFooter({
                   onClick={() => goToPage(p)}
                   aria-current={p === currentPage ? 'page' : undefined}
                   className={cn(
-                    'inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-md border px-1.5 text-[11px] font-medium transition-colors',
+                    'inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 font-mono text-xs transition-colors',
                     p === currentPage
-                      ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-200 shadow-[0_0_0_1px_rgba(34,211,238,0.15)]'
-                      : 'border-slate-700/60 bg-slate-800/40 text-slate-300 hover:bg-slate-800/70',
+                      ? 'bg-slate-800 font-medium text-slate-100'
+                      : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100',
                   )}
                 >
                   {p}
@@ -1773,20 +1627,20 @@ function PaginationFooter({
           <button
             onClick={() => goToPage(currentPage + 1)}
             disabled={onLast}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 bg-slate-800/40 text-slate-300 transition-colors hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-30"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
             title="Next page"
             aria-label="Next page"
           >
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ChevronRight className="h-4 w-4" />
           </button>
           <button
             onClick={() => goToPage(totalPages)}
             disabled={onLast}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700/60 bg-slate-800/40 text-slate-300 transition-colors hover:bg-slate-800/70 disabled:cursor-not-allowed disabled:opacity-30"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
             title="Last page"
             aria-label="Last page"
           >
-            <ChevronsRight className="h-3.5 w-3.5" />
+            <ChevronsRight className="h-4 w-4" />
           </button>
         </nav>
       )}
@@ -1806,27 +1660,27 @@ function SortableTh({ column, activeSortBy, activeSortOrder, onClick, filter }: 
     <th
       scope="col"
       aria-sort={isActive ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-      className={cn('px-4 py-3 text-xs font-medium uppercase tracking-wider', textAlign)}
+      className={cn('whitespace-nowrap px-3 py-2 text-xs font-normal first:pl-4', textAlign)}
     >
       <div className={cn('group/cell flex items-center gap-1', justify)}>
         <button
           type="button"
           onClick={() => onClick(column)}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded transition-colors',
-            isActive ? 'text-cyan-300' : 'text-slate-400 hover:text-slate-200',
+            'inline-flex items-center gap-1 rounded transition-colors',
+            isActive ? 'text-cyan-300' : 'text-slate-500 hover:text-slate-100',
           )}
           title={`Sort by ${column.label.toLowerCase()}`}
         >
           <span>{column.label}</span>
           {isActive ? (
             activeSortOrder === 'asc' ? (
-              <ArrowUp className="h-3.5 w-3.5" />
+              <ArrowUp className="h-3 w-3" />
             ) : (
-              <ArrowDown className="h-3.5 w-3.5" />
+              <ArrowDown className="h-3 w-3" />
             )
           ) : (
-            <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover/cell:opacity-60" />
+            <ArrowUpDown className="h-3 w-3 opacity-0 transition-opacity group-hover/cell:opacity-60" />
           )}
         </button>
         {filter && (
@@ -1851,9 +1705,7 @@ function MinSeedersFilterPanel({ current, onSubmit }: MinSeedersFilterPanelProps
   const [value, setValue] = useState(String(current || ''))
   return (
     <div>
-      <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-        Min seeders
-      </label>
+      <label className="mb-2 block text-xs text-slate-400">Min seeders</label>
       <input
         type="number"
         min={0}
@@ -1863,12 +1715,12 @@ function MinSeedersFilterPanel({ current, onSubmit }: MinSeedersFilterPanelProps
           if (e.key === 'Enter') onSubmit(Number(value) || 0)
         }}
         placeholder="0"
-        className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
+        className="input h-8 px-2 font-mono text-sm"
         autoFocus
       />
       <button
         onClick={() => onSubmit(Number(value) || 0)}
-        className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+        className="btn-primary mt-2 flex h-8 w-full items-center justify-center px-3 text-xs"
       >
         Apply
       </button>
@@ -1890,9 +1742,7 @@ function MaxSizeFilterPanel({ current, onSubmit }: MaxSizeFilterPanelProps) {
 
   return (
     <div>
-      <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-        Max size
-      </label>
+      <label className="mb-2 block text-xs text-slate-400">Max size</label>
       <input
         type="text"
         value={value}
@@ -1900,20 +1750,20 @@ function MaxSizeFilterPanel({ current, onSubmit }: MaxSizeFilterPanelProps) {
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !invalid) onSubmit(parsed)
         }}
-        placeholder="e.g. 10GB"
+        placeholder="10GB"
         className={cn(
-          'w-full rounded-md border bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
-          invalid ? 'border-rose-500/60' : 'border-slate-700 focus:border-cyan-500/50',
+          'input h-8 px-2 font-mono text-sm',
+          invalid && 'border-red-500/60 focus:border-red-500/60',
         )}
         autoFocus
       />
-      <p className={cn('mt-1.5 text-[10px]', invalid ? 'text-rose-300' : 'text-slate-500')}>
-        {invalid ? 'Use a unit like KB, MB, GB, TB.' : 'Hides items larger than this.'}
+      <p className={cn('mt-2 text-2xs', invalid ? 'text-red-300' : 'text-slate-500')}>
+        {invalid ? 'Use a unit like KB, MB, GB, TB' : 'Hides items larger than this'}
       </p>
       <button
         disabled={invalid}
         onClick={() => onSubmit(parsed)}
-        className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20 disabled:opacity-40"
+        className="btn-primary mt-2 flex h-8 w-full items-center justify-center px-3 text-xs"
       >
         Apply
       </button>
@@ -1937,9 +1787,7 @@ function HoursFilterPanel({ current, hint, onSubmit }: HoursFilterPanelProps) {
   ]
   return (
     <div>
-      <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-        Within last (hours)
-      </label>
+      <label className="mb-2 block text-xs text-slate-400">Within last (hours)</label>
       <input
         type="number"
         min={1}
@@ -1951,8 +1799,8 @@ function HoursFilterPanel({ current, hint, onSubmit }: HoursFilterPanelProps) {
             onSubmit(Number.isFinite(n) && n > 0 ? n : null)
           }
         }}
-        placeholder="e.g. 24"
-        className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
+        placeholder="24"
+        className="input h-8 px-2 font-mono text-sm"
         autoFocus
       />
       <div className="mt-2 flex flex-wrap gap-1">
@@ -1964,19 +1812,19 @@ function HoursFilterPanel({ current, hint, onSubmit }: HoursFilterPanelProps) {
               setValue(String(p.hours))
               onSubmit(p.hours)
             }}
-            className="rounded border border-slate-700/60 bg-slate-800/40 px-1.5 py-0.5 text-[10px] font-medium text-slate-300 transition-colors hover:bg-slate-800/70"
+            className="tag transition-colors hover:bg-slate-800 hover:text-slate-100"
           >
             {p.label}
           </button>
         ))}
       </div>
-      <p className="mt-1.5 text-[10px] text-slate-500">{hint}</p>
+      <p className="mt-2 text-2xs text-slate-500">{hint}</p>
       <button
         onClick={() => {
           const n = Number(value)
           onSubmit(Number.isFinite(n) && n > 0 ? n : null)
         }}
-        className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+        className="btn-primary mt-2 flex h-8 w-full items-center justify-center px-3 text-xs"
       >
         Apply
       </button>

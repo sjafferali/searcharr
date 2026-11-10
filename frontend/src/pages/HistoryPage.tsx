@@ -1,6 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import {
-  History,
   Search,
   ChevronRight,
   ChevronLeft,
@@ -12,10 +11,6 @@ import {
   Download,
   Send,
   XCircle,
-  Zap,
-  Database,
-  Clock,
-  HardDrive,
   Inbox,
   ArrowUp,
   ArrowDown,
@@ -127,7 +122,7 @@ function toApiParams(f: FilterState): HistoryListParams {
 function ActionBadge({ entry }: { entry: HistoryEntry }) {
   if (entry.status === 'failed') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-medium text-red-400">
+      <span className="tag tag-bad">
         <XCircle className="h-3 w-3" />
         Failed
       </span>
@@ -135,14 +130,14 @@ function ActionBadge({ entry }: { entry: HistoryEntry }) {
   }
   if (entry.action === 'sent_to_client') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400">
+      <span className="tag tag-good">
         <Send className="h-3 w-3" />
         Sent
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[11px] font-medium text-violet-400">
+    <span className="tag">
       <Download className="h-3 w-3" />
       Downloaded
     </span>
@@ -151,19 +146,7 @@ function ActionBadge({ entry }: { entry: HistoryEntry }) {
 
 function SourceBadge({ entry }: { entry: HistoryEntry }) {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium',
-        entry.source_type === 'jackett'
-          ? 'border border-amber-500/20 bg-amber-500/10 text-amber-400'
-          : 'border border-cyan-500/20 bg-cyan-500/10 text-cyan-400',
-      )}
-    >
-      {entry.source_type === 'jackett' ? (
-        <Zap className="h-3 w-3" />
-      ) : (
-        <Database className="h-3 w-3" />
-      )}
+    <span className="tag" title={entry.source_type === 'jackett' ? 'Jackett' : 'Prowlarr'}>
       {entry.source_instance_name}
     </span>
   )
@@ -199,7 +182,7 @@ function Pagination({
       <button
         onClick={() => onChange(1)}
         disabled={page === 1}
-        className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
         title="First page"
       >
         <ChevronsLeft className="h-4 w-4" />
@@ -207,14 +190,14 @@ function Pagination({
       <button
         onClick={() => onChange(page - 1)}
         disabled={page === 1}
-        className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
         title="Previous page"
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
       {pages.map((p, idx) =>
         p === '…' ? (
-          <span key={`gap-${idx}`} className="px-2 text-xs text-slate-600">
+          <span key={`gap-${idx}`} className="px-2 text-xs text-slate-500">
             …
           </span>
         ) : (
@@ -222,10 +205,10 @@ function Pagination({
             key={p}
             onClick={() => onChange(p)}
             className={cn(
-              'min-w-[32px] rounded px-2 py-1 text-xs font-medium transition-colors',
+              'h-8 min-w-8 rounded-lg px-2 font-mono text-xs transition-colors',
               p === page
-                ? 'bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-500/40'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200',
+                ? 'bg-slate-800 text-cyan-300'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100',
             )}
           >
             {p}
@@ -235,7 +218,7 @@ function Pagination({
       <button
         onClick={() => onChange(page + 1)}
         disabled={page === totalPages}
-        className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
         title="Next page"
       >
         <ChevronRight className="h-4 w-4" />
@@ -243,7 +226,7 @@ function Pagination({
       <button
         onClick={() => onChange(totalPages)}
         disabled={page === totalPages}
-        className="rounded p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
         title="Last page"
       >
         <ChevronsRight className="h-4 w-4" />
@@ -436,41 +419,29 @@ export function HistoryPage() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/25">
-              <History className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight text-slate-100">
-                Download History
-              </h2>
-              <p className="text-xs text-slate-500">
-                Everything you've sent to a client or downloaded directly
-              </p>
-            </div>
-          </div>
+          <h2 className="text-xl font-medium text-slate-100">Download history</h2>
+          <p className="text-sm text-slate-400">
+            Everything sent to a client or downloaded directly
+          </p>
         </div>
-        <p className="text-sm text-slate-400">
-          <span className="font-mono text-slate-200">{total.toLocaleString()}</span>{' '}
-          {total === 1 ? 'entry' : 'entries'}
-          {isFetching && !isLoading && (
-            <span className="ml-2 inline-block animate-pulse text-cyan-400">refreshing…</span>
-          )}
+        <p className="font-mono text-xs text-slate-500">
+          {total.toLocaleString()} {total === 1 ? 'entry' : 'entries'}
+          {isFetching && !isLoading && <span className="ml-2">refreshing…</span>}
         </p>
       </div>
 
       {/* Active filter pills */}
       {hasActiveFilters && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] uppercase tracking-wider text-slate-500">Filters:</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-500">Filters</span>
           {activePills.map((pill) => (
             <button
               key={pill.key}
               type="button"
               onClick={pill.onClear}
-              className="group/pill inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+              className="tag tag-accent group/pill transition-colors hover:bg-cyan-500/10"
               title="Clear this filter"
             >
               {pill.label}
@@ -480,7 +451,7 @@ export function HistoryPage() {
           <button
             type="button"
             onClick={resetFilters}
-            className="ml-1 text-[11px] font-medium text-slate-400 transition-colors hover:text-cyan-300"
+            className="text-xs text-slate-400 transition-colors hover:text-slate-100"
           >
             Clear all
           </button>
@@ -489,7 +460,7 @@ export function HistoryPage() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="flex items-center justify-center rounded-xl border border-slate-800/50 bg-slate-900/50 py-16">
+        <div className="flex items-center justify-center rounded-xl border border-slate-800 bg-slate-900 py-16">
           <LoadingSpinner size="lg" />
         </div>
       ) : isError ? (
@@ -502,16 +473,16 @@ export function HistoryPage() {
           title={hasActiveFilters ? 'No entries match these filters' : 'No download history yet'}
           description={
             hasActiveFilters
-              ? 'Try adjusting or clearing the filters above.'
-              : 'Send a result to a download client or download a .torrent — it will appear here.'
+              ? 'Adjust or clear the filters above'
+              : 'Results you send to a client or download as a .torrent appear here'
           }
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-800/50 bg-slate-900/50">
+        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-800/50">
+                <tr className="border-b border-slate-800">
                   <SortableTh
                     column={titleColumn}
                     activeSortBy={filters.sort_by}
@@ -523,11 +494,11 @@ export function HistoryPage() {
                       onClear: clearTitle,
                       panel: (close) => (
                         <div>
-                          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                          <label className="mb-1 block text-xs text-slate-400">
                             Title or original query
                           </label>
                           <div className="relative">
-                            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                            <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                             <input
                               type="text"
                               value={filters.q}
@@ -537,7 +508,7 @@ export function HistoryPage() {
                               }}
                               placeholder="Substring match"
                               autoFocus
-                              className="w-full rounded-md border border-slate-700 bg-slate-800/60 py-1.5 pl-8 pr-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
+                              className="h-8 w-full rounded-lg border border-slate-700 bg-slate-800 pl-8 pr-2 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
                             />
                           </div>
                         </div>
@@ -552,17 +523,15 @@ export function HistoryPage() {
                       onClear: clearAction,
                       panelWidthClass: 'w-64',
                       panel: () => (
-                        <div className="space-y-2.5">
+                        <div className="space-y-3">
                           <div>
-                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                              Action
-                            </label>
+                            <label className="mb-1 block text-xs text-slate-400">Action</label>
                             <select
                               value={filters.action}
                               onChange={(e) =>
                                 updateFilter('action', e.target.value as HistoryAction | '')
                               }
-                              className="w-full cursor-pointer rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                              className="h-8 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                             >
                               <option value="">All actions</option>
                               <option value="sent_to_client">Sent to client</option>
@@ -570,15 +539,13 @@ export function HistoryPage() {
                             </select>
                           </div>
                           <div>
-                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                              Status
-                            </label>
+                            <label className="mb-1 block text-xs text-slate-400">Status</label>
                             <select
                               value={filters.status}
                               onChange={(e) =>
                                 updateFilter('status', e.target.value as HistoryStatus | '')
                               }
-                              className="w-full cursor-pointer rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                              className="h-8 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                             >
                               <option value="">Any</option>
                               <option value="success">Success</option>
@@ -586,9 +553,7 @@ export function HistoryPage() {
                             </select>
                           </div>
                           <div>
-                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                              Client
-                            </label>
+                            <label className="mb-1 block text-xs text-slate-400">Client</label>
                             <select
                               value={filters.client_id}
                               onChange={(e) =>
@@ -597,7 +562,7 @@ export function HistoryPage() {
                                   e.target.value === '' ? '' : Number(e.target.value),
                                 )
                               }
-                              className="w-full cursor-pointer rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                              className="h-8 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                             >
                               <option value="">All clients</option>
                               {(clients ?? []).map((c) => (
@@ -619,17 +584,15 @@ export function HistoryPage() {
                       onClear: clearSource,
                       panelWidthClass: 'w-64',
                       panel: () => (
-                        <div className="space-y-2.5">
+                        <div className="space-y-3">
                           <div>
-                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                              Source type
-                            </label>
+                            <label className="mb-1 block text-xs text-slate-400">Source type</label>
                             <select
                               value={filters.source_type}
                               onChange={(e) =>
                                 updateFilter('source_type', e.target.value as SourceType | '')
                               }
-                              className="w-full cursor-pointer rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                              className="h-8 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                             >
                               <option value="">All sources</option>
                               <option value="jackett">Jackett</option>
@@ -637,9 +600,7 @@ export function HistoryPage() {
                             </select>
                           </div>
                           <div>
-                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                              Instance
-                            </label>
+                            <label className="mb-1 block text-xs text-slate-400">Instance</label>
                             <select
                               value={filters.source_instance_id}
                               onChange={(e) =>
@@ -648,7 +609,7 @@ export function HistoryPage() {
                                   e.target.value === '' ? '' : Number(e.target.value),
                                 )
                               }
-                              className="w-full cursor-pointer rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                              className="h-8 w-full cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                             >
                               <option value="">All instances</option>
                               {allInstances.map((i) => (
@@ -662,7 +623,7 @@ export function HistoryPage() {
                       ),
                     }}
                   />
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
+                  <th className="px-4 py-2 text-left text-xs font-normal text-slate-500">
                     Indexer
                   </th>
                   <SortableTh
@@ -676,11 +637,9 @@ export function HistoryPage() {
                       onClear: clearSize,
                       panelWidthClass: 'w-64',
                       panel: (close) => (
-                        <div className="space-y-2.5">
+                        <div className="space-y-3">
                           <div>
-                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                              Min size
-                            </label>
+                            <label className="mb-1 block text-xs text-slate-400">Min size</label>
                             <input
                               type="text"
                               value={filters.min_size}
@@ -688,20 +647,18 @@ export function HistoryPage() {
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') close()
                               }}
-                              placeholder="e.g. 500MB"
+                              placeholder="500MB"
                               autoFocus
                               className={cn(
-                                'w-full rounded-md border bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
+                                'h-8 w-full rounded-lg border bg-slate-800 px-2 font-mono text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
                                 minSizeInvalid
-                                  ? 'border-rose-500/60 focus:border-rose-400'
-                                  : 'border-slate-700 focus:border-cyan-500/50',
+                                  ? 'border-red-500/60 focus:border-red-400'
+                                  : 'border-slate-700 focus:border-cyan-500',
                               )}
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                              Max size
-                            </label>
+                            <label className="mb-1 block text-xs text-slate-400">Max size</label>
                             <input
                               type="text"
                               value={filters.max_size}
@@ -709,24 +666,24 @@ export function HistoryPage() {
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') close()
                               }}
-                              placeholder="e.g. 10GB"
+                              placeholder="10GB"
                               className={cn(
-                                'w-full rounded-md border bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
+                                'h-8 w-full rounded-lg border bg-slate-800 px-2 font-mono text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
                                 maxSizeInvalid
-                                  ? 'border-rose-500/60 focus:border-rose-400'
-                                  : 'border-slate-700 focus:border-cyan-500/50',
+                                  ? 'border-red-500/60 focus:border-red-400'
+                                  : 'border-slate-700 focus:border-cyan-500',
                               )}
                             />
                           </div>
                           <p
                             className={cn(
-                              'text-[10px]',
-                              minSizeInvalid || maxSizeInvalid ? 'text-rose-300' : 'text-slate-500',
+                              'text-2xs',
+                              minSizeInvalid || maxSizeInvalid ? 'text-red-300' : 'text-slate-500',
                             )}
                           >
                             {minSizeInvalid || maxSizeInvalid
-                              ? 'Use a unit like KB, MB, GB, TB.'
-                              : 'Leave a field empty to skip that bound.'}
+                              ? 'Use a unit like KB, MB, GB or TB'
+                              : 'Leave a field empty to skip that bound'}
                           </p>
                         </div>
                       ),
@@ -743,110 +700,101 @@ export function HistoryPage() {
                       onClear: clearWhen,
                       panelWidthClass: 'w-64',
                       panel: () => (
-                        <div className="space-y-2.5">
+                        <div className="space-y-3">
                           <div>
-                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                              From
-                            </label>
+                            <label className="mb-1 block text-xs text-slate-400">From</label>
                             <input
                               type="datetime-local"
                               value={filters.since}
                               onChange={(e) => updateFilter('since', e.target.value)}
-                              className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                              className="h-8 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                             />
                           </div>
                           <div>
-                            <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                              To
-                            </label>
+                            <label className="mb-1 block text-xs text-slate-400">To</label>
                             <input
                               type="datetime-local"
                               value={filters.until}
                               onChange={(e) => updateFilter('until', e.target.value)}
-                              className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2 py-1.5 text-sm text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                              className="h-8 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
                             />
                           </div>
                         </div>
                       ),
                     }}
                   />
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
+                  <th className="px-4 py-2 text-right text-xs font-normal text-slate-500">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/30">
-                {entries.map((entry, idx) => (
+              <tbody>
+                {entries.map((entry) => (
                   <tr
                     key={entry.id}
-                    className="group animate-fade-in transition-colors hover:bg-slate-800/30"
-                    style={{ animationDelay: `${idx * 30}ms` }}
+                    className="border-t border-slate-800 transition-colors first:border-t-0 hover:bg-slate-800/50"
                   >
-                    <td className="max-w-md px-4 py-3 align-top">
-                      <div className="flex flex-col gap-1">
-                        {entry.info_url ? (
-                          <a
-                            href={entry.info_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group/link inline-flex items-center gap-1.5 text-sm font-medium text-slate-200 transition-colors hover:text-cyan-300"
-                          >
-                            <span className="line-clamp-1">{entry.title}</span>
-                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 opacity-0 transition-opacity group-hover/link:opacity-100" />
-                          </a>
-                        ) : (
-                          <span className="line-clamp-1 text-sm font-medium text-slate-200">
-                            {entry.title}
-                          </span>
-                        )}
-                        {entry.search_query && (
-                          <span className="text-[11px] text-slate-500">
-                            from search:{' '}
-                            <span className="text-slate-400">{entry.search_query}</span>
-                          </span>
-                        )}
-                        {entry.status === 'failed' && entry.error_message && (
-                          <span className="line-clamp-1 text-[11px] text-red-400/80">
-                            {entry.error_message}
-                          </span>
-                        )}
-                      </div>
+                    <td className="w-full max-w-0 px-4 py-3">
+                      {entry.info_url ? (
+                        <a
+                          href={entry.info_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block truncate text-sm text-slate-100 transition-colors hover:text-cyan-300"
+                          title={entry.title}
+                        >
+                          {entry.title}
+                        </a>
+                      ) : (
+                        <p className="truncate text-sm text-slate-100" title={entry.title}>
+                          {entry.title}
+                        </p>
+                      )}
+                      {entry.search_query && (
+                        <p className="mt-1 truncate text-2xs text-slate-500">
+                          from search <span className="text-slate-400">{entry.search_query}</span>
+                        </p>
+                      )}
+                      {entry.status === 'failed' && entry.error_message && (
+                        <p
+                          className="mt-1 truncate text-2xs text-red-400"
+                          title={entry.error_message}
+                        >
+                          {entry.error_message}
+                        </p>
+                      )}
                     </td>
-                    <td className="px-4 py-3 align-top">
-                      <div className="flex flex-col gap-1">
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex flex-col items-start gap-1">
                         <ActionBadge entry={entry} />
                         {entry.client_name && (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
-                            <HardDrive className="h-3 w-3" />
-                            {entry.client_name}
-                          </span>
+                          <span className="text-2xs text-slate-500">{entry.client_name}</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 align-top">
+                    <td className="whitespace-nowrap px-4 py-3">
                       <SourceBadge entry={entry} />
                     </td>
-                    <td className="px-4 py-3 align-top text-xs text-slate-400">{entry.indexer}</td>
-                    <td className="px-4 py-3 align-top font-mono text-sm text-slate-300">
+                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-400">
+                      {entry.indexer}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-300">
                       {entry.size_formatted || '-'}
                     </td>
-                    <td className="px-4 py-3 align-top text-sm text-slate-400">
-                      <div
-                        className="flex items-center gap-1.5"
-                        title={formatDateTime(entry.occurred_at)}
-                      >
-                        <Clock className="h-3.5 w-3.5" />
-                        {formatRelative(entry.occurred_at)}
-                      </div>
+                    <td
+                      className="whitespace-nowrap px-4 py-3 text-sm text-slate-400"
+                      title={formatDateTime(entry.occurred_at)}
+                    >
+                      {formatRelative(entry.occurred_at)}
                     </td>
-                    <td className="px-4 py-3 align-top">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
                         {entry.info_url && (
                           <a
                             href={entry.info_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-cyan-400"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100"
                             title="Open info page"
                           >
                             <ExternalLink className="h-4 w-4" />
@@ -855,14 +803,14 @@ export function HistoryPage() {
                         <button
                           onClick={() => copyMagnet(entry)}
                           disabled={!entry.magnet_link}
-                          className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-30"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
                           title={entry.magnet_link ? 'Copy magnet' : 'No magnet stored'}
                         >
                           <Magnet className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => setPendingDelete(entry)}
-                          className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-red-500/20 hover:text-red-400"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-red-400"
                           title="Delete entry"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -876,19 +824,19 @@ export function HistoryPage() {
           </div>
 
           {/* Footer / pagination */}
-          <div className="flex items-center justify-between border-t border-slate-800/50 px-4 py-3">
+          <div className="flex items-center justify-between border-t border-slate-800 px-4 py-2">
             <div className="flex items-center gap-3 text-xs text-slate-500">
               <span>
                 Page <span className="font-mono text-slate-300">{filters.page}</span> of{' '}
                 <span className="font-mono text-slate-300">{totalPages}</span>
               </span>
-              <span className="text-slate-700">·</span>
+              <span className="text-slate-600">·</span>
               <label className="flex items-center gap-2">
-                <span>Rows:</span>
+                <span>Rows</span>
                 <select
                   value={filters.limit}
                   onChange={(e) => updateFilter('limit', Number(e.target.value))}
-                  className="cursor-pointer rounded border border-slate-700/50 bg-slate-800/50 px-2 py-1 text-xs text-slate-200 focus:border-cyan-500/50 focus:outline-none"
+                  className="h-8 cursor-pointer rounded-lg border border-slate-700 bg-slate-800 px-2 font-mono text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
                 >
                   {PAGE_SIZE_OPTIONS.map((size) => (
                     <option key={size} value={size}>
@@ -951,27 +899,27 @@ function SortableTh({ column, activeSortBy, activeSortOrder, onClick, filter }: 
     <th
       scope="col"
       aria-sort={isActive ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-      className={cn('px-4 py-3 text-xs font-medium uppercase tracking-wider', textAlign)}
+      className={cn('px-4 py-2 text-xs font-normal', textAlign)}
     >
       <div className={cn('group/cell flex items-center gap-1', justify)}>
         <button
           type="button"
           onClick={() => onClick(column)}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded transition-colors',
-            isActive ? 'text-cyan-300' : 'text-slate-400 hover:text-slate-200',
+            'inline-flex items-center gap-1 rounded transition-colors',
+            isActive ? 'text-cyan-300' : 'text-slate-500 hover:text-slate-100',
           )}
           title={`Sort by ${column.label.toLowerCase()}`}
         >
           <span>{column.label}</span>
           {isActive ? (
             activeSortOrder === 'asc' ? (
-              <ArrowUp className="h-3.5 w-3.5" />
+              <ArrowUp className="h-3 w-3" />
             ) : (
-              <ArrowDown className="h-3.5 w-3.5" />
+              <ArrowDown className="h-3 w-3" />
             )
           ) : (
-            <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover/cell:opacity-60" />
+            <ArrowUpDown className="h-3 w-3 opacity-0 transition-opacity group-hover/cell:opacity-60" />
           )}
         </button>
         {filter && (
@@ -1009,12 +957,9 @@ function FilterableTh({
     align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
 
   return (
-    <th
-      scope="col"
-      className={cn('px-4 py-3 text-xs font-medium uppercase tracking-wider', textAlign)}
-    >
+    <th scope="col" className={cn('px-4 py-2 text-xs font-normal', textAlign)}>
       <div className={cn('group/cell flex items-center gap-1', justify)}>
-        <span className="text-slate-400">{label}</span>
+        <span className="text-slate-500">{label}</span>
         <ColumnFilter
           label={filter.panelLabel}
           isActive={filter.isActive}

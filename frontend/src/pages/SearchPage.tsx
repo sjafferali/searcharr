@@ -4,17 +4,12 @@ import {
   Filter,
   ChevronDown,
   ChevronRight,
-  Zap,
-  Database,
   Check,
-  Clock,
-  Users,
   Magnet,
   FileDown,
   Download,
   Bookmark,
   ExternalLink,
-  Sparkles,
   Star,
   ArrowUp,
   ArrowDown,
@@ -73,19 +68,19 @@ const titleColumn: SortableColumn = {
 const sizeColumn: SortableColumn = {
   key: 'size',
   label: 'Size',
-  align: 'left',
+  align: 'right',
   defaultOrder: 'desc',
 }
 const seedersColumn: SortableColumn = {
   key: 'seeders',
   label: 'S/L',
-  align: 'center',
+  align: 'right',
   defaultOrder: 'desc',
 }
 const dateColumn: SortableColumn = {
   key: 'date',
   label: 'Age',
-  align: 'left',
+  align: 'right',
   defaultOrder: 'desc',
 }
 
@@ -390,24 +385,23 @@ export function SearchPage() {
   return (
     <div className="space-y-6">
       {/* Search Bar */}
-      <div className="relative">
+      <div>
         <div className="flex gap-3">
-          <div className="group relative flex-1">
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 opacity-0 blur-xl transition-opacity group-focus-within:opacity-100" />
-            <div className="relative flex items-center overflow-hidden rounded-xl border border-slate-700/50 bg-slate-800/50 transition-all focus-within:border-cyan-500/50">
-              <Search className="ml-4 h-5 w-5 text-slate-400" />
+          <div className="min-w-0 flex-1">
+            <div className="flex h-11 items-center overflow-hidden rounded-lg border border-slate-700 bg-slate-800 transition-colors focus-within:border-cyan-500">
+              <Search className="ml-4 h-4 w-4 flex-shrink-0 text-slate-500" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search across all indexers..."
-                className="flex-1 bg-transparent px-4 py-4 text-sm text-slate-200 placeholder-slate-500 focus:outline-none"
+                placeholder="Search releases"
+                className="h-full min-w-0 flex-1 bg-transparent px-3 font-mono text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
               />
               <select
                 value={filters.category}
                 onChange={(e) => setCategory(e.target.value as SearchCategory)}
-                className="h-full cursor-pointer border-l border-slate-600/50 bg-slate-700/50 px-4 py-4 text-sm text-slate-200 focus:outline-none"
+                className="h-full cursor-pointer border-l border-slate-700 bg-slate-800 px-4 text-sm text-slate-200 focus:outline-none"
               >
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>
@@ -420,17 +414,18 @@ export function SearchPage() {
           <button
             onClick={handleSearch}
             disabled={searchMutation.isPending}
-            className="btn-primary flex items-center gap-2 rounded-xl px-8"
+            aria-label="Search"
+            className="btn-primary flex h-11 flex-shrink-0 items-center gap-2 px-4 sm:px-5"
           >
             {searchMutation.isPending ? (
               <>
                 <LoadingSpinner size="sm" />
-                Searching...
+                Searching…
               </>
             ) : (
               <>
-                <Search className="h-5 w-5" />
-                Search
+                <Search className="h-4 w-4" />
+                <span className="hidden sm:inline">Search</span>
               </>
             )}
           </button>
@@ -438,54 +433,51 @@ export function SearchPage() {
       </div>
 
       {/* Filters Panel */}
-      <div className="overflow-hidden rounded-xl border border-slate-800/50 bg-slate-900/50">
+      <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
         <button
           onClick={toggleFilters}
-          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800/30"
+          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-800/50"
         >
           <span className="flex items-center gap-2">
-            <Database className="h-4 w-4 text-cyan-400" />
             Sources
             {selectionMatchesDefaults ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-300">
+              <span className="tag">
                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                 Defaults
               </span>
             ) : hasSourceSelection ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-cyan-300">
+              <span className="tag tag-accent">
                 <Filter className="h-3 w-3" />
                 Custom
               </span>
             ) : (
-              <span className="inline-flex items-center rounded-full border border-slate-700/50 bg-slate-800/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                All instances
-              </span>
+              <span className="tag">All instances</span>
             )}
           </span>
           {isFiltersExpanded ? (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4 text-slate-500" />
           ) : (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4 text-slate-500" />
           )}
         </button>
 
         {isFiltersExpanded && (
-          <div className="space-y-4 border-t border-slate-800/50 px-4 pb-4">
+          <div className="space-y-4 border-t border-slate-800 px-4 pb-4">
             <div className="pt-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[11px] text-slate-500">
+                <p className="text-xs text-slate-500">
                   {!hasSourceSelection
-                    ? 'Searching every configured instance.'
+                    ? 'Searching every configured instance'
                     : selectionMatchesDefaults
-                      ? 'Searching your default sources.'
-                      : 'Searching only the selected instances.'}
+                      ? 'Searching your default sources'
+                      : 'Searching only the selected instances'}
                 </p>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   {hasConfiguredDefaults && !selectionMatchesDefaults && (
                     <button
                       type="button"
                       onClick={() => applyDefaultSources(defaultSourcesPayload, { force: true })}
-                      className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300 transition-colors hover:bg-amber-500/20"
+                      className="btn-secondary flex h-8 items-center gap-2 px-3 text-xs"
                       title="Select the default sources configured on the Instances page"
                     >
                       <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
@@ -496,7 +488,7 @@ export function SearchPage() {
                     <button
                       type="button"
                       onClick={clearSourceSelections}
-                      className="inline-flex items-center gap-1 rounded-md border border-slate-700/50 bg-slate-800/40 px-2.5 py-1 text-[11px] font-medium text-slate-300 transition-colors hover:bg-slate-800/70"
+                      className="btn-secondary flex h-8 items-center gap-2 px-3 text-xs"
                       title="Clear the selection and search every configured instance"
                     >
                       <X className="h-3 w-3" />
@@ -522,22 +514,25 @@ export function SearchPage() {
                       }
                       disabled={instance.status === 'offline'}
                       className={cn(
-                        'flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+                        'flex h-8 items-center gap-2 rounded-lg border px-3 text-xs transition-colors',
                         isSelected
-                          ? instance.type === 'jackett'
-                            ? 'border border-amber-500/30 bg-amber-500/20 text-amber-300'
-                            : 'border border-cyan-500/30 bg-cyan-500/20 text-cyan-300'
-                          : 'border border-slate-700/50 bg-slate-800/50 text-slate-400 hover:border-slate-600',
+                          ? 'border-cyan-500/50 bg-slate-800 font-medium text-slate-100'
+                          : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200',
                         instance.status === 'offline' && 'cursor-not-allowed opacity-50',
                       )}
                     >
-                      {instance.type === 'jackett' ? (
-                        <Zap className="h-3 w-3" />
-                      ) : (
-                        <Database className="h-3 w-3" />
-                      )}
+                      <span
+                        className={cn(
+                          'h-2 w-2 rounded-full',
+                          instance.status === 'online'
+                            ? 'bg-emerald-400'
+                            : instance.status === 'offline'
+                              ? 'bg-red-400'
+                              : 'bg-slate-600',
+                        )}
+                      />
                       {instance.name}
-                      {isSelected && <Check className="h-3 w-3" />}
+                      {isSelected && <Check className="h-3 w-3 text-cyan-400" />}
                     </button>
                   )
                 })}
@@ -550,9 +545,7 @@ export function SearchPage() {
               {(filters.selectedJackettIds.length > 0 ||
                 filters.selectedProwlarrIds.length > 0) && (
                 <div className="mt-4 space-y-2">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                    Refine indexers (optional)
-                  </p>
+                  <p className="text-xs text-slate-500">Refine indexers (optional)</p>
                   {filters.selectedJackettIds.map((id) => {
                     const inst = jackettInstances.find((i) => i.id === id)
                     if (!inst) return null
@@ -600,39 +593,43 @@ export function SearchPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-slate-400">
             {results.length === 0 ? (
-              <>{totalResults} results found</>
+              searchMutation.isSuccess ? (
+                <>
+                  <span className="font-mono text-slate-200">{totalResults}</span> results
+                </>
+              ) : null
             ) : sortedResults.length === results.length ? (
               <>
-                <span className="font-medium text-slate-200">{results.length}</span>{' '}
+                <span className="font-mono text-slate-200">{results.length}</span>{' '}
                 {results.length === 1 ? 'result' : 'results'}
               </>
             ) : (
               <>
-                <span className="font-medium text-slate-200">{sortedResults.length}</span> of{' '}
-                <span className="font-medium text-slate-200">{results.length}</span> shown
+                <span className="font-mono text-slate-200">{sortedResults.length}</span> of{' '}
+                <span className="font-mono text-slate-200">{results.length}</span> shown
                 <span className="ml-1 text-slate-500">
                   ({results.length - sortedResults.length} hidden by filters)
                 </span>
               </>
             )}
           </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-300">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
               <input
                 type="checkbox"
                 checked={filters.hideDead}
                 onChange={(e) => setHideDead(e.target.checked)}
-                className="h-3.5 w-3.5 cursor-pointer accent-rose-500"
+                className="h-4 w-4 cursor-pointer accent-cyan-500"
               />
               <span>Hide dead items</span>
             </label>
             {(filters.minSeeders > 0 || filters.maxSize) && (
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1">
                 {filters.minSeeders > 0 && (
                   <button
                     type="button"
                     onClick={() => setMinSeeders(0)}
-                    className="group/pill inline-flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300 transition-colors hover:bg-cyan-500/20"
+                    className="tag tag-accent group/pill transition-colors hover:bg-slate-800"
                     title="Clear filter"
                   >
                     ≥ {filters.minSeeders} seeders
@@ -644,10 +641,8 @@ export function SearchPage() {
                     type="button"
                     onClick={() => setMaxSize('')}
                     className={cn(
-                      'group/pill inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
-                      maxSizeInvalid
-                        ? 'border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20'
-                        : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20',
+                      'tag group/pill transition-colors hover:bg-slate-800',
+                      maxSizeInvalid ? 'tag-bad' : 'tag-accent',
                     )}
                     title="Clear filter"
                   >
@@ -662,18 +657,18 @@ export function SearchPage() {
 
         {/* Results Table */}
         {sortedResults.length > 0 ? (
-          <div className="overflow-hidden rounded-xl border border-slate-800/50 bg-slate-900/50">
+          <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[880px]">
                 <thead>
-                  <tr className="border-b border-slate-800/50">
+                  <tr className="border-b border-slate-800">
                     <SortableTh
                       column={titleColumn}
                       activeSortBy={filters.sortBy}
                       activeSortOrder={filters.sortOrder}
                       onClick={handleSortClick}
                     />
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
+                    <th className="px-4 py-2 text-left text-xs font-normal text-slate-500">
                       Source
                     </th>
                     <SortableTh
@@ -687,9 +682,7 @@ export function SearchPage() {
                         onClear: () => setMaxSize(''),
                         panel: (close) => (
                           <div>
-                            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                              Max size
-                            </label>
+                            <label className="mb-2 block text-xs text-slate-400">Max size</label>
                             <input
                               type="text"
                               value={filters.maxSize}
@@ -699,22 +692,22 @@ export function SearchPage() {
                               }}
                               placeholder="e.g. 10GB"
                               className={cn(
-                                'w-full rounded-md border bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
+                                'h-8 w-full rounded-lg border bg-slate-800 px-3 font-mono text-sm text-slate-200 placeholder-slate-500 focus:outline-none',
                                 maxSizeInvalid
-                                  ? 'border-rose-500/60 focus:border-rose-400'
-                                  : 'border-slate-700 focus:border-cyan-500/50',
+                                  ? 'border-red-500 focus:border-red-400'
+                                  : 'border-slate-700 focus:border-cyan-500',
                               )}
                               autoFocus
                             />
                             <p
                               className={cn(
-                                'mt-1.5 text-[10px]',
-                                maxSizeInvalid ? 'text-rose-300' : 'text-slate-500',
+                                'mt-2 text-2xs',
+                                maxSizeInvalid ? 'text-red-300' : 'text-slate-500',
                               )}
                             >
                               {maxSizeInvalid
-                                ? 'Use a unit like KB, MB, GB, TB.'
-                                : 'Hides results larger than this.'}
+                                ? 'Use a unit like KB, MB, GB, TB'
+                                : 'Hides results larger than this'}
                             </p>
                           </div>
                         ),
@@ -731,9 +724,7 @@ export function SearchPage() {
                         onClear: () => setMinSeeders(0),
                         panel: (close) => (
                           <div>
-                            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                              Min seeders
-                            </label>
+                            <label className="mb-2 block text-xs text-slate-400">Min seeders</label>
                             <input
                               type="number"
                               min={0}
@@ -743,11 +734,11 @@ export function SearchPage() {
                                 if (e.key === 'Enter') close()
                               }}
                               placeholder="0"
-                              className="w-full rounded-md border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
+                              className="h-8 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 font-mono text-sm text-slate-200 placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
                               autoFocus
                             />
-                            <p className="mt-1.5 text-[10px] text-slate-500">
-                              Hides results with fewer seeders.
+                            <p className="mt-2 text-2xs text-slate-500">
+                              Hides results with fewer seeders
                             </p>
                           </div>
                         ),
@@ -759,25 +750,24 @@ export function SearchPage() {
                       activeSortOrder={filters.sortOrder}
                       onClick={handleSortClick}
                     />
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
+                    <th className="px-4 py-2 text-right text-xs font-normal text-slate-500">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/30">
-                  {sortedResults.map((result, idx) => {
+                <tbody>
+                  {sortedResults.map((result) => {
                     const isDead = result.seeders === 0
                     return (
                       <tr
                         key={result.id}
                         className={cn(
-                          'group animate-fade-in transition-all hover:bg-slate-800/30',
+                          'group border-t border-slate-800 transition-colors first:border-t-0 hover:bg-slate-800/50',
                           isDead && 'opacity-60 hover:opacity-100',
                         )}
-                        style={{ animationDelay: `${idx * 50}ms` }}
                       >
-                        <td className="px-4 py-3">
-                          <div className="flex items-start gap-3">
+                        <td className="w-full max-w-0 px-4 py-3">
+                          <div className="flex items-start gap-2">
                             <button
                               onClick={() =>
                                 bookmarkToggle.toggle({
@@ -794,10 +784,10 @@ export function SearchPage() {
                                   : 'Bookmark this result'
                               }
                               className={cn(
-                                'mt-0.5 rounded p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                                '-ml-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                                 bookmarkIdByResultId[result.id] !== undefined
-                                  ? 'text-amber-400 hover:text-amber-300'
-                                  : 'text-slate-600 hover:text-slate-400',
+                                  ? 'text-cyan-400 hover:text-cyan-300'
+                                  : 'text-slate-600 hover:text-slate-300',
                               )}
                             >
                               <Bookmark
@@ -813,27 +803,24 @@ export function SearchPage() {
                                   href={result.info_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="group/link block text-sm font-medium leading-snug text-slate-200 transition-colors [overflow-wrap:anywhere] hover:text-cyan-300"
+                                  className="group/link flex items-center gap-1 text-sm text-slate-100 transition-colors hover:text-cyan-300"
                                   title={result.title}
                                 >
-                                  {result.title}
-                                  <ExternalLink className="ml-1 inline-block h-3.5 w-3.5 -translate-y-px align-middle opacity-0 transition-opacity group-hover/link:opacity-100" />
+                                  <span className="truncate">{result.title}</span>
+                                  <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-0 transition-opacity group-hover/link:opacity-100" />
                                 </a>
                               ) : (
-                                <p
-                                  className="block text-sm font-medium leading-snug text-slate-200 [overflow-wrap:anywhere]"
-                                  title={result.title}
-                                >
+                                <p className="truncate text-sm text-slate-100" title={result.title}>
                                   {result.title}
                                 </p>
                               )}
-                              <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
                                 {matchesByResultId[result.id] && (
                                   <DownloadedBadge match={matchesByResultId[result.id]} />
                                 )}
                                 {isDead && (
                                   <span
-                                    className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-rose-400/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-300"
+                                    className="tag tag-bad"
                                     title="No seeders — this torrent is unlikely to download"
                                   >
                                     <AlertTriangle className="h-3 w-3" />
@@ -842,10 +829,9 @@ export function SearchPage() {
                                 )}
                                 {result.freeleech && (
                                   <span
-                                    className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-emerald-400/40 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                                    className="tag tag-good"
                                     title="Freeleech — download does not count against ratio"
                                   >
-                                    <Sparkles className="h-3 w-3" />
                                     Freeleech
                                   </span>
                                 )}
@@ -855,87 +841,67 @@ export function SearchPage() {
                                   result.download_volume_factor > 0 &&
                                   result.download_volume_factor < 1 && (
                                     <span
-                                      className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-teal-400/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-teal-300"
+                                      className="tag"
                                       title={`Download counts at ${Math.round(
                                         result.download_volume_factor * 100,
                                       )}% of size`}
                                     >
-                                      <Sparkles className="h-3 w-3" />
                                       {Math.round(result.download_volume_factor * 100)}% leech
                                     </span>
                                   )}
-                              </div>
-                              <div className="mt-1 flex items-center gap-2">
-                                <span className="rounded bg-slate-700/50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                                  {result.category}
+                                <span className="tag">{result.category}</span>
+                                <span className="ml-1 text-2xs text-slate-500">
+                                  {result.indexer}
                                 </span>
-                                <span className="text-[10px] text-slate-500">{result.indexer}</span>
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={cn(
-                              'inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium',
-                              result.source_type === 'jackett'
-                                ? 'border border-amber-500/20 bg-amber-500/10 text-amber-400'
-                                : 'border border-cyan-500/20 bg-cyan-500/10 text-cyan-400',
-                            )}
+                            className="whitespace-nowrap text-xs text-slate-400"
+                            title={result.source_type === 'jackett' ? 'Jackett' : 'Prowlarr'}
                           >
-                            {result.source_type === 'jackett' ? (
-                              <Zap className="h-3 w-3" />
-                            ) : (
-                              <Database className="h-3 w-3" />
-                            )}
                             {result.source}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-mono text-sm text-slate-300">
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-300">
                           {result.size_formatted}
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-2 text-xs">
-                            <span
-                              className={cn(
-                                'flex items-center gap-1 font-medium',
-                                isDead ? 'text-rose-400' : 'text-emerald-400',
-                              )}
-                            >
-                              <Users className="h-3 w-3" />
+                        <td className="whitespace-nowrap px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1 text-sm">
+                            <span className={cn(isDead ? 'text-slate-500' : 'text-emerald-400')}>
                               {result.seeders.toLocaleString()}
                             </span>
                             <span className="text-slate-600">/</span>
                             <span className="text-red-400">{result.leechers}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-400">
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-300">
                           <div
-                            className="flex items-center gap-1.5"
                             title={
                               result.date
                                 ? `Indexer reported: ${formatDateTime(result.date)}`
                                 : 'No date reported'
                             }
                           >
-                            <Clock className="h-3.5 w-3.5" />
                             {formatAge(result.date)}
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => copyMagnet(result)}
                               disabled={!result.magnet_link}
-                              className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
-                              title="Copy Magnet"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Copy magnet link"
                             >
                               <Magnet className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => downloadTorrent(result)}
                               disabled={!result.torrent_url}
-                              className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                               title="Download .torrent"
                             >
                               <FileDown className="h-4 w-4" />
@@ -946,7 +912,7 @@ export function SearchPage() {
                                 (!result.magnet_link && !result.torrent_url) ||
                                 sendToClient.isPending
                               }
-                              className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-3 py-2 text-xs font-medium text-emerald-400 transition-all hover:from-emerald-500/30 hover:to-green-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="btn-secondary ml-1 flex h-8 items-center gap-2 px-3 text-xs"
                               title={
                                 !result.magnet_link && !result.torrent_url
                                   ? 'No magnet link or torrent file available'
@@ -968,19 +934,21 @@ export function SearchPage() {
             </div>
           </div>
         ) : results.length > 0 ? (
-          <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
-            <Filter className="mx-auto mb-4 h-12 w-12 text-slate-600" />
-            <p className="text-slate-400">No results match the active filters</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900 px-6 py-16 text-center">
+            <p className="text-sm text-slate-200">No results match the active filters</p>
             <p className="mt-1 text-sm text-slate-500">
-              Loosen the column filters above to see more.
+              Loosen the column filters above to see more
             </p>
           </div>
         ) : (
-          <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
-            <Search className="mx-auto mb-4 h-12 w-12 text-slate-600" />
-            <p className="text-slate-400">Enter a search query to find torrents</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900 px-6 py-16 text-center">
+            <p className="text-sm text-slate-200">
+              {searchMutation.isSuccess ? 'No releases found' : 'Search for a release by name'}
+            </p>
             <p className="mt-1 text-sm text-slate-500">
-              Results will be aggregated from all configured sources
+              {searchMutation.isSuccess
+                ? 'Try a shorter query or more sources'
+                : 'Results from every selected source land in one table'}
             </p>
           </div>
         )}
@@ -1028,27 +996,27 @@ function SortableTh({ column, activeSortBy, activeSortOrder, onClick, filter }: 
     <th
       scope="col"
       aria-sort={isActive ? (activeSortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-      className={cn('px-4 py-3 text-xs font-medium uppercase tracking-wider', textAlign)}
+      className={cn('whitespace-nowrap px-4 py-2 text-xs font-normal', textAlign)}
     >
       <div className={cn('group/cell flex items-center gap-1', justify)}>
         <button
           type="button"
           onClick={() => onClick(column)}
           className={cn(
-            'inline-flex items-center gap-1.5 rounded transition-colors',
-            isActive ? 'text-cyan-300' : 'text-slate-400 hover:text-slate-200',
+            'inline-flex items-center gap-1 rounded transition-colors',
+            isActive ? 'text-cyan-300' : 'text-slate-500 hover:text-slate-200',
           )}
           title={`Sort by ${column.label.toLowerCase()}`}
         >
           <span>{column.label}</span>
           {isActive ? (
             activeSortOrder === 'asc' ? (
-              <ArrowUp className="h-3.5 w-3.5" />
+              <ArrowUp className="h-3 w-3" />
             ) : (
-              <ArrowDown className="h-3.5 w-3.5" />
+              <ArrowDown className="h-3 w-3" />
             )
           ) : (
-            <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover/cell:opacity-60" />
+            <ArrowUpDown className="h-3 w-3 opacity-0 transition-opacity group-hover/cell:opacity-60" />
           )}
         </button>
         {filter && (

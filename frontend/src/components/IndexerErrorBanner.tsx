@@ -24,7 +24,7 @@ function errorLabel(err: IndexerError): string {
  */
 export function IndexerErrorBanner({
   errors,
-  title = 'Some indexers returned an error and were skipped:',
+  title = 'Some indexers returned an error and were skipped',
   className,
 }: IndexerErrorBannerProps) {
   if (!errors || errors.length === 0) return null
@@ -33,21 +33,21 @@ export function IndexerErrorBanner({
     <div
       role="alert"
       className={cn(
-        'rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200',
+        'rounded-xl border border-amber-500/30 bg-slate-900 px-4 py-3 text-sm text-slate-300',
         className,
       )}
     >
-      <div className="flex items-start gap-2.5">
+      <div className="flex items-start gap-2">
         <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-400" />
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-amber-200">{title}</p>
-          <ul className="mt-1.5 space-y-1">
+          <p className="font-medium text-amber-300">{title}</p>
+          <ul className="mt-2 space-y-1 font-mono text-xs">
             {errors.map((err, idx) => {
               const label = errorLabel(err)
               return (
-                <li key={`${label}-${idx}`} className="text-amber-100/90 [overflow-wrap:anywhere]">
-                  {label && <span className="font-medium text-amber-200">{label}</span>}
-                  {label && <span className="text-amber-300/70"> — </span>}
+                <li key={`${label}-${idx}`} className="text-slate-400 [overflow-wrap:anywhere]">
+                  {label && <span className="text-slate-200">{label}</span>}
+                  {label && <span className="text-slate-600"> — </span>}
                   <span>{err.message}</span>
                 </li>
               )

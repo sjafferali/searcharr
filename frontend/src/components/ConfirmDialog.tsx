@@ -26,7 +26,7 @@ export function ConfirmDialog({
       isOpen={isOpen}
       onClose={onClose}
       title={title}
-      titleIcon={<AlertTriangle className="h-5 w-5 text-red-400" />}
+      titleIcon={<AlertTriangle className="h-4 w-4 text-red-400" />}
       size="sm"
       footer={
         <div className="flex items-center gap-3">
@@ -36,9 +36,9 @@ export function ConfirmDialog({
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/20 px-4 py-2 font-medium text-red-400 transition-colors hover:bg-red-500/30 disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 font-medium text-white transition-colors hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isLoading && <LoadingSpinner size="sm" />}
+            {isLoading && <LoadingSpinner size="sm" className="text-white" />}
             {confirmLabel}
           </button>
         </div>

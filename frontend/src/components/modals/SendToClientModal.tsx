@@ -1,5 +1,4 @@
 import { Download, HardDrive, ChevronRight, AlertCircle, Star } from 'lucide-react'
-import { cn } from '../../utils'
 import { Modal } from '../Modal'
 import { LoadingSpinner } from '../LoadingSpinner'
 import { StatusBadge } from '../StatusBadge'
@@ -64,8 +63,8 @@ export function SendToClientModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Send to Download Client"
-      titleIcon={<Download className="h-5 w-5 text-emerald-400" />}
+      title="Send to download client"
+      titleIcon={<Download className="h-4 w-4 text-slate-500" />}
       size="lg"
       footer={
         <button onClick={onClose} className="btn-secondary w-full">
@@ -75,26 +74,26 @@ export function SendToClientModal({
     >
       <div>
         {/* Torrent Info */}
-        <div className="mb-4 rounded-lg border border-slate-700/50 bg-slate-800/50 p-3">
-          <p className="line-clamp-2 text-sm font-medium text-slate-200">{result.title}</p>
-          <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
+        <div className="mb-6 rounded-lg border border-slate-700 bg-slate-800 p-3">
+          <p className="line-clamp-2 font-mono text-sm text-slate-100">{result.title}</p>
+          <div className="mt-2 flex items-center gap-2 font-mono text-xs text-slate-400">
             <span>{result.size_formatted}</span>
-            <span>-</span>
-            <span className="text-emerald-400">{result.seeders} seeders</span>
-            <span>-</span>
+            <span>·</span>
+            <span>{result.seeders} seeders</span>
+            <span>·</span>
             <span>{result.source}</span>
           </div>
         </div>
 
         {/* Warning if torrent cannot be sent */}
         {!canSendTorrent && (
-          <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+          <div className="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
             <div className="flex items-center gap-2 text-amber-400">
-              <AlertCircle className="h-5 w-5" />
+              <AlertCircle className="h-4 w-4" />
               <p className="text-sm font-medium">Cannot send to client</p>
             </div>
             <p className="mt-1 text-xs text-amber-400/80">
-              This torrent does not have a magnet link or torrent file URL available.
+              This torrent has no magnet link or torrent file URL
             </p>
           </div>
         )}
@@ -102,42 +101,23 @@ export function SendToClientModal({
         {/* Online Clients */}
         {canSendTorrent && onlineClients.length > 0 ? (
           <>
-            <h4 className="mb-3 text-sm font-medium text-slate-300">Select Download Client</h4>
+            <h4 className="mb-3 text-sm font-medium text-slate-200">Select download client</h4>
             <div className="space-y-2">
               {onlineClients.map((client) => (
                 <button
                   key={client.id}
                   onClick={() => handleSend(client)}
                   disabled={sendToClient.isPending}
-                  className={cn(
-                    'group flex w-full items-center justify-between rounded-lg border p-3 transition-all disabled:opacity-50',
-                    client.is_default
-                      ? 'border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50 hover:bg-amber-500/10'
-                      : 'border-slate-700/50 bg-slate-800/50 hover:border-cyan-500/30 hover:bg-slate-800',
-                  )}
+                  className="group flex w-full items-center justify-between rounded-lg border border-slate-700 bg-slate-800 p-3 transition-colors hover:border-slate-600 hover:bg-slate-700 disabled:opacity-50"
                 >
                   <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        'flex h-10 w-10 items-center justify-center rounded-lg border bg-gradient-to-br',
-                        client.is_default
-                          ? 'border-amber-500/30 from-amber-500/20 to-orange-500/20'
-                          : 'border-violet-500/30 from-violet-500/20 to-purple-500/20',
-                      )}
-                    >
-                      <HardDrive
-                        className={cn(
-                          'h-5 w-5',
-                          client.is_default ? 'text-amber-400' : 'text-violet-400',
-                        )}
-                      />
-                    </div>
+                    <HardDrive className="h-4 w-4 flex-shrink-0 text-slate-500" />
                     <div className="text-left">
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-medium text-slate-200">{client.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-slate-200">{client.name}</p>
                         {client.is_default && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-400">
-                            <Star className="h-2.5 w-2.5 fill-amber-400" />
+                          <span className="tag tag-warn">
+                            <Star className="h-3 w-3 fill-amber-400" />
                             Default
                           </span>
                         )}
@@ -148,14 +128,7 @@ export function SendToClientModal({
                   {sendToClient.isPending ? (
                     <LoadingSpinner size="sm" />
                   ) : (
-                    <ChevronRight
-                      className={cn(
-                        'h-5 w-5 text-slate-500 transition-colors',
-                        client.is_default
-                          ? 'group-hover:text-amber-400'
-                          : 'group-hover:text-cyan-400',
-                      )}
-                    />
+                    <ChevronRight className="h-4 w-4 text-slate-500 transition-colors group-hover:text-slate-100" />
                   )}
                 </button>
               ))}
@@ -163,9 +136,9 @@ export function SendToClientModal({
           </>
         ) : canSendTorrent ? (
           <div className="py-6 text-center text-slate-400">
-            <HardDrive className="mx-auto mb-2 h-12 w-12 text-slate-600" />
-            <p>No online download clients available</p>
-            <p className="mt-1 text-sm text-slate-500">
+            <HardDrive className="mx-auto mb-2 h-8 w-8 text-slate-600" />
+            <p className="text-sm">No download clients online</p>
+            <p className="mt-1 text-xs text-slate-500">
               Configure a download client in the Clients tab
             </p>
           </div>
@@ -173,15 +146,12 @@ export function SendToClientModal({
 
         {/* Offline Clients */}
         {canSendTorrent && offlineClients.length > 0 && (
-          <div className="mt-4 border-t border-slate-700/50 pt-4">
+          <div className="mt-6 border-t border-slate-700 pt-4">
             <p className="mb-2 text-xs text-slate-500">Offline clients</p>
             {offlineClients.map((client) => (
-              <div
-                key={client.id}
-                className="flex items-center gap-3 rounded-lg bg-slate-800/30 p-3 opacity-50"
-              >
-                <HardDrive className="h-5 w-5 text-slate-500" />
-                <span className="text-slate-400">{client.name}</span>
+              <div key={client.id} className="flex items-center gap-3 p-3 opacity-50">
+                <HardDrive className="h-4 w-4 text-slate-500" />
+                <span className="text-sm text-slate-400">{client.name}</span>
                 <StatusBadge status="offline" />
               </div>
             ))}

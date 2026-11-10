@@ -52,16 +52,12 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
 
       {/* Modal */}
       <div
         className={cn(
-          'relative w-full rounded-xl border border-slate-700 bg-slate-900 shadow-2xl',
+          'relative w-full rounded-2xl border border-slate-700 bg-slate-900 shadow-[0_8px_24px_rgba(0,0,0,0.3)]',
           sizeClasses[size],
         )}
         role="dialog"
@@ -69,7 +65,7 @@ export function Modal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-700 p-4">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-100">
+          <h3 className="flex items-center gap-2 text-base font-medium text-slate-100">
             {titleIcon}
             {title}
           </h3>
@@ -86,9 +82,7 @@ export function Modal({
         <div className="p-4">{children}</div>
 
         {/* Footer */}
-        {footer && (
-          <div className="rounded-b-xl border-t border-slate-700 bg-slate-800/50 p-4">{footer}</div>
-        )}
+        {footer && <div className="rounded-b-2xl border-t border-slate-700 p-4">{footer}</div>}
       </div>
     </div>
   )

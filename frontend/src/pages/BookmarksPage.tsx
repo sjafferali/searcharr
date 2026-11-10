@@ -1,18 +1,5 @@
 import { useMemo, useState } from 'react'
-import {
-  Bookmark as BookmarkIcon,
-  Clock,
-  Database,
-  Download,
-  ExternalLink,
-  FileDown,
-  Inbox,
-  Magnet,
-  StickyNote,
-  Trash2,
-  X,
-  Zap,
-} from 'lucide-react'
+import { Download, FileDown, Inbox, Magnet, StickyNote, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { ConfirmDialog, EmptyState, LoadingSpinner, SendToClientModal } from '../components'
 import {
@@ -24,7 +11,7 @@ import {
   useSendToClient,
 } from '../hooks'
 import { Bookmark, SearchResult } from '../types'
-import { cn, formatRelative, formatDateTime } from '../utils'
+import { formatRelative, formatDateTime } from '../utils'
 
 function bookmarkToSearchResult(b: Bookmark): SearchResult {
   return {
@@ -144,28 +131,16 @@ export function BookmarksPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/25">
-              <BookmarkIcon className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight text-slate-100">Bookmarks</h2>
-              <p className="text-xs text-slate-500">
-                Saved results you can act on later — independent of your current search
-              </p>
-            </div>
-          </div>
+          <h2 className="text-xl font-medium text-slate-100">Bookmarks</h2>
+          <p className="text-sm text-slate-400">Saved results to act on later</p>
         </div>
-        <p className="text-sm text-slate-400">
-          <span className="font-mono text-slate-200">{total.toLocaleString()}</span>{' '}
-          {total === 1 ? 'saved' : 'saved'}
-        </p>
+        <p className="font-mono text-xs text-slate-500">{total.toLocaleString()} saved</p>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center rounded-xl border border-slate-800/50 bg-slate-900/50 py-16">
+        <div className="flex items-center justify-center rounded-xl border border-slate-800 bg-slate-900 py-16">
           <LoadingSpinner size="lg" />
         </div>
       ) : isError ? (
@@ -176,115 +151,84 @@ export function BookmarksPage() {
         <EmptyState
           icon={<Inbox className="h-12 w-12" />}
           title="No bookmarks yet"
-          description="On the Search page, click the bookmark icon next to any result to save it here."
+          description="Click the bookmark icon next to any search result to save it here"
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-slate-800/50 bg-slate-900/50">
+        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-800/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    Title
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    Source
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    Size
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    Saved
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
+                <tr className="border-b border-slate-800">
+                  <th className="px-4 py-2 text-left text-xs font-normal text-slate-500">Title</th>
+                  <th className="px-4 py-2 text-left text-xs font-normal text-slate-500">Source</th>
+                  <th className="px-4 py-2 text-right text-xs font-normal text-slate-500">Size</th>
+                  <th className="px-4 py-2 text-left text-xs font-normal text-slate-500">Saved</th>
+                  <th className="px-4 py-2 text-right text-xs font-normal text-slate-500">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/30">
-                {bookmarks.map((b, idx) => (
+              <tbody>
+                {bookmarks.map((b) => (
                   <tr
                     key={b.id}
-                    className="group animate-fade-in transition-colors hover:bg-slate-800/30"
-                    style={{ animationDelay: `${idx * 30}ms` }}
+                    className="border-t border-slate-800 transition-colors first:border-t-0 hover:bg-slate-800/50"
                   >
-                    <td className="max-w-md px-4 py-3 align-top">
-                      <div className="flex flex-col gap-1">
-                        {b.info_url ? (
-                          <a
-                            href={b.info_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group/link text-sm font-medium leading-snug text-slate-200 transition-colors [overflow-wrap:anywhere] hover:text-cyan-300"
-                            title={b.title}
+                    <td className="w-full max-w-0 px-4 py-3">
+                      {b.info_url ? (
+                        <a
+                          href={b.info_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block truncate text-sm text-slate-100 transition-colors hover:text-cyan-300"
+                          title={b.title}
+                        >
+                          {b.title}
+                        </a>
+                      ) : (
+                        <p className="truncate text-sm text-slate-100" title={b.title}>
+                          {b.title}
+                        </p>
+                      )}
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        {b.category && <span className="tag">{b.category}</span>}
+                        <span className="px-1 text-2xs text-slate-500">{b.indexer}</span>
+                        {b.notes && (
+                          <button
+                            type="button"
+                            onClick={() => setNotesFor(b)}
+                            className="tag transition-colors hover:text-slate-100"
+                            title="View notes"
                           >
-                            {b.title}
-                            <ExternalLink className="ml-1 inline-block h-3.5 w-3.5 -translate-y-px align-middle opacity-0 transition-opacity group-hover/link:opacity-100" />
-                          </a>
-                        ) : (
-                          <p
-                            className="text-sm font-medium leading-snug text-slate-200 [overflow-wrap:anywhere]"
-                            title={b.title}
-                          >
-                            {b.title}
-                          </p>
+                            <StickyNote className="h-3 w-3" />
+                            Note
+                          </button>
                         )}
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          {b.category && (
-                            <span className="rounded bg-slate-700/50 px-2 py-0.5 text-[10px] font-medium text-slate-400">
-                              {b.category}
-                            </span>
-                          )}
-                          <span className="text-[10px] text-slate-500">{b.indexer}</span>
-                          {b.notes && (
-                            <button
-                              type="button"
-                              onClick={() => setNotesFor(b)}
-                              className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300 transition-colors hover:bg-amber-500/20"
-                              title="View notes"
-                            >
-                              <StickyNote className="h-3 w-3" />
-                              note
-                            </button>
-                          )}
-                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 align-top">
+                    <td className="whitespace-nowrap px-4 py-3">
                       <span
-                        className={cn(
-                          'inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium',
-                          b.source_type === 'jackett'
-                            ? 'border border-amber-500/20 bg-amber-500/10 text-amber-400'
-                            : 'border border-cyan-500/20 bg-cyan-500/10 text-cyan-400',
-                        )}
+                        className="tag"
+                        title={b.source_type === 'jackett' ? 'Jackett' : 'Prowlarr'}
                       >
-                        {b.source_type === 'jackett' ? (
-                          <Zap className="h-3 w-3" />
-                        ) : (
-                          <Database className="h-3 w-3" />
-                        )}
                         {b.source_instance_name}
                       </span>
                     </td>
-                    <td className="px-4 py-3 align-top font-mono text-sm text-slate-300">
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-300">
                       {b.size_formatted || '-'}
                     </td>
-                    <td className="px-4 py-3 align-top text-sm text-slate-400">
-                      <div
-                        className="flex items-center gap-1.5"
-                        title={formatDateTime(b.created_at)}
-                      >
-                        <Clock className="h-3.5 w-3.5" />
-                        {formatRelative(b.created_at)}
-                      </div>
+                    <td
+                      className="whitespace-nowrap px-4 py-3 text-sm text-slate-400"
+                      title={formatDateTime(b.created_at)}
+                    >
+                      {formatRelative(b.created_at)}
                     </td>
-                    <td className="px-4 py-3 align-top">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => copyMagnet(b)}
                           disabled={!b.magnet_link}
-                          className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-cyan-400 disabled:cursor-not-allowed disabled:opacity-30"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
                           title={b.magnet_link ? 'Copy magnet' : 'No magnet stored'}
                         >
                           <Magnet className="h-4 w-4" />
@@ -292,7 +236,7 @@ export function BookmarksPage() {
                         <button
                           onClick={() => downloadTorrent(b)}
                           disabled={!b.torrent_url}
-                          className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-slate-700/50 hover:text-violet-400 disabled:cursor-not-allowed disabled:opacity-30"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-30"
                           title={b.torrent_url ? 'Download .torrent' : 'No torrent file stored'}
                         >
                           <FileDown className="h-4 w-4" />
@@ -300,12 +244,12 @@ export function BookmarksPage() {
                         <button
                           onClick={(e) => handleSendClick(b, e)}
                           disabled={(!b.magnet_link && !b.torrent_url) || sendToClient.isPending}
-                          className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-3 py-2 text-xs font-medium text-emerald-400 transition-all hover:from-emerald-500/30 hover:to-green-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="btn-secondary flex h-8 items-center gap-2 px-3 text-xs"
                           title={
                             !b.magnet_link && !b.torrent_url
                               ? 'No magnet or torrent file saved'
                               : defaultClient
-                                ? `Send to ${defaultClient.name} (Shift+click to choose a different client)`
+                                ? `Send to ${defaultClient.name} (Shift+click to choose another client)`
                                 : 'Send to download client'
                           }
                         >
@@ -314,7 +258,7 @@ export function BookmarksPage() {
                         </button>
                         <button
                           onClick={() => setPendingDelete(b)}
-                          className="rounded-lg bg-slate-800/50 p-2 text-slate-400 transition-all hover:bg-red-500/20 hover:text-red-400"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-red-400"
                           title="Remove bookmark"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -355,20 +299,20 @@ export function BookmarksPage() {
           onClick={() => setNotesFor(null)}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-xl"
+            className="popover-shadow w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-wider text-amber-400">Notes</p>
-                <p className="mt-0.5 text-sm font-medium text-slate-200 [overflow-wrap:anywhere]">
+                <p className="text-xs text-slate-500">Notes</p>
+                <p className="mt-1 font-mono text-sm text-slate-100 [overflow-wrap:anywhere]">
                   {notesFor.title}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setNotesFor(null)}
-                className="rounded p-1 text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-200"
+                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100"
               >
                 <X className="h-4 w-4" />
               </button>

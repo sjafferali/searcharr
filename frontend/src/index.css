@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -18,85 +18,78 @@
   :root {
     color-scheme: dark;
 
-    --color-slate-950: 15 23 42;
-    --color-slate-900: 30 41 59;
-    --color-slate-800: 51 65 85;
-    --color-slate-700: 71 85 105;
-    --color-slate-600: 100 116 139;
-    --color-slate-500: 148 163 184;
-    --color-slate-400: 203 213 225;
-    --color-slate-300: 226 232 240;
-    --color-slate-200: 241 245 249;
-    --color-slate-100: 248 250 252;
+    --color-slate-950: 20 20 21;
+    --color-slate-900: 25 25 27;
+    --color-slate-800: 35 35 37;
+    --color-slate-700: 52 52 55;
+    --color-slate-600: 88 88 93;
+    --color-slate-500: 133 133 139;
+    --color-slate-400: 161 161 166;
+    --color-slate-300: 200 200 204;
+    --color-slate-200: 224 224 226;
+    --color-slate-100: 237 237 237;
 
-    --color-cyan-100: 207 250 254;
-    --color-cyan-200: 165 243 252;
-    --color-cyan-300: 103 232 249;
-    --color-cyan-400: 34 211 238;
-    --color-cyan-500: 6 182 212;
-    --color-cyan-600: 8 145 178;
-    --color-cyan-700: 14 116 144;
-    --color-cyan-800: 21 94 117;
-
-    --color-blue-100: 219 234 254;
-    --color-blue-200: 191 219 254;
-    --color-blue-300: 147 197 253;
-    --color-blue-400: 96 165 250;
-    --color-blue-500: 59 130 246;
-    --color-blue-600: 37 99 235;
-    --color-blue-700: 29 78 216;
-    --color-blue-800: 30 64 175;
+    --color-cyan-100: 214 240 245;
+    --color-cyan-200: 178 228 237;
+    --color-cyan-300: 134 212 226;
+    --color-cyan-400: 92 194 212;
+    --color-cyan-500: 62 170 190;
+    --color-cyan-600: 40 138 158;
+    --color-cyan-700: 30 108 126;
+    --color-cyan-800: 24 84 98;
 
     --color-emerald-100: 209 250 229;
     --color-emerald-200: 167 243 208;
-    --color-emerald-300: 110 231 183;
-    --color-emerald-400: 52 211 153;
-    --color-emerald-500: 16 185 129;
+    --color-emerald-300: 126 214 170;
+    --color-emerald-400: 76 195 138;
+    --color-emerald-500: 58 170 118;
     --color-emerald-600: 5 150 105;
     --color-emerald-700: 4 120 87;
     --color-emerald-800: 6 95 70;
 
     --color-amber-100: 254 243 199;
     --color-amber-200: 253 230 138;
-    --color-amber-300: 252 211 77;
-    --color-amber-400: 251 191 36;
-    --color-amber-500: 245 158 11;
+    --color-amber-300: 232 200 110;
+    --color-amber-400: 222 178 78;
+    --color-amber-500: 208 156 52;
     --color-amber-600: 217 119 6;
     --color-amber-700: 180 83 9;
     --color-amber-800: 146 64 14;
 
     --color-red-100: 254 226 226;
     --color-red-200: 254 202 202;
-    --color-red-300: 252 165 165;
-    --color-red-400: 248 113 113;
-    --color-red-500: 239 68 68;
+    --color-red-300: 240 150 152;
+    --color-red-400: 229 98 102;
+    --color-red-500: 229 72 77;
     --color-red-600: 220 38 38;
     --color-red-700: 185 28 28;
     --color-red-800: 153 27 27;
 
-    /* Faint grid lines drawn over the page background */
-    --grid-line: rgba(255, 255, 255, 0.02);
+    /* Primary action: one solid accent with dark text (9:1) */
+    --accent-fill: 92 194 212;
+    --accent-fill-hover: 134 212 226;
+    --on-accent: 15 15 16;
   }
 
   html.light {
     color-scheme: light;
 
     /*
-     * The page sits on a soft cool-grey while panels resolve to white, so cards
+     * The page sits on a soft neutral grey while panels resolve to white, so cards
      * and tables visibly lift off the background. The border/surface greys are
      * deepened from a straight inversion so utilities like `border-slate-800/50`
      * and `divide-slate-800/30` still read once composited over white.
      */
-    --color-slate-950: 235 238 244;
+    --color-slate-950: 246 246 247;
     --color-slate-900: 255 255 255;
-    --color-slate-800: 199 209 221;
-    --color-slate-700: 168 180 198;
-    --color-slate-600: 148 163 184;
-    --color-slate-500: 100 116 139;
-    --color-slate-400: 71 85 105;
-    --color-slate-300: 51 65 85;
-    --color-slate-200: 30 41 59;
-    --color-slate-100: 15 23 42;
+    --color-slate-800: 233 233 236;
+    --color-slate-700: 208 208 213;
+    --color-slate-600: 160 160 166;
+    --color-slate-500: 115 115 115;
+    --color-slate-400: 82 82 82;
+    --color-slate-300: 64 64 64;
+    --color-slate-200: 38 38 38;
+    --color-slate-100: 23 23 23;
 
     /* Accents shift to deeper shades so they stay legible on light surfaces */
     --color-cyan-100: 14 116 144;
@@ -107,15 +100,6 @@
     --color-cyan-600: 14 116 144;
     --color-cyan-700: 21 94 117;
     --color-cyan-800: 22 78 99;
-
-    --color-blue-100: 29 78 216;
-    --color-blue-200: 29 78 216;
-    --color-blue-300: 37 99 235;
-    --color-blue-400: 37 99 235;
-    --color-blue-500: 37 99 235;
-    --color-blue-600: 29 78 216;
-    --color-blue-700: 30 64 175;
-    --color-blue-800: 30 58 138;
 
     --color-emerald-100: 4 120 87;
     --color-emerald-200: 4 120 87;
@@ -144,12 +128,36 @@
     --color-red-700: 153 27 27;
     --color-red-800: 127 29 29;
 
-    --grid-line: rgba(15, 23, 42, 0.04);
+    /* Deeper accent so white text on it reaches 5:1 */
+    --accent-fill: 14 116 144;
+    --accent-fill-hover: 21 94 117;
+    --on-accent: 255 255 255;
   }
 
   body {
     @apply bg-slate-950 text-slate-100 antialiased;
-    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /*
+   * Interface text is Plex Sans; data is JetBrains Mono. Every table in the
+   * app is a data table (release names, sizes, seeders, ages), so table bodies
+   * are mono with tabular figures and columns of numbers line up.
+   */
+  tbody,
+  .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* One stroke weight for every lucide icon */
+  .lucide {
+    stroke-width: 1.5;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-cyan-400));
+    outline-offset: 2px;
   }
 
   /* Custom scrollbar for webkit browsers */
@@ -172,45 +180,24 @@
 }
 
 @layer components {
-  /* Ambient background effects */
-  .bg-ambient {
-    background-image: radial-gradient(
-      ellipse at top,
-      rgb(var(--color-slate-900)),
-      rgb(var(--color-slate-950))
-    );
-  }
-
-  /* Glass morphism effect */
-  .glass {
-    @apply border border-slate-800/50 bg-slate-900/50 backdrop-blur-xl;
-  }
-
-  /* Grid pattern overlay */
-  .bg-grid-pattern {
-    background-image:
-      linear-gradient(var(--grid-line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-    background-size: 50px 50px;
-  }
-
-  /* Gradient text */
-  .gradient-text {
-    @apply bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent;
-  }
-
   /* Button variants */
   .btn-primary {
-    @apply rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 px-4 py-2 font-medium text-white shadow-lg shadow-cyan-500/25 transition-all hover:from-cyan-400 hover:to-blue-400 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply rounded-lg px-4 py-2 text-sm font-medium transition-[background-color,transform] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+    background-color: rgb(var(--accent-fill));
+    color: rgb(var(--on-accent));
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: rgb(var(--accent-fill-hover));
   }
 
   .btn-secondary {
-    @apply rounded-lg border border-slate-600 px-4 py-2 font-medium text-slate-300 transition-colors hover:bg-slate-700;
+    @apply rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   /* Input styling */
   .input {
-    @apply w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-200 placeholder-slate-500 transition-all focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50;
+    @apply w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 transition-colors focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50;
   }
 
   .input-mono {
@@ -219,7 +206,36 @@
 
   /* Card styling */
   .card {
-    @apply rounded-lg border border-slate-700/50 bg-slate-800/50 p-4 transition-all duration-300 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/5;
+    @apply rounded-xl border border-slate-700/60 bg-slate-900 p-4 transition-colors hover:border-slate-600;
+  }
+
+  /*
+   * Tags: quiet mono meta. Colour only when it carries meaning — accent for
+   * new or selected, green for freeleech, amber for a warning, red for a fault.
+   */
+  .tag {
+    @apply inline-flex flex-shrink-0 items-center gap-1 rounded border border-slate-700 px-1.5 py-0.5 font-mono text-2xs text-slate-400;
+  }
+
+  .tag-accent {
+    @apply border-cyan-500/40 text-cyan-300;
+  }
+
+  .tag-good {
+    @apply border-emerald-500/40 text-emerald-300;
+  }
+
+  .tag-warn {
+    @apply border-amber-500/40 text-amber-300;
+  }
+
+  .tag-bad {
+    @apply border-red-500/40 text-red-300;
+  }
+
+  /* Popovers and tooltips float on one soft neutral shadow */
+  .popover-shadow {
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
   }
 
   /* Line clamp utilities */
@@ -238,21 +254,12 @@
   }
 
   /*
-   * Light-mode refinements. White panels on a soft-grey page get a hint of
-   * elevation from the sticky header, and every row in the dense result / feed
+   * Light-mode refinements. Every row in the dense result / feed
    * / history tables gets a quiet divider, a faint alternating shade and a
    * clearer hover fill — so entries read as distinct rows rather than one
    * undifferentiated block. (`!important` overrides the `divide-*` and
    * `hover:bg-*` utilities, whose colours wash out over white.)
    */
-  html.light .bg-ambient {
-    background-image: radial-gradient(ellipse at top, rgb(241 244 249), rgb(231 235 242));
-  }
-
-  html.light .glass {
-    box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
-  }
-
   html.light tbody > tr {
     border-top-color: rgb(15 23 42 / 0.09) !important;
   }
@@ -263,18 +270,5 @@
 
   html.light tbody > tr:hover {
     background-color: rgb(15 23 42 / 0.06) !important;
-  }
-}
-
-@layer utilities {
-  /* Animation delay utilities */
-  .animation-delay-100 {
-    animation-delay: 100ms;
-  }
-  .animation-delay-200 {
-    animation-delay: 200ms;
-  }
-  .animation-delay-300 {
-    animation-delay: 300ms;
   }
 }

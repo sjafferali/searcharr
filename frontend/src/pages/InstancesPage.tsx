@@ -101,21 +101,16 @@ export function InstancesPage() {
       {/* Jackett Section */}
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/20 to-orange-500/20">
-              <Zap className="h-5 w-5 text-amber-400" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-slate-100">Jackett Instances</h2>
-              <p className="text-xs text-slate-400">
-                {jackettInstances.length} configured -{' '}
-                {jackettInstances.filter((i) => i.status === 'online').length} online
-              </p>
-            </div>
+          <div>
+            <h2 className="text-base font-medium text-slate-100">Jackett instances</h2>
+            <p className="font-mono text-xs text-slate-400">
+              {jackettInstances.length} configured ·{' '}
+              {jackettInstances.filter((i) => i.status === 'online').length} online
+            </p>
           </div>
           <button
             onClick={() => setAddModalType('jackett')}
-            className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-400 transition-colors hover:bg-amber-500/20"
+            className="btn-secondary flex items-center gap-2 text-sm"
           >
             <Plus className="h-4 w-4" />
             Add Jackett
@@ -144,7 +139,7 @@ export function InstancesPage() {
           </div>
         ) : (
           <EmptyState
-            icon={<Zap className="h-12 w-12" />}
+            icon={<Zap className="h-8 w-8" />}
             title="No Jackett instances configured"
             action={{
               label: 'Add your first instance',
@@ -157,21 +152,16 @@ export function InstancesPage() {
       {/* Prowlarr Section */}
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/20 to-blue-500/20">
-              <Database className="h-5 w-5 text-cyan-400" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-slate-100">Prowlarr Instances</h2>
-              <p className="text-xs text-slate-400">
-                {prowlarrInstances.length} configured -{' '}
-                {prowlarrInstances.filter((i) => i.status === 'online').length} online
-              </p>
-            </div>
+          <div>
+            <h2 className="text-base font-medium text-slate-100">Prowlarr instances</h2>
+            <p className="font-mono text-xs text-slate-400">
+              {prowlarrInstances.length} configured ·{' '}
+              {prowlarrInstances.filter((i) => i.status === 'online').length} online
+            </p>
           </div>
           <button
             onClick={() => setAddModalType('prowlarr')}
-            className="flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-400 transition-colors hover:bg-cyan-500/20"
+            className="btn-secondary flex items-center gap-2 text-sm"
           >
             <Plus className="h-4 w-4" />
             Add Prowlarr
@@ -200,7 +190,7 @@ export function InstancesPage() {
           </div>
         ) : (
           <EmptyState
-            icon={<Database className="h-12 w-12" />}
+            icon={<Database className="h-8 w-8" />}
             title="No Prowlarr instances configured"
             action={{
               label: 'Add your first instance',
@@ -240,8 +230,8 @@ export function InstancesPage() {
         isOpen={!!deleteInstance}
         onClose={() => setDeleteInstance(null)}
         onConfirm={handleDelete}
-        title="Delete Instance"
-        message={`Are you sure you want to delete "${deleteInstance?.instance.name}"? This action cannot be undone.`}
+        title="Delete instance"
+        message={`Delete "${deleteInstance?.instance.name}"? This cannot be undone.`}
         isLoading={deleteJackett.isPending || deleteProwlarr.isPending}
       />
     </div>

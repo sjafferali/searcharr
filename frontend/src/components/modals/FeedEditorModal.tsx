@@ -1,19 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  Activity,
-  ChevronDown,
-  ChevronRight,
-  Check,
-  Database,
-  Filter,
-  Globe,
-  Layers,
-  Lock,
-  Rss,
-  Search,
-  Sparkles,
-  Zap,
-} from 'lucide-react'
+import { ChevronDown, ChevronRight, Check, Database, Globe, Lock, Rss, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Modal } from '../Modal'
 import { LoadingSpinner } from '../LoadingSpinner'
@@ -260,18 +246,18 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
       isOpen={isOpen}
       onClose={onClose}
       title={isEditing ? 'Edit feed' : 'Create feed'}
-      titleIcon={<Rss className="h-5 w-5 text-cyan-400" />}
+      titleIcon={<Rss className="h-4 w-4 text-slate-500" />}
       size="lg"
       footer={
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-slate-400">
             {indexerCount === 0 ? (
-              <span className="text-rose-300">Pick at least one indexer to save.</span>
+              <span className="text-red-300">Pick at least one indexer to save</span>
             ) : (
               <>
-                <span className="font-medium text-slate-200">{indexerCount}</span> indexer
+                <span className="font-mono text-slate-200">{indexerCount}</span> indexer
                 {indexerCount === 1 ? '' : 's'} across{' '}
-                <span className="font-medium text-slate-200">{instanceCount}</span> instance
+                <span className="font-mono text-slate-200">{instanceCount}</span> instance
                 {instanceCount === 1 ? '' : 's'}
               </>
             )}
@@ -292,13 +278,11 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
         </div>
       }
     >
-      <div className="-mx-1 max-h-[65vh] space-y-5 overflow-y-auto px-1">
-        <section className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+      <div className="-mx-1 max-h-[65vh] space-y-6 overflow-y-auto px-1">
+        <section className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
             <div>
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                Name
-              </label>
+              <label className="mb-1 block text-xs text-slate-400">Name</label>
               <input
                 type="text"
                 value={name}
@@ -309,9 +293,7 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
               />
             </div>
             <div className="sm:w-44">
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                Category
-              </label>
+              <label className="mb-1 block text-xs text-slate-400">Category</label>
               <select
                 value={filters.category}
                 onChange={(e) =>
@@ -328,9 +310,7 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-              Description (optional)
-            </label>
+            <label className="mb-1 block text-xs text-slate-400">Description (optional)</label>
             <input
               type="text"
               value={description}
@@ -340,9 +320,7 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-              Result order
-            </label>
+            <label className="mb-1 block text-xs text-slate-400">Result order</label>
             <select
               value={sortStrategy}
               onChange={(e) => setSortStrategy(e.target.value as FeedSortStrategy)}
@@ -351,41 +329,31 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
               <option value="date_desc">Newest first (sort by publish date)</option>
               <option value="indexer_order">Preserve indexer order</option>
             </select>
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-2xs text-slate-500">
               {sortStrategy === 'date_desc'
-                ? 'Merged results are sorted by publish date, newest first.'
-                : "Results stay in the order each indexer returned — useful when an indexer's own sort (e.g. Prowlarr's freeleechstart) should reach the UI."}
+                ? 'Merged results are sorted by publish date, newest first'
+                : "Results stay in the order each indexer returned — useful when an indexer's own sort (e.g. Prowlarr's freeleechstart) should reach the UI"}
             </p>
           </div>
         </section>
 
-        <section className="space-y-3 rounded-xl border border-slate-800/60 bg-slate-900/40 p-3">
-          <header className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            <Filter className="h-3.5 w-3.5 text-cyan-400" />
-            Filters
-          </header>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-800/60 bg-slate-900/60 px-3 py-2.5 transition-colors hover:border-emerald-500/40">
+        <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <h4 className="text-sm font-medium text-slate-200">Filters</h4>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 transition-colors hover:border-slate-600">
               <input
                 type="checkbox"
                 checked={filters.freeleech_only}
                 onChange={(e) => setFilters((f) => ({ ...f, freeleech_only: e.target.checked }))}
-                className="h-4 w-4 cursor-pointer accent-emerald-500"
+                className="h-4 w-4 cursor-pointer accent-cyan-500"
               />
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
-                  <Sparkles className="h-3 w-3 text-emerald-400" />
-                  Freeleech only
-                </p>
-                <p className="mt-0.5 text-[11px] text-slate-500">
-                  Hide items that count against ratio.
-                </p>
+                <p className="text-xs font-medium text-slate-200">Freeleech only</p>
+                <p className="mt-1 text-2xs text-slate-500">Hide items that count against ratio</p>
               </div>
             </label>
             <div>
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                Min seeders
-              </label>
+              <label className="mb-1 block text-xs text-slate-400">Min seeders</label>
               <input
                 type="number"
                 min={0}
@@ -394,41 +362,37 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
                   setFilters((f) => ({ ...f, min_seeders: Number(e.target.value) || 0 }))
                 }
                 placeholder="0"
-                className="input"
+                className="input-mono"
               />
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                Min size
-              </label>
+              <label className="mb-1 block text-xs text-slate-400">Min size</label>
               <input
                 type="text"
                 value={minSizeText}
                 onChange={(e) => setMinSizeText(e.target.value)}
-                placeholder="e.g. 100MB"
-                className={cn('input', !minSizeParsed.valid && 'border-rose-500/60')}
+                placeholder="100MB"
+                className={cn('input-mono', !minSizeParsed.valid && 'border-red-500/60')}
               />
               {!minSizeParsed.valid && (
-                <p className="mt-1 text-[10px] text-rose-300">Use a unit like KB, MB, GB, TB.</p>
+                <p className="mt-1 text-2xs text-red-300">Use a unit like KB, MB, GB, TB</p>
               )}
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                Max size
-              </label>
+              <label className="mb-1 block text-xs text-slate-400">Max size</label>
               <input
                 type="text"
                 value={maxSizeText}
                 onChange={(e) => setMaxSizeText(e.target.value)}
-                placeholder="e.g. 20GB"
-                className={cn('input', !maxSizeParsed.valid && 'border-rose-500/60')}
+                placeholder="20GB"
+                className={cn('input-mono', !maxSizeParsed.valid && 'border-red-500/60')}
               />
               {!maxSizeParsed.valid && (
-                <p className="mt-1 text-[10px] text-rose-300">Use a unit like KB, MB, GB, TB.</p>
+                <p className="mt-1 text-2xs text-red-300">Use a unit like KB, MB, GB, TB</p>
               )}
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
+              <label className="mb-1 block text-xs text-slate-400">
                 Title must match (regex, optional)
               </label>
               <input
@@ -437,13 +401,13 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
                 onChange={(e) =>
                   setFilters((f) => ({ ...f, include_regex: e.target.value || null }))
                 }
-                placeholder="e.g. 2160p|FLAC"
+                placeholder="2160p|FLAC"
                 className="input-mono"
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                Title must NOT match (regex, optional)
+              <label className="mb-1 block text-xs text-slate-400">
+                Title must not match (regex, optional)
               </label>
               <input
                 type="text"
@@ -451,24 +415,19 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
                 onChange={(e) =>
                   setFilters((f) => ({ ...f, exclude_regex: e.target.value || null }))
                 }
-                placeholder="e.g. CAM|HDTS"
+                placeholder="CAM|HDTS"
                 className="input-mono"
               />
             </div>
           </div>
         </section>
 
-        <section className="space-y-3 rounded-xl border border-slate-800/60 bg-slate-900/40 p-3">
-          <header className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-            <Activity className="h-3.5 w-3.5 text-cyan-400" />
-            Background polling
-          </header>
+        <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900 p-4">
+          <h4 className="text-sm font-medium text-slate-200">Background polling</h4>
           <label
             className={cn(
-              'flex cursor-pointer items-start gap-3 rounded-lg border bg-slate-900/60 px-3 py-2.5 transition-colors',
-              pollingEnabled
-                ? 'border-cyan-500/40 shadow-[0_0_0_1px_rgba(34,211,238,0.1)]'
-                : 'border-slate-800/60 hover:border-cyan-500/30',
+              'flex cursor-pointer items-start gap-3 rounded-lg border bg-slate-800 px-3 py-2 transition-colors',
+              pollingEnabled ? 'border-cyan-500/50' : 'border-slate-700 hover:border-slate-600',
             )}
           >
             <input
@@ -478,19 +437,17 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
               className="mt-0.5 h-4 w-4 cursor-pointer accent-cyan-500"
             />
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-slate-200">Enabled</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">
+              <p className="text-xs font-medium text-slate-200">Enabled</p>
+              <p className="mt-1 text-2xs text-slate-500">
                 Searcharr polls in the background and remembers every item it sees, so freeleech
                 windows aren't missed while you're away. Manual refresh still works when polling is
                 paused.
               </p>
             </div>
           </label>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                Refresh every
-              </label>
+              <label className="mb-1 block text-xs text-slate-400">Refresh every</label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -498,24 +455,22 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
                   max={POLL_INTERVAL_MAX}
                   value={pollIntervalText}
                   onChange={(e) => setPollIntervalText(e.target.value)}
-                  className={cn('input flex-1', pollIntervalInvalid && 'border-rose-500/60')}
+                  className={cn('input-mono flex-1', pollIntervalInvalid && 'border-red-500/60')}
                   disabled={!pollingEnabled}
                 />
                 <span className="text-xs text-slate-400">minutes</span>
               </div>
               <p
                 className={cn(
-                  'mt-1 text-[10px]',
-                  pollIntervalInvalid ? 'text-rose-300' : 'text-slate-500',
+                  'mt-1 text-2xs',
+                  pollIntervalInvalid ? 'text-red-300' : 'text-slate-500',
                 )}
               >
-                Between {POLL_INTERVAL_MIN} and {POLL_INTERVAL_MAX} minutes.
+                Between {POLL_INTERVAL_MIN} and {POLL_INTERVAL_MAX} minutes
               </p>
             </div>
             <div>
-              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wider text-slate-400">
-                Retain history for
-              </label>
+              <label className="mb-1 block text-xs text-slate-400">Retain history for</label>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -523,47 +478,36 @@ export function FeedEditorModal({ isOpen, onClose, feed }: FeedEditorModalProps)
                   max={RETENTION_DAYS_MAX}
                   value={retentionDaysText}
                   onChange={(e) => setRetentionDaysText(e.target.value)}
-                  className={cn('input flex-1', retentionDaysInvalid && 'border-rose-500/60')}
+                  className={cn('input-mono flex-1', retentionDaysInvalid && 'border-red-500/60')}
                 />
                 <span className="text-xs text-slate-400">days</span>
               </div>
               <p
                 className={cn(
-                  'mt-1 text-[10px]',
-                  retentionDaysInvalid ? 'text-rose-300' : 'text-slate-500',
+                  'mt-1 text-2xs',
+                  retentionDaysInvalid ? 'text-red-300' : 'text-slate-500',
                 )}
               >
-                Older items are pruned automatically.
+                Older items are pruned automatically
               </p>
             </div>
           </div>
           {feed?.last_polled_at && (
-            <p className="flex items-center gap-1.5 text-[11px] text-slate-500">
-              <Activity className="h-3 w-3" />
+            <p className="text-2xs text-slate-500">
               Last polled {formatRelative(feed.last_polled_at)}
             </p>
           )}
         </section>
 
-        <section className="space-y-2">
+        <section className="space-y-3">
           <header className="flex items-center justify-between">
-            <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-              <Layers className="h-3.5 w-3.5 text-cyan-400" />
-              Indexers
-            </h4>
-            <span
-              className={cn(
-                'rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                indexerCount > 0
-                  ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300'
-                  : 'border-slate-700/50 bg-slate-800/40 text-slate-400',
-              )}
-            >
+            <h4 className="text-sm font-medium text-slate-200">Indexers</h4>
+            <span className={cn('tag', indexerCount > 0 && 'tag-accent')}>
               {indexerCount} selected
             </span>
           </header>
           {jacketts.length === 0 && prowlarrs.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-700/60 bg-slate-900/30 p-4 text-center text-xs text-slate-500">
+            <div className="rounded-lg border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">
               No instances configured. Add a Jackett or Prowlarr instance first.
             </div>
           ) : (
@@ -638,53 +582,35 @@ function FeedInstanceSection({
     return count
   }, [selected, type, instanceId])
 
-  const Icon = isJackett ? Zap : Database
-  const accent = isJackett
-    ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-    : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200'
-
   return (
     <div
       className={cn(
-        'rounded-lg border bg-slate-900/40 transition-colors',
-        selectedForInstance > 0 ? accent.split(' ')[0] : 'border-slate-800/60',
+        'rounded-lg border bg-slate-800 transition-colors',
+        selectedForInstance > 0 ? 'border-cyan-500/50' : 'border-slate-700',
       )}
     >
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors hover:bg-slate-800/40"
+        className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors hover:bg-slate-700/40"
       >
         <div className="flex min-w-0 items-center gap-2">
-          <Icon
-            className={cn('h-4 w-4 flex-shrink-0', isJackett ? 'text-amber-400' : 'text-cyan-400')}
-          />
           <span className="truncate text-sm font-medium text-slate-200">{instanceName}</span>
-          {!isOnline && (
-            <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-rose-300">
-              Offline
-            </span>
-          )}
-          <span
-            className={cn(
-              'rounded-full border px-2 py-0.5 text-[10px] font-medium',
-              selectedForInstance > 0
-                ? accent
-                : 'border-slate-700/50 bg-slate-800/40 text-slate-400',
-            )}
-          >
+          <span className="tag">{isJackett ? 'Jackett' : 'Prowlarr'}</span>
+          {!isOnline && <span className="tag tag-bad">Offline</span>}
+          <span className={cn('tag', selectedForInstance > 0 && 'tag-accent')}>
             {selectedForInstance > 0 ? `${selectedForInstance} selected` : 'None selected'}
           </span>
         </div>
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
+          <ChevronDown className="h-4 w-4 text-slate-500" />
         ) : (
           <ChevronRight className="h-4 w-4 text-slate-500" />
         )}
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-800/60 p-3">
+        <div className="border-t border-slate-700 p-3">
           {query.isLoading && (
             <div className="flex items-center justify-center py-6 text-slate-400">
               <LoadingSpinner size="sm" />
@@ -692,28 +618,28 @@ function FeedInstanceSection({
             </div>
           )}
           {query.isError && (
-            <p className="rounded-md border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
               Failed to load indexers. Verify the instance is online.
             </p>
           )}
           {query.isSuccess && indexers.length === 0 && (
-            <p className="rounded-md border border-slate-700/40 bg-slate-800/30 px-3 py-2 text-xs text-slate-400">
-              No indexers configured on this instance.
+            <p className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-400">
+              No indexers configured on this instance
             </p>
           )}
           {query.isSuccess && indexers.length > 0 && (
             <div className="space-y-3">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                   placeholder="Filter indexers"
-                  className="w-full rounded-md border border-slate-700/50 bg-slate-800/40 py-1.5 pl-7 pr-2 text-xs text-slate-200 placeholder-slate-500 focus:border-cyan-500/50 focus:outline-none"
+                  className="input h-8 bg-slate-900 py-0 pl-8 text-xs"
                 />
               </div>
-              <div className="flex max-h-56 flex-col gap-1.5 overflow-y-auto pr-1">
+              <div className="flex max-h-56 flex-col gap-1 overflow-y-auto pr-1">
                 {filteredIndexers.map((indexer) => {
                   const ref: FeedIndexerRef = {
                     source_type: type,
@@ -731,37 +657,28 @@ function FeedInstanceSection({
                       onClick={() => onToggle(ref)}
                       title={indexer.name}
                       className={cn(
-                        'flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-left text-xs transition-all',
+                        'flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors',
                         isSelected
-                          ? isJackett
-                            ? 'border-amber-500/40 bg-amber-500/10 text-amber-100'
-                            : 'border-cyan-500/40 bg-cyan-500/10 text-cyan-100'
-                          : 'border-slate-700/50 bg-slate-800/30 text-slate-300 hover:border-slate-600 hover:bg-slate-800/60',
+                          ? 'border-cyan-500/50 bg-cyan-500/10 text-slate-100'
+                          : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600',
                       )}
                     >
                       <span className="flex min-w-0 flex-1 items-center gap-2">
                         <span
                           className={cn(
-                            'flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center rounded border',
+                            'flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border',
                             isSelected
-                              ? isJackett
-                                ? 'border-amber-400 bg-amber-400/30 text-amber-100'
-                                : 'border-cyan-400 bg-cyan-400/30 text-cyan-100'
-                              : 'border-slate-600 bg-slate-800/40',
+                              ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300'
+                              : 'border-slate-600',
                           )}
                         >
-                          {isSelected && <Check className="h-2.5 w-2.5" />}
+                          {isSelected && <Check className="h-3 w-3" />}
                         </span>
-                        <span className="min-w-0 break-words">{indexer.name}</span>
+                        <span className="min-w-0 break-words font-mono">{indexer.name}</span>
                       </span>
                       {badge && (
-                        <span
-                          className={cn(
-                            'inline-flex flex-shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium',
-                            badge.className,
-                          )}
-                        >
-                          <badge.icon className="h-2.5 w-2.5" />
+                        <span className="tag">
+                          <badge.icon className="h-3 w-3" />
                           {badge.label}
                         </span>
                       )}
@@ -781,22 +698,10 @@ function indexerTypeBadge(type: string | null | undefined) {
   if (!type) return null
   const lower = type.toLowerCase()
   if (lower.includes('private')) {
-    return {
-      label: 'Private',
-      icon: Lock,
-      className: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
-    }
+    return { label: 'Private', icon: Lock }
   }
   if (lower.includes('public')) {
-    return {
-      label: 'Public',
-      icon: Globe,
-      className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-    }
+    return { label: 'Public', icon: Globe }
   }
-  return {
-    label: type,
-    icon: Database,
-    className: 'border-slate-600/40 bg-slate-700/40 text-slate-300',
-  }
+  return { label: type, icon: Database }
 }

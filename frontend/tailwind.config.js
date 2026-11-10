@@ -14,19 +14,18 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        sans: ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace'],
       },
       colors: {
         slate: themedScale('slate', [950, 900, 800, 700, 600, 500, 400, 300, 200, 100]),
         cyan: themedScale('cyan', [100, 200, 300, 400, 500, 600, 700, 800]),
-        blue: themedScale('blue', [100, 200, 300, 400, 500, 600, 700, 800]),
         emerald: themedScale('emerald', [100, 200, 300, 400, 500, 600, 700, 800]),
         amber: themedScale('amber', [100, 200, 300, 400, 500, 600, 700, 800]),
         red: themedScale('red', [100, 200, 300, 400, 500, 600, 700, 800]),
       },
       animation: {
-        'fade-in': 'fadeIn 0.3s ease-out forwards',
-        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-in': 'fadeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards',
       },
       keyframes: {
         fadeIn: {
@@ -34,8 +33,12 @@ export default {
           to: { opacity: '1', transform: 'translateY(0)' },
         },
       },
-      backdropBlur: {
-        xs: '2px',
+      fontSize: {
+        // Smallest size in the app: meta, counts and tags
+        '2xs': ['11px', '16px'],
+      },
+      transitionTimingFunction: {
+        DEFAULT: 'cubic-bezier(0.22, 1, 0.36, 1)',
       },
     },
   },

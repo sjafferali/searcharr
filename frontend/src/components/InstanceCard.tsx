@@ -1,14 +1,5 @@
-import {
-  Zap,
-  Database,
-  HardDrive,
-  Server,
-  Eye,
-  RefreshCw,
-  Settings,
-  Trash2,
-  Star,
-} from 'lucide-react'
+import { ReactNode } from 'react'
+import { RefreshCw, Settings, Trash2, Star } from 'lucide-react'
 import { StatusBadge } from './StatusBadge'
 import { LoadingSpinner } from './LoadingSpinner'
 import { cn } from '../utils'
@@ -37,8 +28,56 @@ interface ClientCardProps extends BaseCardProps {
   isDefault?: boolean
 }
 
+const iconButton =
+  'flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100'
+
+function MetaRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 text-xs">
+      <span className="text-slate-500">{label}</span>
+      <span className="truncate text-right font-mono text-slate-300">{children}</span>
+    </div>
+  )
+}
+
+interface CardActionsProps {
+  onTest?: () => void
+  onEdit?: () => void
+  onDelete?: () => void
+  isTesting?: boolean
+  children?: ReactNode
+}
+
+function CardActions({ onTest, onEdit, onDelete, isTesting, children }: CardActionsProps) {
+  return (
+    <div className="mt-4 flex items-center gap-1 border-t border-slate-800 pt-3">
+      <button
+        onClick={onTest}
+        disabled={isTesting}
+        className="btn-secondary flex h-8 items-center gap-2 px-3 py-0 text-xs"
+      >
+        {isTesting ? <LoadingSpinner size="sm" /> : <RefreshCw className="h-4 w-4" />}
+        Test
+      </button>
+      <div className="ml-auto flex items-center gap-1">
+        {children}
+        <button onClick={onEdit} title="Edit" aria-label="Edit" className={iconButton}>
+          <Settings className="h-4 w-4" />
+        </button>
+        <button
+          onClick={onDelete}
+          title="Delete"
+          aria-label="Delete"
+          className={cn(iconButton, 'hover:text-red-400')}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function InstanceCard({
-  type,
   name,
   url,
   apiKey,
@@ -51,100 +90,44 @@ export function InstanceCard({
   onDelete,
   isTesting,
 }: InstanceCardProps) {
-  const Icon = type === 'jackett' ? Zap : Database
-  const iconColor = type === 'jackett' ? 'text-amber-400' : 'text-cyan-400'
-
   return (
-    <div className="card group relative">
-      {/* Top gradient line on hover */}
-      <div className="absolute left-0 top-0 h-0.5 w-full bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-
-      {/* Header */}
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <Icon className={cn('h-5 w-5', iconColor)} />
-          <h4 className="font-semibold text-slate-200">{name}</h4>
-        </div>
+    <div className="card">
+      <div className="flex items-start justify-between gap-3">
+        <h4 className="truncate text-sm font-medium text-slate-100">{name}</h4>
         <StatusBadge status={status} />
       </div>
+      <p className="mt-1 truncate font-mono text-xs text-slate-400">{url}</p>
 
-      {/* Details */}
-      <div className="space-y-2 text-sm">
-        <div className="flex items-center gap-2 text-slate-400">
-          <Server className="h-3.5 w-3.5" />
-          <span className="truncate font-mono text-xs">{url}</span>
-        </div>
-        <div className="flex items-center gap-2 text-slate-400">
-          <Eye className="h-3.5 w-3.5" />
-          <span className="font-mono text-xs">{apiKey}</span>
-        </div>
-        {indexerCount !== null && (
-          <div className="flex items-center gap-2 text-slate-400">
-            <Database className="h-3.5 w-3.5" />
-            <span>{indexerCount} indexers</span>
-          </div>
-        )}
+      <div className="mt-4 space-y-2">
+        <MetaRow label="API key">{apiKey}</MetaRow>
+        {indexerCount !== null && <MetaRow label="Indexers">{indexerCount}</MetaRow>}
         {onConfigureDefaults && (
-          <div className="flex items-center gap-2 text-slate-400">
-            <Star
-              className={cn(
-                'h-3.5 w-3.5',
-                defaultSourceCount > 0 ? 'fill-amber-400 text-amber-400' : 'text-slate-500',
-              )}
-            />
-            {defaultSourceCount > 0 ? (
-              <span>
-                <span className="font-medium text-amber-300">{defaultSourceCount}</span> default
-                source{defaultSourceCount === 1 ? '' : 's'}
-              </span>
-            ) : (
-              <span>No default sources</span>
-            )}
-          </div>
+          <MetaRow label="Default sources">
+            {defaultSourceCount > 0 ? defaultSourceCount : 'None'}
+          </MetaRow>
         )}
       </div>
 
-      {/* Actions */}
-      <div className="mt-4 flex items-center gap-2 border-t border-slate-700/50 pt-3">
-        <button
-          onClick={onTest}
-          disabled={isTesting}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded bg-slate-700/50 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 disabled:opacity-50"
-        >
-          {isTesting ? <LoadingSpinner size="sm" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          Test
-        </button>
-        <button
-          onClick={onEdit}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded bg-slate-700/50 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700"
-        >
-          <Settings className="h-3.5 w-3.5" />
-          Edit
-        </button>
+      <CardActions onTest={onTest} onEdit={onEdit} onDelete={onDelete} isTesting={isTesting}>
         {onConfigureDefaults && (
           <button
             onClick={onConfigureDefaults}
             title="Choose which indexers are searched by default"
-            className={cn(
-              'flex flex-1 items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors',
-              defaultSourceCount > 0
-                ? 'border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
-                : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700',
-            )}
+            aria-label="Default sources"
+            className={iconButton}
           >
-            <Star className={cn('h-3.5 w-3.5', defaultSourceCount > 0 && 'fill-amber-400')} />
-            Defaults
+            <Star
+              className={cn('h-4 w-4', defaultSourceCount > 0 && 'fill-amber-400 text-amber-400')}
+            />
           </button>
         )}
-        <button
-          onClick={onDelete}
-          className="flex items-center justify-center rounded bg-red-500/10 p-1.5 text-red-400 transition-colors hover:bg-red-500/20"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      </CardActions>
     </div>
   )
+}
+
+const clientTypeLabels: Record<ClientType, string> = {
+  qbittorrent: 'qBittorrent',
 }
 
 export function ClientCard({
@@ -159,30 +142,13 @@ export function ClientCard({
   isDefault,
 }: ClientCardProps) {
   return (
-    <div
-      className={cn(
-        'card group relative',
-        isDefault && 'border-amber-500/30 ring-1 ring-amber-500/20',
-      )}
-    >
-      {/* Top gradient line on hover */}
-      <div
-        className={cn(
-          'absolute left-0 top-0 h-0.5 w-full bg-gradient-to-r from-transparent to-transparent transition-opacity',
-          isDefault
-            ? 'via-amber-500/50 opacity-100'
-            : 'via-violet-500/50 opacity-0 group-hover:opacity-100',
-        )}
-      />
-
-      {/* Header */}
-      <div className="mb-3 flex items-start justify-between gap-2">
+    <div className="card">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
-          <HardDrive className="h-5 w-5 shrink-0 text-violet-400" />
-          <h4 className="truncate font-semibold text-slate-200">{name}</h4>
+          <h4 className="truncate text-sm font-medium text-slate-100">{name}</h4>
           {isDefault && (
             <span
-              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-400"
+              className="tag tag-warn"
               title="Torrents send here automatically when no client is picked"
             >
               <Star className="h-3 w-3 fill-amber-400" />
@@ -192,43 +158,13 @@ export function ClientCard({
         </div>
         <StatusBadge status={status} />
       </div>
+      <p className="mt-1 truncate font-mono text-xs text-slate-400">{url}</p>
 
-      {/* Details */}
-      <div className="space-y-2 text-sm">
-        <div className="flex items-center gap-2 text-slate-400">
-          <Server className="h-3.5 w-3.5" />
-          <span className="truncate font-mono text-xs">{url}</span>
-        </div>
-        <div className="flex items-center gap-2 text-slate-400">
-          <HardDrive className="h-3.5 w-3.5" />
-          <span className="capitalize">{clientType}</span>
-        </div>
+      <div className="mt-4 space-y-2">
+        <MetaRow label="Type">{clientTypeLabels[clientType] ?? clientType}</MetaRow>
       </div>
 
-      {/* Actions */}
-      <div className="mt-4 flex items-center gap-2 border-t border-slate-700/50 pt-3">
-        <button
-          onClick={onTest}
-          disabled={isTesting}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded bg-slate-700/50 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700 disabled:opacity-50"
-        >
-          {isTesting ? <LoadingSpinner size="sm" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          Test
-        </button>
-        <button
-          onClick={onEdit}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded bg-slate-700/50 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-700"
-        >
-          <Settings className="h-3.5 w-3.5" />
-          Edit
-        </button>
-        <button
-          onClick={onDelete}
-          className="flex items-center justify-center rounded bg-red-500/10 p-1.5 text-red-400 transition-colors hover:bg-red-500/20"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      <CardActions onTest={onTest} onEdit={onEdit} onDelete={onDelete} isTesting={isTesting} />
     </div>
   )
 }

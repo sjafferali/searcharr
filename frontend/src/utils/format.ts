@@ -33,14 +33,14 @@ export function formatDate(dateString: string | null): string {
  * codebase) but rendering compact suffixes instead of full words:
  *
  *   under 2 hours  →  ``"45m"`` (whole minutes)
- *   2–48 hours     →  ``"3.4h"`` (one decimal)
+ *   2–48 hours     →  ``"3h"``
  *   48 hours+      →  ``"5d"`` (whole days)
  *
  * When the source date is *in the future* (the indexer's clock or its
  * Cardigann timezone parser is wrong — common for some private trackers
  * whose YAMLs misinterpret the site's local time), the same buckets apply
  * but the result is prefixed with ``"+"`` so the discrepancy is visible
- * (e.g. ``"+9.0h"``). Skews under 1 minute either direction collapse to
+ * (e.g. ``"+9h"``). Skews under 1 minute either direction collapse to
  * ``"0m"`` because that's just clock noise.
  */
 export function formatAge(dateString: string | null | undefined): string {
@@ -59,7 +59,7 @@ export function formatAge(dateString: string | null | undefined): string {
     if (hours < 2) {
       label = `${Math.round(abs / 60000)}m`
     } else {
-      label = `${hours.toFixed(1)}h`
+      label = `${Math.round(hours)}h`
     }
   } else {
     label = `${days}d`
