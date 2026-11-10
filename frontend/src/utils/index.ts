@@ -1,11 +1,11 @@
 export { cn } from './cn'
 export {
-  getFeedLastViewed,
-  getFeedNewBaseline,
-  markFeedViewed,
-  subscribeFeedLastViewed,
-  touchFeedLastViewed,
-} from './feedLastViewed'
+  beginFeedVisit,
+  getFeedVisit,
+  subscribeFeedSeen,
+  touchFeedSeen,
+  type FeedVisit,
+} from './feedSeen'
 export {
   formatAge,
   formatBytes,

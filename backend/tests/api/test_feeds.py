@@ -789,6 +789,146 @@ class TestFeedItemsListing:
         assert response.status_code == 404
 
 
+class TestFeedSeen:
+    """POST /feeds/{id}/seen: server-side "new since last visit" marker."""
+
+    async def _seed(self, session: AsyncSession, *, seen_through: datetime | None = None) -> int:
+        feed = Feed(
+            name="Seen",
+            description=None,
+            category="All",
+            freeleech_only=False,
+            min_seeders=0,
+            sort_strategy="date_desc",
+            poll_interval_minutes=15,
+            retention_days=30,
+            polling_enabled=True,
+            seen_through=seen_through,
+        )
+        session.add(feed)
+        await session.commit()
+        return feed.id
+
+    async def _add_item(self, session: AsyncSession, feed_id: int, key: str) -> None:
+        now = datetime.now(UTC)
+        session.add(
+            FeedItem(
+                feed_id=feed_id,
+                dedup_key=key,
+                first_seen_at=now,
+                last_seen_at=now,
+                title=key,
+                source_type="jackett",
+                source_instance_name="Test Jackett",
+                indexer="ip",
+                size_bytes=1,
+                seeders=1,
+                leechers=0,
+                freeleech=False,
+            )
+        )
+        await session.commit()
+
+    @pytest.mark.asyncio
+    async def test_first_visit_has_no_baseline(self, client: AsyncClient, db_session: AsyncSession):
+        feed_id = await self._seed(db_session)
+        response = await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["baseline"] is None
+        assert data["seen_through"] is not None
+        assert data["seen_history"] == []
+
+        feed = (await client.get(f"/api/v1/feeds/{feed_id}")).json()
+        assert feed["seen_through"] is not None
+        assert feed["seen_history"] == []
+
+    @pytest.mark.asyncio
+    async def test_new_visit_with_new_items_rotates_history(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        earlier = datetime.now(UTC) - timedelta(hours=3)
+        feed_id = await self._seed(db_session, seen_through=earlier)
+        await self._add_item(db_session, feed_id, "url:http://new")
+
+        data = (await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})).json()
+        assert datetime.fromisoformat(data["baseline"]) == earlier
+        assert [datetime.fromisoformat(h) for h in data["seen_history"]] == [earlier]
+        assert datetime.fromisoformat(data["seen_through"]) > earlier
+
+    @pytest.mark.asyncio
+    async def test_reload_without_new_items_keeps_history(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        """An accidental reload must not displace the batch it just hid."""
+        earlier = datetime.now(UTC) - timedelta(hours=3)
+        feed_id = await self._seed(db_session, seen_through=earlier)
+        await self._add_item(db_session, feed_id, "url:http://new")
+
+        first = (
+            await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})
+        ).json()
+        # Reload twice: nothing arrived in between, so history stays put while
+        # the baseline moves on to the previous call's seen_through.
+        for _ in range(2):
+            again = (
+                await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})
+            ).json()
+            assert again["seen_history"] == first["seen_history"]
+        assert datetime.fromisoformat(again["baseline"]) > datetime.fromisoformat(first["baseline"])
+
+        # The batch is still reachable through the remembered cutoff.
+        items = (
+            await client.get(
+                f"/api/v1/feeds/{feed_id}/items",
+                params={"first_seen_after": first["seen_history"][0]},
+            )
+        ).json()
+        assert items["total"] == 1
+
+    @pytest.mark.asyncio
+    async def test_touch_advances_without_rotating(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        earlier = datetime.now(UTC) - timedelta(hours=3)
+        feed_id = await self._seed(db_session, seen_through=earlier)
+        await self._add_item(db_session, feed_id, "url:http://new")
+
+        # No body at all behaves like ``new_visit: false``.
+        data = (await client.post(f"/api/v1/feeds/{feed_id}/seen")).json()
+        assert datetime.fromisoformat(data["baseline"]) == earlier
+        assert data["seen_history"] == []
+        assert datetime.fromisoformat(data["seen_through"]) > earlier
+
+    @pytest.mark.asyncio
+    async def test_history_is_capped(self, client: AsyncClient, db_session: AsyncSession):
+        feed_id = await self._seed(db_session, seen_through=datetime.now(UTC) - timedelta(hours=1))
+        data: dict = {}
+        for i in range(7):
+            await self._add_item(db_session, feed_id, f"url:http://{i}")
+            data = (
+                await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})
+            ).json()
+        history = [datetime.fromisoformat(h) for h in data["seen_history"]]
+        assert len(history) == 5
+        assert history == sorted(history, reverse=True)
+
+    @pytest.mark.asyncio
+    async def test_seen_does_not_bump_updated_at(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        feed_id = await self._seed(db_session)
+        before = (await client.get(f"/api/v1/feeds/{feed_id}")).json()["updated_at"]
+        await client.post(f"/api/v1/feeds/{feed_id}/seen", json={"new_visit": True})
+        after = (await client.get(f"/api/v1/feeds/{feed_id}")).json()["updated_at"]
+        assert after == before
+
+    @pytest.mark.asyncio
+    async def test_seen_404_unknown_feed(self, client: AsyncClient):
+        response = await client.post("/api/v1/feeds/9999/seen", json={"new_visit": True})
+        assert response.status_code == 404
+
+
 class TestRefreshEndpoint:
     """The refresh endpoint shells out to the lifespan-owned poller."""
 

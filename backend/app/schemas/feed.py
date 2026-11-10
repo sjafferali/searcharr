@@ -146,8 +146,43 @@ class FeedResponse(BaseSchema):
         description="Per-indexer failures recorded on the feed's most recent poll",
     )
     stale_after_seconds: int
+    seen_through: datetime | None = Field(
+        None,
+        description=(
+            "Items first seen after this instant are NEW. Null until the feed is first opened."
+        ),
+    )
+    seen_history: list[datetime] = Field(
+        default_factory=list,
+        description="Earlier seen_through values, newest first, one per visit that had new items",
+    )
     created_at: datetime
     updated_at: datetime
+
+
+class FeedSeenRequest(BaseSchema):
+    """Payload for marking a feed's current contents as seen."""
+
+    new_visit: bool = Field(
+        False,
+        description=(
+            "True when the feed has just been opened. If items arrived since the "
+            "previous seen_through, that value is pushed onto seen_history before "
+            "the marker advances. False just advances the marker (same visit)."
+        ),
+    )
+
+
+class FeedSeenResponse(BaseSchema):
+    """Result of marking a feed seen."""
+
+    feed_id: int
+    baseline: datetime | None = Field(
+        None,
+        description="seen_through as it was before this call — what NEW is judged against",
+    )
+    seen_through: datetime
+    seen_history: list[datetime] = Field(default_factory=list)
 
 
 class FeedListResponse(BaseSchema):

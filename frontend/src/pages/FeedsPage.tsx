@@ -70,8 +70,10 @@ import {
   formatBytes,
   formatDateTime,
   formatRelative,
-  markFeedViewed,
-  touchFeedLastViewed,
+  getFeedVisit,
+  beginFeedVisit,
+  touchFeedSeen,
+  type FeedVisit,
 } from '../utils'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const
@@ -172,28 +174,54 @@ function formatHoursDuration(seconds: number | null): string {
 }
 
 /**
- * Returns the "new since" baseline timestamp for the given feed: the moment
- * the user last opened it. Items whose ``first_seen_at`` is newer than the
+ * Opens a visit for the given feed and returns it once the server has
+ * answered. The visit carries the "new since" baseline — the server's
+ * ``seen_through`` marker as it stood before this open advanced it — plus the
+ * cutoffs of earlier visits. Items whose ``first_seen_at`` is newer than the
  * baseline are flagged NEW.
  *
- * Opening a feed records the current time as its new "last opened" value
- * (persisted eagerly so the NEW state survives a reload) and notifies the
- * feeds sidebar so the feed's NEW-count badge clears. The returned baseline
- * is captured once per feed per session so flagged rows stay flagged while
- * the feed is being viewed. See {@link markFeedViewed}.
+ * The visit is established once per feed per page session, so flagged rows
+ * stay flagged while the feed is being viewed and when switching back to it.
+ * ``failed`` is set when the server couldn't be reached; the caller falls back
+ * to the marker from the feed list. See {@link beginFeedVisit}.
  */
-function useLastViewedBaseline(feedId: number | null): number | null {
-  const [baseline, setBaseline] = useState<number | null>(null)
+function useFeedVisit(feedId: number | null): { visit: FeedVisit | null; failed: boolean } {
+  const [result, setResult] = useState<{ feedId: number; visit: FeedVisit | null } | null>(null)
 
   useEffect(() => {
-    if (feedId === null) {
-      setBaseline(null)
-      return
+    if (feedId === null) return
+    let cancelled = false
+    beginFeedVisit(feedId).then(
+      (visit) => {
+        if (!cancelled) setResult({ feedId, visit })
+      },
+      () => {
+        if (!cancelled) setResult({ feedId, visit: null })
+      },
+    )
+    return () => {
+      cancelled = true
     }
-    setBaseline(markFeedViewed(feedId))
   }, [feedId])
 
-  return baseline
+  if (feedId === null) return { visit: null, failed: false }
+  // A feed already opened this session resolves synchronously, so switching
+  // back to it doesn't flash a loading state.
+  const known = getFeedVisit(feedId)
+  if (known) return { visit: known, failed: false }
+  if (result && result.feedId === feedId) {
+    return { visit: result.visit, failed: result.visit === null }
+  }
+  return { visit: null, failed: false }
+}
+
+function formatCutoff(ms: number): string {
+  return new Date(ms).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 function nextPollLabel(nextPollAt: string | null, pollingEnabled: boolean): string | null {
@@ -270,10 +298,44 @@ export function FeedsPage() {
     [feeds, selectedFeedId],
   )
 
-  const lastViewedBaseline = useLastViewedBaseline(selectedFeedId)
+  const { visit: openedVisit, failed: visitFailed } = useFeedVisit(selectedFeedId)
+  // If the server couldn't be told about this visit, judge NEW against the
+  // marker the feed list already carries rather than blocking the page.
+  const visit: FeedVisit | null = useMemo(() => {
+    if (openedVisit) return openedVisit
+    if (!visitFailed) return null
+    const seenThrough = selectedFeed?.seen_through
+      ? new Date(selectedFeed.seen_through).getTime()
+      : 0
+    return { baseline: Number.isFinite(seenThrough) ? seenThrough : 0, history: [] }
+  }, [openedVisit, visitFailed, selectedFeed?.seen_through])
+  // Items aren't requested until the baseline is known — otherwise the first
+  // fetch would go out unfiltered and then immediately be replaced.
+  const visitReady = visit !== null
   // "New" is meaningful only once a prior visit has been recorded; until then
   // there's nothing to compare against, so the "new only" filter is hidden.
-  const canFilterNew = lastViewedBaseline !== null && lastViewedBaseline > 0
+  const canFilterNew = visit !== null && visit.baseline > 0
+  // Cutoffs of earlier visits. Picking one widens the NEW window back to that
+  // visit, re-showing items that were already marked seen (e.g. a batch lost
+  // to an accidental page reload).
+  const olderCutoffs = useMemo(() => visit?.history ?? [], [visit])
+  // Keyed by feed so a pick never leaks into the next feed's first request.
+  const [sinceChoice, setSinceChoice] = useState<{ feedId: number; since: number } | null>(null)
+  const sinceOverride =
+    sinceChoice !== null &&
+    sinceChoice.feedId === selectedFeedId &&
+    olderCutoffs.includes(sinceChoice.since)
+      ? sinceChoice.since
+      : null
+  const newBaseline = sinceOverride ?? visit?.baseline ?? null
+  const chooseSince = useCallback(
+    (since: number | null) => {
+      if (selectedFeedId === null) return
+      setSinceChoice(since === null ? null : { feedId: selectedFeedId, since })
+      if (since !== null) setShowNewOnly(true)
+    },
+    [selectedFeedId],
+  )
 
   // Resetting filters when the selected feed changes keeps the UX coherent —
   // a saved feed's own filters already shape what's persisted; transient UI
@@ -306,6 +368,7 @@ export function FeedsPage() {
     hideStale,
     hideDead,
     showNewOnly,
+    sinceOverride,
     pageSize,
   ])
 
@@ -335,8 +398,8 @@ export function FeedsPage() {
   // after the visit baseline — matching the rows the table flags NEW.
   const newOnlyCutoff = useMemo(() => {
     if (!newOnlyActive) return undefined
-    return new Date(lastViewedBaseline as number).toISOString()
-  }, [newOnlyActive, lastViewedBaseline])
+    return new Date(newBaseline as number).toISOString()
+  }, [newOnlyActive, newBaseline])
 
   const itemsParams: FeedItemListParams = useMemo(
     () => ({
@@ -365,7 +428,8 @@ export function FeedsPage() {
     ],
   )
 
-  const itemsQuery = useFeedItems(selectedFeedId, itemsParams)
+  const itemsQuery = useFeedItems(selectedFeedId, itemsParams, visitReady)
+  const itemsLoading = itemsQuery.isLoading || (selectedFeedId !== null && !visitReady)
 
   // Stable key identifying the current view (feed + filters + sort + page).
   // Used to recognise when the user has explicitly navigated to a new view
@@ -443,16 +507,15 @@ export function FeedsPage() {
   const total = displayed?.total ?? 0
 
   // Each successful items fetch is the user "seeing" the current contents of
-  // the feed; advance the persisted last-viewed stamp so the next session's
-  // NEW baseline excludes items the user already saw via background polls.
-  // The in-session NEW flags don't move, since they read the frozen session
-  // baseline captured by markFeedViewed.
+  // the feed; advance the server's seen marker so the next visit's NEW
+  // baseline excludes items the user already saw via background polls. The
+  // in-session NEW flags don't move, since they read the visit's baseline.
   const itemsUpdatedAt = itemsQuery.dataUpdatedAt
   useEffect(() => {
     if (selectedFeedId === null) return
     if (!itemsUpdatedAt) return
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-    touchFeedLastViewed(selectedFeedId)
+    touchFeedSeen(selectedFeedId)
   }, [selectedFeedId, itemsUpdatedAt])
 
   const totalInHistory = itemsQuery.data?.total_in_history ?? 0
@@ -887,6 +950,28 @@ export function FeedsPage() {
                     </span>
                   </label>
                 )}
+                {canFilterNew && olderCutoffs.length > 0 && (
+                  <select
+                    value={sinceOverride ?? ''}
+                    onChange={(e) => chooseSince(e.target.value ? Number(e.target.value) : null)}
+                    aria-label="Which visit items count as new since"
+                    title="Bring back items that were new on an earlier visit — useful if the page reloaded before you finished reviewing them."
+                    className={cn(
+                      'cursor-pointer rounded border bg-slate-800/50 px-1.5 py-0.5 text-[11px] focus:border-cyan-500/50 focus:outline-none',
+                      sinceOverride !== null
+                        ? 'border-cyan-400/50 text-cyan-200'
+                        : 'border-slate-700/60 text-slate-200',
+                    )}
+                  >
+                    <option value="">Since last visit</option>
+                    {olderCutoffs.map((since, idx) => (
+                      <option key={since} value={since}>
+                        {idx === 0 ? 'Include previous visit' : 'Include earlier visits'} (since{' '}
+                        {formatCutoff(since)})
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <label
                   className={cn(
                     'flex cursor-pointer items-center gap-1.5',
@@ -944,13 +1029,13 @@ export function FeedsPage() {
                 )}
               </div>
               <p className="text-[11px] text-slate-500">
-                {itemsQuery.isLoading
+                {itemsLoading
                   ? 'Loading…'
                   : `${total.toLocaleString()} item${total === 1 ? '' : 's'} match${total === 1 ? 'es' : ''}`}
               </p>
             </div>
 
-            {itemsQuery.isLoading && entries.length === 0 ? (
+            {itemsLoading && entries.length === 0 ? (
               <div className="flex items-center justify-center rounded-xl border border-slate-800/50 bg-slate-900/50 py-16">
                 <LoadingSpinner size="md" />
                 <span className="ml-3 text-sm text-slate-400">Loading feed history…</span>
@@ -970,13 +1055,28 @@ export function FeedsPage() {
               <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
                 <Sparkles className="mx-auto mb-4 h-12 w-12 text-slate-600" />
                 <p className="text-slate-400">You're all caught up</p>
-                <p className="mt-1 text-sm text-slate-500">No new items since your last visit.</p>
-                <button
-                  onClick={() => setShowNewOnly(false)}
-                  className="mt-3 text-xs font-medium text-cyan-400 hover:underline"
-                >
-                  Show all items
-                </button>
+                <p className="mt-1 text-sm text-slate-500">
+                  {sinceOverride !== null
+                    ? `No new items since ${formatCutoff(sinceOverride)} match the current filters.`
+                    : 'No new items since your last visit.'}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+                  {sinceOverride === null && olderCutoffs.length > 0 && (
+                    <button
+                      onClick={() => chooseSince(olderCutoffs[0])}
+                      className="text-xs font-medium text-cyan-400 hover:underline"
+                      title={`Show items that arrived since ${formatCutoff(olderCutoffs[0])}`}
+                    >
+                      Show previous visit's new items
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowNewOnly(false)}
+                    className="text-xs font-medium text-cyan-400 hover:underline"
+                  >
+                    Show all items
+                  </button>
+                </div>
               </div>
             ) : entries.length === 0 && total === 0 ? (
               <div className="rounded-xl border border-slate-800/50 bg-slate-900/50 p-12 text-center">
@@ -1117,9 +1217,9 @@ export function FeedsPage() {
                           const isBookmarked = bookmarkIdByResultId[result.id] !== undefined
                           const stale = isStale(result, staleAfterSeconds)
                           const isNew =
-                            lastViewedBaseline !== null &&
-                            lastViewedBaseline > 0 &&
-                            new Date(result.first_seen_at).getTime() > lastViewedBaseline
+                            newBaseline !== null &&
+                            newBaseline > 0 &&
+                            new Date(result.first_seen_at).getTime() > newBaseline
                           return (
                             <tr
                               key={result.dedup_key}
@@ -1186,7 +1286,7 @@ export function FeedsPage() {
                                       {isNew && (
                                         <span
                                           className="inline-flex flex-shrink-0 items-center gap-1 rounded-full border border-cyan-400/50 bg-gradient-to-r from-cyan-500/25 to-blue-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.35)]"
-                                          title={`First added ${formatRelative(result.first_seen_at)} — appeared since your last visit`}
+                                          title={`First added ${formatRelative(result.first_seen_at)} — appeared since ${sinceOverride !== null ? formatCutoff(sinceOverride) : 'your last visit'}`}
                                         >
                                           <Sparkles className="h-3 w-3" />
                                           New

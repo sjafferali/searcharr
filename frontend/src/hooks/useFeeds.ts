@@ -3,7 +3,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/rea
 import toast from 'react-hot-toast'
 import { feedsApi } from '../api'
 import { Feed, FeedCreate, FeedItemListParams, FeedUpdate } from '../types'
-import { getFeedNewBaseline, subscribeFeedLastViewed } from '../utils'
+import { getFeedVisit, subscribeFeedSeen } from '../utils'
 
 export const feedKeys = {
   all: ['feeds'] as const,
@@ -98,11 +98,11 @@ export function useFeedFetch(id: number | null) {
  * the FeedPoller surface without the user clicking refresh. ``placeholderData``
  * keeps the previous page visible while filter/sort changes are in flight.
  */
-export function useFeedItems(id: number | null, params: FeedItemListParams) {
+export function useFeedItems(id: number | null, params: FeedItemListParams, enabled = true) {
   return useQuery({
     queryKey: feedKeys.items(id ?? -1, params),
     queryFn: () => feedsApi.items(id as number, params),
-    enabled: id !== null,
+    enabled: enabled && id !== null,
     refetchInterval: 30_000,
     refetchOnWindowFocus: false,
     placeholderData: (previous) => previous,
@@ -112,19 +112,23 @@ export function useFeedItems(id: number | null, params: FeedItemListParams) {
 /**
  * Returns, keyed by feed id, the number of items first seen since the user
  * last opened that feed — the value rendered as a "NEW" badge in the feeds
- * sidebar, matching the rows the feed table flags NEW. Feeds the user has
- * never opened are omitted (no badge). Polls in the background so badges grow
- * as the FeedPoller brings in new items.
+ * sidebar, matching the rows the feed table flags NEW. For a feed opened this
+ * session that's its visit baseline (so the count stays put while the feed is
+ * being viewed); otherwise the server's ``seen_through``. Feeds never opened
+ * are omitted (no badge). Polls in the background so badges grow as the
+ * FeedPoller brings in new items.
  */
 export function useFeedNewCounts(feeds: Feed[]): Record<number, number> {
-  // Re-render when a feed is opened so any feed that just acquired a session
+  // Re-render when a feed is opened so any feed that just acquired a visit
   // baseline picks it up.
   const [, setRevision] = useState(0)
-  useEffect(() => subscribeFeedLastViewed(() => setRevision((r) => r + 1)), [])
+  useEffect(() => subscribeFeedSeen(() => setRevision((r) => r + 1)), [])
 
   const results = useQueries({
     queries: feeds.map((feed) => {
-      const since = getFeedNewBaseline(feed.id)
+      const visit = getFeedVisit(feed.id)
+      const seenThrough = feed.seen_through ? new Date(feed.seen_through).getTime() : 0
+      const since = visit ? visit.baseline : Number.isFinite(seenThrough) ? seenThrough : 0
       return {
         queryKey: feedKeys.newCount(feed.id, since),
         queryFn: () =>

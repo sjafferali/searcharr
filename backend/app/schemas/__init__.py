@@ -36,6 +36,8 @@ from app.schemas.feed import (
     FeedItemSortBy,
     FeedListResponse,
     FeedResponse,
+    FeedSeenRequest,
+    FeedSeenResponse,
     FeedSortStrategy,
     FeedUpdate,
 )
@@ -129,6 +131,8 @@ __all__ = [
     "FeedItemSortBy",
     "FeedListResponse",
     "FeedResponse",
+    "FeedSeenRequest",
+    "FeedSeenResponse",
     "FeedSortStrategy",
     "FeedUpdate",
     # History

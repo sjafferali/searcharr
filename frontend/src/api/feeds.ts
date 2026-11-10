@@ -6,6 +6,7 @@ import {
   FeedItemListParams,
   FeedItemListResponse,
   FeedListResponse,
+  FeedSeenResponse,
   FeedUpdate,
 } from '../types'
 
@@ -73,6 +74,18 @@ export const feedsApi = {
     const qs = buildItemQuery(params)
     const url = qs ? `/feeds/${id}/items?${qs}` : `/feeds/${id}/items`
     const response = await api.get<FeedItemListResponse>(url)
+    return response.data
+  },
+
+  /**
+   * Marks the feed's current contents as seen. ``newVisit`` is true when the
+   * feed has just been opened (the server may remember the previous marker in
+   * ``seen_history``) and false for in-visit keep-alives.
+   */
+  markSeen: async (id: number, newVisit: boolean): Promise<FeedSeenResponse> => {
+    const response = await api.post<FeedSeenResponse>(`/feeds/${id}/seen`, {
+      new_visit: newVisit,
+    })
     return response.data
   },
 

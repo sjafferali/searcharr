@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -22,6 +22,8 @@ from app.schemas import (
     FeedItemSortBy,
     FeedListResponse,
     FeedResponse,
+    FeedSeenRequest,
+    FeedSeenResponse,
     FeedSortStrategy,
     FeedUpdate,
     IndexerError,
@@ -48,6 +50,31 @@ def _poll_errors(feed: Feed) -> list[IndexerError]:
             decoded.append(IndexerError(**entry))
         except Exception:
             logger.debug("Skipping malformed feed poll error entry: %r", entry)
+    return decoded
+
+
+# How many earlier ``seen_through`` values a feed remembers.
+SEEN_HISTORY_MAX = 5
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    """Attach UTC to naive datetimes (SQLite drops tzinfo on round-trip)."""
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value
+
+
+def _seen_history(feed: Feed) -> list[datetime]:
+    """Decode the feed's stored ``seen_history`` ISO strings, skipping bad entries."""
+    decoded: list[datetime] = []
+    for entry in feed.seen_history or []:
+        try:
+            parsed = _as_utc(datetime.fromisoformat(entry))
+        except (TypeError, ValueError):
+            logger.debug("Skipping malformed feed seen_history entry: %r", entry)
+            continue
+        if parsed is not None:
+            decoded.append(parsed)
     return decoded
 
 
@@ -82,6 +109,8 @@ def _serialize(feed: Feed) -> FeedResponse:
         last_polled_at=feed.last_polled_at,
         last_poll_errors=_poll_errors(feed),
         stale_after_seconds=feed.stale_after_seconds,
+        seen_through=_as_utc(feed.seen_through),
+        seen_history=_seen_history(feed),
         created_at=feed.created_at,
         updated_at=feed.updated_at,
     )
@@ -363,6 +392,57 @@ async def refresh_feed(
 ) -> FeedItemListResponse:
     """Force a synchronous poll for this feed and return the updated item list."""
     return await _refresh_and_list(feed_id, request, db)
+
+
+@router.post("/{feed_id}/seen", response_model=FeedSeenResponse)
+async def mark_feed_seen(
+    feed_id: int,
+    payload: FeedSeenRequest | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> FeedSeenResponse:
+    """
+    Advance the feed's ``seen_through`` marker to now.
+
+    Returns the marker's previous value as ``baseline`` — the instant the
+    caller should judge NEW items against for the rest of its visit.
+
+    With ``new_visit`` set, the previous marker is first pushed onto
+    ``seen_history`` — but only if items arrived after it. Visits that found
+    nothing new (an accidental reload, most commonly) therefore never displace
+    the history entry that brings the last real batch of new items back.
+    """
+    feed = await _load_feed(feed_id, db)
+    now = datetime.now(UTC)
+    baseline = _as_utc(feed.seen_through)
+    history = _seen_history(feed)
+
+    if payload is not None and payload.new_visit and baseline is not None:
+        new_count = (
+            await db.execute(
+                select(func.count())
+                .select_from(FeedItem)
+                .where(FeedItem.feed_id == feed_id, FeedItem.first_seen_at > baseline)
+            )
+        ).scalar_one()
+        if new_count > 0:
+            history = [baseline, *history][:SEEN_HISTORY_MAX]
+
+    # Core UPDATE with ``updated_at`` pinned: viewing a feed isn't an edit, so
+    # it shouldn't trip the column's ``onupdate`` bump.
+    await db.execute(
+        update(Feed)
+        .where(Feed.id == feed_id)
+        .values(
+            seen_through=now,
+            seen_history=[h.isoformat() for h in history],
+            updated_at=Feed.updated_at,
+        )
+    )
+    await db.commit()
+
+    return FeedSeenResponse(
+        feed_id=feed_id, baseline=baseline, seen_through=now, seen_history=history
+    )
 
 
 @router.post("/{feed_id}/fetch", response_model=FeedFetchResponse)

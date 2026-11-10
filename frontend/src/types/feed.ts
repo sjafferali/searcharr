@@ -33,8 +33,20 @@ export interface Feed {
   last_polled_at: string | null
   last_poll_errors: IndexerError[]
   stale_after_seconds: number
+  /** Items first seen after this instant are NEW; null until first opened. */
+  seen_through: string | null
+  /** Earlier ``seen_through`` values, newest first. */
+  seen_history: string[]
   created_at: string
   updated_at: string
+}
+
+export interface FeedSeenResponse {
+  feed_id: number
+  /** ``seen_through`` as it was before the call — what NEW is judged against. */
+  baseline: string | null
+  seen_through: string
+  seen_history: string[]
 }
 
 export interface FeedListResponse {

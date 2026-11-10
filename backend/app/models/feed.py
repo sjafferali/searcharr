@@ -76,6 +76,15 @@ class Feed(BaseModel):
     # "indexer X was rate-limited / disabled" without re-polling.
     last_poll_errors: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
 
+    # "Seen through" marker for the feeds UI: items whose ``first_seen_at`` is
+    # later than this are NEW. Stored server-side (not in the browser) so the
+    # state is shared across devices. NULL until the feed is first opened.
+    seen_through: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Earlier ``seen_through`` values (ISO-8601 strings, newest first, capped),
+    # one per visit that actually had new items. Lets the UI re-show a batch of
+    # items that was marked seen — e.g. after an accidental page reload.
+    seen_history: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+
     indexers: Mapped[list["FeedIndexer"]] = relationship(
         "FeedIndexer",
         back_populates="feed",
