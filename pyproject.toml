@@ -13,7 +13,9 @@ fastapi = "^0.116.0"
 uvicorn = {extras = ["standard"], version = "^0.34.0"}
 pydantic = "^2.10.3"
 pydantic-settings = "^2.6.1"
-sqlalchemy = "^2.0.36"
+# Capped below 2.1: the image is built without a lockfile, and 2.1 changes the
+# default PostgreSQL driver. Raise the cap only after testing against 2.1.
+sqlalchemy = ">=2.0.36,<2.1"
 alembic = "^1.14.0"
 asyncpg = "^0.30.0"
 psycopg2-binary = "^2.9.10"

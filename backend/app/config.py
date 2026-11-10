@@ -56,9 +56,14 @@ class Settings(BaseSettings):
 
     @property
     def database_url_sync(self) -> str:
-        """Get sync database URL (for Alembic migrations)."""
+        """Get sync database URL (for Alembic migrations).
+
+        The driver is named explicitly: SQLAlchemy 2.1 resolves a bare
+        ``postgresql://`` URL to psycopg 3, which this project does not
+        install, so migrations would fail on import.
+        """
         if self.DATABASE_TYPE == "postgresql":
-            return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            return f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         else:
             return f"sqlite:///{self.SQLITE_DATABASE_PATH}"
 
