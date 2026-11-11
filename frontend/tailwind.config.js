@@ -23,6 +23,8 @@ export default {
         emerald: themedScale('emerald', [100, 200, 300, 400, 500, 600, 700, 800]),
         amber: themedScale('amber', [100, 200, 300, 400, 500, 600, 700, 800]),
         red: themedScale('red', [100, 200, 300, 400, 500, 600, 700, 800]),
+        violet: themedScale('violet', [100, 200, 300, 400, 500, 600, 700, 800]),
+        teal: themedScale('teal', [300, 400, 500]),
       },
       animation: {
         'fade-in': 'fadeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards',

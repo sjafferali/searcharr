@@ -27,12 +27,12 @@ function indexerTypeBadge(type: string | null | undefined) {
   if (!type) return null
   const lower = type.toLowerCase()
   if (lower.includes('private')) {
-    return { label: 'Private', icon: Lock }
+    return { label: 'Private', icon: Lock, className: 'tag-bad' }
   }
   if (lower.includes('public')) {
-    return { label: 'Public', icon: Globe }
+    return { label: 'Public', icon: Globe, className: 'tag-good' }
   }
-  return { label: type, icon: Database }
+  return { label: type, icon: Database, className: '' }
 }
 
 export function DefaultSourcesModal({ isOpen, onClose, type, instance }: DefaultSourcesModalProps) {
@@ -206,7 +206,7 @@ export function DefaultSourcesModal({ isOpen, onClose, type, instance }: Default
                       <span className="truncate font-mono">{indexer.name}</span>
                     </span>
                     {badge && (
-                      <span className="tag">
+                      <span className={cn('tag', badge.className)}>
                         <badge.icon className="h-3 w-3" />
                         {badge.label}
                       </span>

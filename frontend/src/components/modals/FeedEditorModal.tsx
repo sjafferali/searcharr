@@ -19,7 +19,14 @@ import {
   SearchCategory,
   SourceType,
 } from '../../types'
-import { cn, formatBytes, formatRelative, parseSize } from '../../utils'
+import {
+  cn,
+  formatBytes,
+  formatRelative,
+  parseSize,
+  sourceLabel,
+  sourceTagClass,
+} from '../../utils'
 
 const POLL_INTERVAL_MIN = 5
 const POLL_INTERVAL_MAX = 1440
@@ -596,7 +603,7 @@ function FeedInstanceSection({
       >
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-medium text-slate-200">{instanceName}</span>
-          <span className="tag">{isJackett ? 'Jackett' : 'Prowlarr'}</span>
+          <span className={sourceTagClass(type)}>{sourceLabel(type)}</span>
           {!isOnline && <span className="tag tag-bad">Offline</span>}
           <span className={cn('tag', selectedForInstance > 0 && 'tag-accent')}>
             {selectedForInstance > 0 ? `${selectedForInstance} selected` : 'None selected'}
@@ -677,7 +684,7 @@ function FeedInstanceSection({
                         <span className="min-w-0 break-words font-mono">{indexer.name}</span>
                       </span>
                       {badge && (
-                        <span className="tag">
+                        <span className={cn('tag', badge.className)}>
                           <badge.icon className="h-3 w-3" />
                           {badge.label}
                         </span>
@@ -698,10 +705,10 @@ function indexerTypeBadge(type: string | null | undefined) {
   if (!type) return null
   const lower = type.toLowerCase()
   if (lower.includes('private')) {
-    return { label: 'Private', icon: Lock }
+    return { label: 'Private', icon: Lock, className: 'tag-bad' }
   }
   if (lower.includes('public')) {
-    return { label: 'Public', icon: Globe }
+    return { label: 'Public', icon: Globe, className: 'tag-good' }
   }
-  return { label: type, icon: Database }
+  return { label: type, icon: Database, className: '' }
 }

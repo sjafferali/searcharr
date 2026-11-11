@@ -16,3 +16,4 @@ export {
   parseSize,
 } from './format'
 export { computeDedupKey } from './dedupKey'
+export { sourceLabel, sourceTagClass } from './source'

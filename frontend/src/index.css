@@ -65,6 +65,21 @@
     --color-red-700: 185 28 28;
     --color-red-800: 153 27 27;
 
+    /* Violet marks things already downloaded / sent to a client */
+    --color-violet-100: 237 233 254;
+    --color-violet-200: 221 214 254;
+    --color-violet-300: 196 181 253;
+    --color-violet-400: 167 139 250;
+    --color-violet-500: 139 92 246;
+    --color-violet-600: 124 58 237;
+    --color-violet-700: 109 40 217;
+    --color-violet-800: 91 33 182;
+
+    /* Teal marks a partial freeleech discount */
+    --color-teal-300: 94 234 212;
+    --color-teal-400: 45 212 191;
+    --color-teal-500: 20 184 166;
+
     /* Primary action: one solid accent with dark text (9:1) */
     --accent-fill: 92 194 212;
     --accent-fill-hover: 134 212 226;
@@ -127,6 +142,19 @@
     --color-red-600: 185 28 28;
     --color-red-700: 153 27 27;
     --color-red-800: 127 29 29;
+
+    --color-violet-100: 91 33 182;
+    --color-violet-200: 91 33 182;
+    --color-violet-300: 109 40 217;
+    --color-violet-400: 124 58 237;
+    --color-violet-500: 124 58 237;
+    --color-violet-600: 109 40 217;
+    --color-violet-700: 91 33 182;
+    --color-violet-800: 76 29 149;
+
+    --color-teal-300: 15 118 110;
+    --color-teal-400: 13 148 136;
+    --color-teal-500: 13 148 136;
 
     /* Deeper accent so white text on it reaches 5:1 */
     --accent-fill: 14 116 144;
@@ -211,26 +239,47 @@
 
   /*
    * Tags: quiet mono meta. Colour only when it carries meaning — accent for
-   * new or selected, green for freeleech, amber for a warning, red for a fault.
+   * new or selected, green for freeleech, amber for a warning, red for a fault,
+   * amber/cyan for the Jackett/Prowlarr source, violet for already downloaded.
+   * Coloured variants get a faint fill so they stand out in dense tables.
    */
   .tag {
     @apply inline-flex flex-shrink-0 items-center gap-1 rounded border border-slate-700 px-1.5 py-0.5 font-mono text-2xs text-slate-400;
   }
 
   .tag-accent {
-    @apply border-cyan-500/40 text-cyan-300;
+    @apply border-cyan-500/40 bg-cyan-500/10 text-cyan-300;
   }
 
   .tag-good {
-    @apply border-emerald-500/40 text-emerald-300;
+    @apply border-emerald-500/40 bg-emerald-500/10 text-emerald-300;
   }
 
   .tag-warn {
-    @apply border-amber-500/40 text-amber-300;
+    @apply border-amber-500/40 bg-amber-500/10 text-amber-300;
   }
 
   .tag-bad {
-    @apply border-red-500/40 text-red-300;
+    @apply border-red-500/40 bg-red-500/10 text-red-300;
+  }
+
+  /* Where a result came from: Jackett is amber, Prowlarr is cyan */
+  .tag-jackett {
+    @apply border-amber-500/40 bg-amber-500/10 text-amber-300;
+  }
+
+  .tag-prowlarr {
+    @apply border-cyan-500/40 bg-cyan-500/10 text-cyan-300;
+  }
+
+  /* Already grabbed: downloaded locally or sent to a client */
+  .tag-downloaded {
+    @apply border-violet-500/40 bg-violet-500/10 text-violet-300;
+  }
+
+  /* Partial freeleech (e.g. 50% leech): a discount, but not free */
+  .tag-discount {
+    @apply border-teal-500/40 bg-teal-500/10 text-teal-300;
   }
 
   /* Popovers and tooltips float on one soft neutral shadow */

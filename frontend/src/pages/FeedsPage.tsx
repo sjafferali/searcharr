@@ -62,6 +62,8 @@ import {
   formatRelative,
   getFeedVisit,
   beginFeedVisit,
+  sourceLabel,
+  sourceTagClass,
   touchFeedSeen,
   type FeedVisit,
 } from '../utils'
@@ -770,8 +772,8 @@ export function FeedsPage() {
                     {selectedFeed.indexers.slice(0, 6).map((idx) => (
                       <span
                         key={`${idx.source_type}-${idx.source_instance_id}-${idx.indexer_id}`}
-                        className="tag"
-                        title={idx.source_type === 'jackett' ? 'Jackett' : 'Prowlarr'}
+                        className={sourceTagClass(idx.source_type)}
+                        title={sourceLabel(idx.source_type)}
                       >
                         {idx.indexer_name}
                       </span>
@@ -1216,7 +1218,7 @@ export function FeedsPage() {
                                         result.download_volume_factor > 0 &&
                                         result.download_volume_factor < 1 && (
                                           <span
-                                            className="tag"
+                                            className="tag tag-discount"
                                             title={`Download counts at ${Math.round(
                                               result.download_volume_factor * 100,
                                             )}% of size`}
@@ -1233,8 +1235,8 @@ export function FeedsPage() {
                                         </span>
                                       )}
                                       <span
-                                        className="tag"
-                                        title={`${result.source} (${result.source_type})`}
+                                        className={sourceTagClass(result.source_type)}
+                                        title={`${result.source} (${sourceLabel(result.source_type)})`}
                                       >
                                         {result.source}
                                       </span>

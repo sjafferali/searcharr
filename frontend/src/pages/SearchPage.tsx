@@ -25,7 +25,7 @@ import {
   LoadingSpinner,
   SendToClientModal,
 } from '../components'
-import { cn, formatAge, formatDateTime, parseSize } from '../utils'
+import { cn, formatAge, formatDateTime, parseSize, sourceLabel, sourceTagClass } from '../utils'
 import {
   useBookmarkLookup,
   useClientsStatus,
@@ -441,7 +441,7 @@ export function SearchPage() {
           <span className="flex items-center gap-2">
             Sources
             {selectionMatchesDefaults ? (
-              <span className="tag">
+              <span className="tag tag-warn">
                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                 Defaults
               </span>
@@ -516,7 +516,9 @@ export function SearchPage() {
                       className={cn(
                         'flex h-8 items-center gap-2 rounded-lg border px-3 text-xs transition-colors',
                         isSelected
-                          ? 'border-cyan-500/50 bg-slate-800 font-medium text-slate-100'
+                          ? instance.type === 'jackett'
+                            ? 'border-amber-500/50 bg-amber-500/10 font-medium text-amber-300'
+                            : 'border-cyan-500/50 bg-cyan-500/10 font-medium text-cyan-300'
                           : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-200',
                         instance.status === 'offline' && 'cursor-not-allowed opacity-50',
                       )}
@@ -532,7 +534,7 @@ export function SearchPage() {
                         )}
                       />
                       {instance.name}
-                      {isSelected && <Check className="h-3 w-3 text-cyan-400" />}
+                      {isSelected && <Check className="h-3 w-3" />}
                     </button>
                   )
                 })}
@@ -786,7 +788,7 @@ export function SearchPage() {
                               className={cn(
                                 '-ml-1 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                                 bookmarkIdByResultId[result.id] !== undefined
-                                  ? 'text-cyan-400 hover:text-cyan-300'
+                                  ? 'text-amber-400 hover:text-amber-300'
                                   : 'text-slate-600 hover:text-slate-300',
                               )}
                             >
@@ -841,7 +843,7 @@ export function SearchPage() {
                                   result.download_volume_factor > 0 &&
                                   result.download_volume_factor < 1 && (
                                     <span
-                                      className="tag"
+                                      className="tag tag-discount"
                                       title={`Download counts at ${Math.round(
                                         result.download_volume_factor * 100,
                                       )}% of size`}
@@ -859,8 +861,8 @@ export function SearchPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className="whitespace-nowrap text-xs text-slate-400"
-                            title={result.source_type === 'jackett' ? 'Jackett' : 'Prowlarr'}
+                            className={cn(sourceTagClass(result.source_type), 'whitespace-nowrap')}
+                            title={sourceLabel(result.source_type)}
                           >
                             {result.source}
                           </span>
@@ -870,7 +872,7 @@ export function SearchPage() {
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1 text-sm">
-                            <span className={cn(isDead ? 'text-slate-500' : 'text-emerald-400')}>
+                            <span className={cn(isDead ? 'text-red-400' : 'text-emerald-400')}>
                               {result.seeders.toLocaleString()}
                             </span>
                             <span className="text-slate-600">/</span>

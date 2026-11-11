@@ -29,7 +29,14 @@ import {
   SortOrder,
   SourceType,
 } from '../types'
-import { cn, formatDateTime, formatRelative, parseSize } from '../utils'
+import {
+  cn,
+  formatDateTime,
+  formatRelative,
+  parseSize,
+  sourceLabel,
+  sourceTagClass,
+} from '../utils'
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100]
 
@@ -137,7 +144,7 @@ function ActionBadge({ entry }: { entry: HistoryEntry }) {
     )
   }
   return (
-    <span className="tag">
+    <span className="tag tag-downloaded">
       <Download className="h-3 w-3" />
       Downloaded
     </span>
@@ -146,7 +153,7 @@ function ActionBadge({ entry }: { entry: HistoryEntry }) {
 
 function SourceBadge({ entry }: { entry: HistoryEntry }) {
   return (
-    <span className="tag" title={entry.source_type === 'jackett' ? 'Jackett' : 'Prowlarr'}>
+    <span className={sourceTagClass(entry.source_type)} title={sourceLabel(entry.source_type)}>
       {entry.source_instance_name}
     </span>
   )

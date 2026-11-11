@@ -11,7 +11,7 @@ import {
   useSendToClient,
 } from '../hooks'
 import { Bookmark, SearchResult } from '../types'
-import { formatRelative, formatDateTime } from '../utils'
+import { formatRelative, formatDateTime, sourceLabel, sourceTagClass } from '../utils'
 
 function bookmarkToSearchResult(b: Bookmark): SearchResult {
   return {
@@ -197,7 +197,7 @@ export function BookmarksPage() {
                           <button
                             type="button"
                             onClick={() => setNotesFor(b)}
-                            className="tag transition-colors hover:text-slate-100"
+                            className="tag tag-warn transition-colors hover:bg-amber-500/20"
                             title="View notes"
                           >
                             <StickyNote className="h-3 w-3" />
@@ -208,8 +208,8 @@ export function BookmarksPage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">
                       <span
-                        className="tag"
-                        title={b.source_type === 'jackett' ? 'Jackett' : 'Prowlarr'}
+                        className={sourceTagClass(b.source_type)}
+                        title={sourceLabel(b.source_type)}
                       >
                         {b.source_instance_name}
                       </span>

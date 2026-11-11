@@ -16,9 +16,9 @@ function ActionIcon({ entry }: { entry: HistoryMatchEntry }) {
     return <XCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-red-400" />
   }
   if (entry.action === 'sent_to_client') {
-    return <Send className="mt-0.5 h-3 w-3 flex-shrink-0 text-slate-400" />
+    return <Send className="mt-0.5 h-3 w-3 flex-shrink-0 text-emerald-400" />
   }
-  return <Download className="mt-0.5 h-3 w-3 flex-shrink-0 text-slate-400" />
+  return <Download className="mt-0.5 h-3 w-3 flex-shrink-0 text-violet-400" />
 }
 
 function actionLabel(entry: HistoryMatchEntry): string {
@@ -74,12 +74,14 @@ export function DownloadedBadge({ match }: DownloadedBadgeProps) {
         tabIndex={0}
         className={cn(
           'tag cursor-help transition-colors',
-          lastWasFailure ? 'tag-bad' : 'text-slate-300 hover:border-slate-600',
+          lastWasFailure
+            ? 'tag-bad hover:border-red-500/60'
+            : 'tag-downloaded hover:border-violet-500/60',
         )}
       >
         {lastWasFailure ? <XCircle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
         Downloaded
-        {match.count > 1 && <span className="text-slate-500">·{match.count}</span>}
+        {match.count > 1 && <span className="opacity-70">·{match.count}</span>}
       </span>
 
       {open &&

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, Search } from 'lucide-react'
-import { cn } from '../utils'
+import { cn, sourceLabel, sourceTagClass } from '../utils'
 import { useJackettIndexers, useProwlarrIndexers } from '../hooks'
 import { LoadingSpinner } from './LoadingSpinner'
 import { SourceType, IndexerInfo } from '../types'
@@ -19,12 +19,12 @@ function indexerTypeBadge(type: string | null | undefined) {
   if (!type) return null
   const lower = type.toLowerCase()
   if (lower.includes('private')) {
-    return { label: 'Private' }
+    return { label: 'Private', className: 'text-red-400' }
   }
   if (lower.includes('public')) {
-    return { label: 'Public' }
+    return { label: 'Public', className: 'text-emerald-400' }
   }
-  return { label: type }
+  return { label: type, className: 'text-slate-500' }
 }
 
 export function IndexerPicker({
@@ -74,6 +74,7 @@ export function IndexerPicker({
       >
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-medium text-slate-200">{instanceName}</span>
+          <span className={sourceTagClass(type)}>{sourceLabel(type)}</span>
           <span className={cn('tag', isFiltered && 'tag-accent')}>{summary}</span>
         </div>
         {expanded ? (
@@ -155,7 +156,9 @@ export function IndexerPicker({
                     >
                       <span className="truncate">{indexer.name}</span>
                       {badge && (
-                        <span className="flex-shrink-0 text-2xs text-slate-500">{badge.label}</span>
+                        <span className={cn('flex-shrink-0 text-2xs', badge.className)}>
+                          {badge.label}
+                        </span>
                       )}
                     </button>
                   )

@@ -4,6 +4,7 @@ import { LoadingSpinner } from '../LoadingSpinner'
 import { StatusBadge } from '../StatusBadge'
 import { SearchResult, DownloadClientWithStatus } from '../../types'
 import { useClientsStatus, useInstancesStatus, useSendToClient } from '../../hooks'
+import { sourceLabel, sourceTagClass } from '../../utils'
 
 interface SendToClientModalProps {
   isOpen: boolean
@@ -79,9 +80,16 @@ export function SendToClientModal({
           <div className="mt-2 flex items-center gap-2 font-mono text-xs text-slate-400">
             <span>{result.size_formatted}</span>
             <span>·</span>
-            <span>{result.seeders} seeders</span>
+            <span className={result.seeders === 0 ? 'text-red-400' : 'text-emerald-400'}>
+              {result.seeders} seeders
+            </span>
             <span>·</span>
-            <span>{result.source}</span>
+            <span
+              className={sourceTagClass(result.source_type)}
+              title={sourceLabel(result.source_type)}
+            >
+              {result.source}
+            </span>
           </div>
         </div>
 
