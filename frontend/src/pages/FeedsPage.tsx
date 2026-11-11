@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Clock,
   Download,
   FileDown,
   Filter as FilterIcon,
@@ -757,7 +758,7 @@ export function FeedsPage() {
                     {filterChips(selectedFeed).map((chip) => (
                       <span
                         key={chip.label}
-                        className={cn('tag', chip.tone === 'highlight' && 'tag-good')}
+                        className={cn('tag', chip.tone === 'highlight' ? 'tag-good' : 'tag-accent')}
                       >
                         {chip.label}
                       </span>
@@ -1228,9 +1229,10 @@ export function FeedsPage() {
                                         )}
                                       {stale && (
                                         <span
-                                          className="tag"
+                                          className="tag tag-warn"
                                           title={`Last observed ${formatRelative(result.last_seen_at)} — freeleech / seeders may be stale`}
                                         >
+                                          <Clock className="h-3 w-3" />
                                           Stale
                                         </span>
                                       )}
